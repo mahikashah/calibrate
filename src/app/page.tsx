@@ -55,6 +55,24 @@ export default function Dashboard() {
   const hypoTech = onboarding?.hypothesis?.ranked?.[0]?.label;
   const dataVerdict = report?.overall.bestOverallTechnique;
 
+  if (!onboarding?.completed) {
+    return (
+      <div className="animate-rise mx-auto max-w-xl py-8">
+        <section className="graph-paper card overflow-hidden p-7 sm:p-9">
+          <p className="label mb-3">First things first</p>
+          <h1 className="text-2xl font-semibold tracking-tight">Let’s find your starting point</h1>
+          <p className="mt-3 max-w-lg text-sm leading-relaxed text-muted">
+            Calibrate starts by learning how you study today. A few quick questions create a
+            starting hypothesis we’ll test against your real study results.
+          </p>
+          <Link href="/onboarding" className="btn-primary mt-6">
+            Start onboarding →
+          </Link>
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="animate-rise space-y-8">
       <header className="flex flex-wrap items-end justify-between gap-4">

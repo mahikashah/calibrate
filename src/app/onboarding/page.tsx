@@ -76,6 +76,15 @@ export default function OnboardingPage() {
     }
   }
 
+  function retakeOnboarding() {
+    setScreen("welcome");
+    setQuestionStep(0);
+    setAnswers({});
+    setResult(null);
+    setSaving(false);
+    setError("");
+  }
+
   function goBack() {
     if (screen === "questions" && questionStep > 0) {
       setQuestionStep((current) => current - 1);
@@ -108,7 +117,7 @@ export default function OnboardingPage() {
               Here for all your study needs.
             </p>
             <div className="flex w-full flex-col justify-center gap-3 sm:flex-row">
-              <button className="calibrate-button calibrate-button-dark" onClick={() => setScreen("intro")}>
+              <button className="calibrate-button calibrate-button-dark" onClick={() => setScreen("ready")}>
                 Get Started <span aria-hidden="true">→</span>
               </button>
               <button className="calibrate-button calibrate-button-outline" onClick={() => setScreen("intro")}>
@@ -230,9 +239,10 @@ export default function OnboardingPage() {
               <p className="mt-5 border-t border-[#d7d7c9] pt-4 text-sm leading-relaxed text-[#555750]">{result.rationale}</p>
             </div>
             <div className="flex flex-col justify-center gap-3 sm:flex-row">
-              <Link href="/study" className="calibrate-button calibrate-button-dark">Log your first session</Link>
-              <Link href="/" className="calibrate-button calibrate-button-outline">Back to dashboard</Link>
+              <Link href="/study" className="calibrate-button calibrate-button-dark">Start first session</Link>
+              <Link href="/" className="calibrate-button calibrate-button-outline">Go to dashboard</Link>
             </div>
+            <button className="calibrate-back" onClick={retakeOnboarding}>Retake onboarding</button>
           </div>
         )}
       </div>
