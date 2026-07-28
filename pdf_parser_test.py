@@ -22,6 +22,8 @@ Output JSON structure would be as follows:
   },
   ...
 ]
+
+For future: implement a date key to each note in order to pull the most recent notes if multiple notes exist for one subject.
 '''
 
 import sys
