@@ -49,10 +49,13 @@ export default function OnboardingPage() {
   const total = ONBOARDING_QUESTIONS.length;
   const question = ONBOARDING_QUESTIONS[questionStep];
 
-  async function selectAnswer(optionIndex: number) {
-    const next = { ...answers, [question.id]: optionIndex };
-    setAnswers(next);
+  function selectAnswer(optionIndex: number) {
+    setAnswers((current) => ({ ...current, [question.id]: optionIndex }));
     setError("");
+  }
+
+  async function advanceQuestion() {
+    if (answers[question.id] === undefined) return;
 
     if (questionStep + 1 < total) {
       setQuestionStep((current) => current + 1);
@@ -62,7 +65,7 @@ export default function OnboardingPage() {
     setSaving(true);
     try {
       const response = await postJSON<{ hypothesis: Hypothesis }>("/api/onboarding", {
-        answers: next,
+        answers,
       });
       setResult(response.hypothesis);
       setScreen("result");
@@ -191,7 +194,17 @@ export default function OnboardingPage() {
             {error && <p className="mt-5 text-center text-sm font-medium text-red-700">{error}</p>}
             <div className="mt-7 flex items-center justify-between">
               <button className="calibrate-back static" onClick={goBack}>← Back</button>
-              <span className="text-sm text-[#575851]">{questionStep + 1} of {total}</span>
+              <div className="flex items-center gap-4">
+                <span className="text-sm text-[#575851]">{questionStep + 1} of {total}</span>
+                <button
+                  className="calibrate-button calibrate-button-teal min-w-0 px-6 py-2 disabled:cursor-not-allowed disabled:opacity-45"
+                  onClick={advanceQuestion}
+                  disabled={answers[question.id] === undefined || saving}
+                >
+                  {saving ? "Saving…" : questionStep + 1 === total ? "Finish" : "Next"}{" "}
+                  <span aria-hidden="true">→</span>
+                </button>
+              </div>
             </div>
           </div>
         )}
