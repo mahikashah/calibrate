@@ -1,0 +1,70 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  @apply bg-paper text-ink antialiased;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+/* The signature texture: faint graph paper, like a lab notebook.
+   Used behind hero/insight surfaces to reinforce the "run an experiment" idea. */
+.graph-paper {
+  background-image:
+    linear-gradient(to right, rgba(21, 23, 28, 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(21, 23, 28, 0.035) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+@layer components {
+  .card {
+    @apply rounded-xl border border-line bg-surface shadow-card;
+  }
+  /* Index-card look for technique tiles. */
+  .index-card {
+    @apply rounded-xl border border-line bg-surface shadow-card transition-transform duration-200;
+  }
+  .index-card:hover {
+    @apply -translate-y-0.5 shadow-lift;
+  }
+  .label {
+    @apply font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-muted;
+  }
+  .stat {
+    @apply font-mono tabular-nums;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium
+           transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply btn bg-brand text-white hover:bg-brand-ink;
+  }
+  .btn-ghost {
+    @apply btn border border-line bg-surface text-ink hover:bg-paper;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1
+           text-xs font-medium text-ink;
+  }
+  .field {
+    @apply w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink
+           placeholder:text-muted/70 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
