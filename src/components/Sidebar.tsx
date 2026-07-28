@@ -5,10 +5,11 @@ import { usePathname } from "next/navigation";
 
 const NAV = [
   { href: "/", label: "Dashboard", hint: "01" },
-  { href: "/study", label: "Study session", hint: "02" },
-  { href: "/questions", label: "Question bank", hint: "03" },
-  { href: "/insights", label: "Insights", hint: "04" },
-  { href: "/subjects", label: "Subjects", hint: "05" },
+  { href: "/onboarding", label: "Onboarding", hint: "02" },
+  { href: "/study", label: "Study session", hint: "03" },
+  { href: "/questions", label: "Question bank", hint: "04" },
+  { href: "/insights", label: "Insights", hint: "05" },
+  { href: "/subjects", label: "Subjects", hint: "06" },
 ];
 
 export function Sidebar() {
@@ -20,7 +21,7 @@ export function Sidebar() {
           <span className="font-mono text-sm font-bold">S</span>
         </span>
         <span className="text-[15px] font-semibold tracking-tight">
-          Study<span className="text-brand">Coach</span>
+          Calibrate
         </span>
       </Link>
 
@@ -47,7 +48,7 @@ export function Sidebar() {
       <div className="mt-auto hidden px-3 pt-6 md:block">
         <p className="label mb-1">Method</p>
         <p className="text-xs leading-relaxed text-muted">
-          No learning-style labels. StudyCoach runs techniques as experiments and lets your own
+          No learning-style labels. Calibrate runs techniques as experiments and lets your own
           data pick the winner.
         </p>
       </div>
@@ -63,7 +64,7 @@ export function MobileNav() {
         <span className="grid h-7 w-7 place-items-center rounded-lg bg-brand text-white">
           <span className="font-mono text-xs font-bold">S</span>
         </span>
-        <span className="text-sm font-semibold tracking-tight">StudyCoach</span>
+        <span className="text-sm font-semibold tracking-tight">Calibrate</span>
       </Link>
       <nav className="-mx-1 flex flex-1 gap-1 overflow-x-auto px-1">
         {NAV.map((item) => {
