@@ -9,6 +9,7 @@ interface Subject {
   id: string;
   name: string;
 }
+
 interface Question {
   id: string;
   subjectId: string;
@@ -26,18 +27,20 @@ const TYPE_LABEL: Record<string, string> = {
   cloze: "Fill-in",
 };
 
+const FILTERS = ["all", "recall", "cloze", "feynman", "practice"];
+
 export default function QuestionsPage() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [subjectId, setSubjectId] = useState("");
   const [filter, setFilter] = useState("all");
-
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [count, setCount] = useState(5);
   const [generating, setGenerating] = useState(false);
   const [provider, setProvider] = useState<string | null>(null);
   const [fellBack, setFellBack] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function refresh() {
     const [subs, qs] = await Promise.all([
@@ -50,154 +53,206 @@ export default function QuestionsPage() {
   }
 
   useEffect(() => {
-    refresh();
+    void refresh();
+    // `subjectId` is intentionally read only for initial selection.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function generate() {
     if (!subjectId || !content.trim()) return;
+
     setGenerating(true);
+    setError(null);
+    setProvider(null);
+    setFellBack(false);
+
     try {
-      const subjectName = subjects.find((s) => s.id === subjectId)?.name;
-      // Save the material, then generate questions from it.
+      const subjectName = subjects.find((subject) => subject.id === subjectId)?.name;
+      // Each submit deliberately creates a new material before generating linked questions.
       const material = await postJSON<{ id: string }>("/api/materials", {
         subjectId,
         title: title.trim() || "Untitled material",
         content,
       });
-      const res = await postJSON<{ provider: string; fellBack: boolean }>(
+      const result = await postJSON<{ provider: string; fellBack: boolean }>(
         "/api/questions/generate",
         { subjectId, subjectName, materialId: material.id, count },
       );
-      setProvider(res.provider);
-      setFellBack(res.fellBack);
+
+      setProvider(result.provider);
+      setFellBack(result.fellBack);
       setTitle("");
       setContent("");
       await refresh();
+    } catch (generationError) {
+      setError(
+        generationError instanceof Error
+          ? generationError.message
+          : "We couldn’t generate questions right now. Please try again.",
+      );
     } finally {
       setGenerating(false);
     }
   }
 
-  const visible = useMemo(
-    () => questions.filter((q) => filter === "all" || q.type === filter),
+  const visibleQuestions = useMemo(
+    () => questions.filter((question) => filter === "all" || question.type === filter),
     [questions, filter],
   );
 
   return (
-    <div className="animate-rise space-y-8">
-      <header>
-        <p className="label mb-1">Question bank</p>
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Turn your material into practice
-        </h1>
+    <div className="calibrate-question-bank animate-rise">
+      <header className="calibrate-question-bank__header">
+        <p className="calibrate-question-bank__eyebrow">Question Bank</p>
+        <h1>Turn your material into practice</h1>
+        <p className="calibrate-question-bank__intro">
+          Paste the material you&apos;re studying today. Calibrate will generate practice questions
+          only from this text.
+        </p>
       </header>
 
       {subjects.length === 0 ? (
-        <div className="card p-6 text-center">
-          <p className="mb-1 text-sm font-semibold">Add a subject first</p>
-          <p className="mb-4 text-sm text-muted">Questions are organized by subject.</p>
-          <Link href="/subjects" className="btn-primary">
+        <div className="calibrate-empty-state">
+          <p className="calibrate-empty-state__title">Add a subject first</p>
+          <p>Question sets stay organized by the subject you&apos;re working on.</p>
+          <Link href="/subjects" className="calibrate-question-bank__button">
             Create a subject
           </Link>
         </div>
       ) : (
-        <section className="card p-6">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-base font-semibold tracking-tight">Generate from your notes</h2>
-            <AiTag provider={provider ?? undefined} />
+        <section className="calibrate-generator" aria-labelledby="generate-notes-title">
+          <div className="calibrate-generator__heading">
+            <div>
+              <p className="calibrate-question-bank__eyebrow">Paste notes</p>
+              <h2 id="generate-notes-title">Make a question set for today</h2>
+            </div>
+            {provider && <AiTag provider={provider} />}
           </div>
-          <div className="grid gap-3 sm:grid-cols-[200px_1fr]">
-            <div className="space-y-3">
+
+          <div className="calibrate-generator__grid">
+            <div className="calibrate-generator__details">
               <div>
-                <label className="label mb-1 block">Subject</label>
+                <label className="calibrate-question-bank__label" htmlFor="question-subject">
+                  Subject
+                </label>
                 <select
+                  id="question-subject"
                   value={subjectId}
-                  onChange={(e) => setSubjectId(e.target.value)}
-                  className="field"
+                  onChange={(event) => setSubjectId(event.target.value)}
+                  className="calibrate-question-bank__field"
                 >
-                  {subjects.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
+                  {subjects.map((subject) => (
+                    <option key={subject.id} value={subject.id}>
+                      {subject.name}
                     </option>
                   ))}
                 </select>
               </div>
+
               <div>
-                <label className="label mb-1 block">How many</label>
+                <label className="calibrate-question-bank__label" htmlFor="question-count">
+                  Number of questions
+                </label>
                 <input
+                  id="question-count"
                   type="number"
                   min={1}
                   max={15}
                   value={count}
-                  onChange={(e) => setCount(Number(e.target.value))}
-                  className="field"
+                  onChange={(event) => {
+                    const nextCount = Number(event.target.value);
+                    setCount(Number.isFinite(nextCount) ? Math.min(15, Math.max(1, nextCount)) : 1);
+                  }}
+                  className="calibrate-question-bank__field"
                 />
               </div>
-              <input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Material title"
-                className="field"
-              />
             </div>
-            <div>
-              <label className="label mb-1 block">Paste your material</label>
-              <textarea
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                rows={6}
-                placeholder="Paste lecture notes, a textbook section, or your own summary. Questions are generated only from this text."
-                className="field resize-none"
-              />
+
+            <div className="calibrate-generator__notes">
+              <div>
+                <label className="calibrate-question-bank__label" htmlFor="material-title">
+                  Material title
+                </label>
+                <input
+                  id="material-title"
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  placeholder="e.g. Week 3 lecture notes"
+                  className="calibrate-question-bank__field"
+                />
+              </div>
+
+              <div>
+                <div className="calibrate-notes-label">
+                  <label className="calibrate-question-bank__label" htmlFor="material-content">
+                    Notes for today
+                  </label>
+                  <span>{content.length.toLocaleString()} characters</span>
+                </div>
+                <textarea
+                  id="material-content"
+                  value={content}
+                  onChange={(event) => setContent(event.target.value)}
+                  rows={8}
+                  placeholder="Paste lecture notes, a textbook section, or your own summary. Questions will be generated only from this text."
+                  className="calibrate-question-bank__field calibrate-question-bank__textarea"
+                />
+              </div>
             </div>
           </div>
-          <div className="mt-4 flex items-center gap-3">
+
+          <div className="calibrate-generator__footer">
+            <p>Generated questions should be reviewed before they become part of your experiment data.</p>
             <button
-              onClick={generate}
+              type="button"
+              onClick={() => void generate()}
               disabled={generating || !content.trim()}
-              className="btn-primary"
+              className="calibrate-question-bank__button"
             >
-              {generating ? "Generating…" : "Generate questions"}
+              {generating ? "Generating questions…" : "Generate questions"}
             </button>
-            {fellBack && (
-              <span className="text-xs text-emerging">
-                Model unavailable — used the built-in offline generator instead.
-              </span>
-            )}
           </div>
+
+          {error && <p className="calibrate-generator__error">{error}</p>}
+          {fellBack && (
+            <p className="calibrate-generator__notice">
+              Model unavailable — used the built-in offline generator instead.
+            </p>
+          )}
         </section>
       )}
 
-      <section>
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold tracking-tight">
-            Saved questions
-            <span className="ml-2 stat text-sm font-normal text-muted">{questions.length}</span>
-          </h2>
-          <div className="flex flex-wrap gap-1.5">
-            {["all", "recall", "cloze", "feynman", "practice"].map((f) => (
+      <section className="calibrate-saved-questions" aria-labelledby="saved-questions-title">
+        <div className="calibrate-saved-questions__heading">
+          <div>
+            <p className="calibrate-question-bank__eyebrow">Your library</p>
+            <h2 id="saved-questions-title">
+              Saved questions <span>{questions.length}</span>
+            </h2>
+          </div>
+
+          <div className="calibrate-question-filters" aria-label="Filter saved questions">
+            {FILTERS.map((value) => (
               <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`rounded-full px-3 py-1 text-xs font-medium ${
-                  filter === f ? "bg-brand text-white" : "border border-line bg-surface text-muted"
-                }`}
+                type="button"
+                key={value}
+                onClick={() => setFilter(value)}
+                className={filter === value ? "is-active" : ""}
               >
-                {f === "all" ? "All" : TYPE_LABEL[f]}
+                {value === "all" ? "All" : TYPE_LABEL[value]}
               </button>
             ))}
           </div>
         </div>
 
-        {visible.length === 0 ? (
-          <Empty title="No questions yet">
-            Paste some material above and generate your first set — or add one by hand.
+        {visibleQuestions.length === 0 ? (
+          <Empty title={questions.length ? "No questions match this filter" : "No questions yet"}>
+            Paste some material above and generate your first set.
           </Empty>
         ) : (
-          <div className="space-y-3">
-            {visible.map((q) => (
-              <QuestionCard key={q.id} q={q} />
+          <div className="calibrate-question-list">
+            {visibleQuestions.map((question) => (
+              <QuestionCard key={question.id} question={question} />
             ))}
           </div>
         )}
@@ -206,7 +261,7 @@ export default function QuestionsPage() {
   );
 }
 
-function QuestionCard({ q }: { q: Question }) {
+function QuestionCard({ question }: { question: Question }) {
   const [revealed, setRevealed] = useState(false);
   const [practicing, setPracticing] = useState(false);
   const [answer, setAnswer] = useState("");
@@ -216,63 +271,60 @@ function QuestionCard({ q }: { q: Question }) {
   async function getFeedback() {
     if (!answer.trim()) return;
     setLoading(true);
+
     try {
-      const res = await postJSON<{ feedback: string }>("/api/feedback", {
-        question: q.prompt,
-        expected: q.answer,
+      const result = await postJSON<{ feedback: string }>("/api/feedback", {
+        question: question.prompt,
+        expected: question.answer,
         answer,
       });
-      setFeedback(res.feedback);
+      setFeedback(result.feedback);
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="card p-5">
-      <div className="mb-2 flex items-center gap-2">
-        <span className="chip">{TYPE_LABEL[q.type] ?? q.type}</span>
-        {q.source === "ai" && (
-          <span className="font-mono text-[10px] uppercase tracking-wider text-brand">ai</span>
-        )}
+    <article className="calibrate-question-card">
+      <div className="calibrate-question-card__meta">
+        <span>{TYPE_LABEL[question.type] ?? question.type}</span>
+        <span>{question.source === "ai" ? "AI" : "User"}</span>
       </div>
-      <p className="text-sm font-medium leading-relaxed">{q.prompt}</p>
+      <p className="calibrate-question-card__prompt">{question.prompt}</p>
 
-      <div className="mt-3 flex flex-wrap gap-4 text-xs">
-        <button onClick={() => setRevealed((v) => !v)} className="text-brand hover:underline">
+      <div className="calibrate-question-card__actions">
+        <button type="button" onClick={() => setRevealed((isRevealed) => !isRevealed)}>
           {revealed ? "Hide answer" : "Reveal answer"}
         </button>
-        <button
-          onClick={() => setPracticing((v) => !v)}
-          className="text-brand hover:underline"
-        >
+        <button type="button" onClick={() => setPracticing((isPracticing) => !isPracticing)}>
           {practicing ? "Cancel practice" : "Practice this"}
         </button>
       </div>
 
-      {revealed && q.answer && (
-        <p className="mt-3 rounded-lg bg-paper p-3 text-sm leading-relaxed text-muted">{q.answer}</p>
+      {revealed && question.answer && (
+        <p className="calibrate-question-card__answer">{question.answer}</p>
       )}
 
       {practicing && (
-        <div className="mt-3 space-y-3">
+        <div className="calibrate-question-card__practice">
           <textarea
             value={answer}
-            onChange={(e) => setAnswer(e.target.value)}
+            onChange={(event) => setAnswer(event.target.value)}
             rows={3}
             placeholder="Answer from memory, then get feedback…"
-            className="field resize-none"
+            className="calibrate-question-bank__field calibrate-question-bank__textarea"
           />
-          <button onClick={getFeedback} disabled={loading} className="btn-ghost text-sm">
+          <button
+            type="button"
+            onClick={() => void getFeedback()}
+            disabled={loading || !answer.trim()}
+            className="calibrate-question-card__feedback"
+          >
             {loading ? "Checking…" : "Get feedback"}
           </button>
-          {feedback && (
-            <div className="rounded-lg border border-brand/20 bg-brand-soft p-3 text-sm leading-relaxed text-brand-ink">
-              {feedback}
-            </div>
-          )}
+          {feedback && <div className="calibrate-question-card__feedback-result">{feedback}</div>}
         </div>
       )}
-    </div>
+    </article>
   );
 }
