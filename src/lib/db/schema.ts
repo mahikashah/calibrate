@@ -49,7 +49,9 @@ export const questions = sqliteTable("questions", {
   subjectId: text("subject_id")
     .notNull()
     .references(() => subjects.id),
-  materialId: text("material_id").references(() => materials.id),
+  materialId: text("material_id").references(() => materials.id, {
+    onDelete: "set null",
+  }),
   type: text("type").notNull().default("recall"),
   prompt: text("prompt").notNull(),
   answer: text("answer").notNull().default(""),
