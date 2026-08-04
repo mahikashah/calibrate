@@ -43,6 +43,7 @@ export default function QuestionsPage() {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [subjectId, setSubjectId] = useState("");
   const [filter, setFilter] = useState("all");
+  const [highlightedMaterialId, setHighlightedMaterialId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [count, setCount] = useState(5);
@@ -105,6 +106,11 @@ export default function QuestionsPage() {
       setGenerating(false);
     }
   }
+
+  const materialTitleById = useMemo(
+    () => Object.fromEntries(materials.map((m) => [m.id, m.title])),
+    [materials],
+  );
 
   const visibleQuestions = useMemo(
     () => questions.filter((question) => filter === "all" || question.type === filter),
@@ -261,17 +267,35 @@ export default function QuestionsPage() {
           <div className="calibrate-question-list">
             {materials.map((mat) => {
               const subject = subjects.find((s) => s.id === mat.subjectId);
+              const linkedCount = questions.filter((q) => q.materialId === mat.id).length;
+              const isHighlighted = highlightedMaterialId === mat.id;
               return (
-                <article key={mat.id} className="calibrate-question-card">
+                <article
+                  key={mat.id}
+                  className={`calibrate-question-card${isHighlighted ? " is-highlighted" : ""}`}
+                  onClick={() =>
+                    setHighlightedMaterialId((prev) => (prev === mat.id ? null : mat.id))
+                  }
+                  style={{ cursor: "pointer" }}
+                >
                   <div className="calibrate-question-card__meta">
                     <span>{subject?.name ?? "Unknown subject"}</span>
                     <span>{new Date(mat.createdAt).toLocaleDateString()}</span>
                   </div>
                   <p className="calibrate-question-card__prompt">{mat.title}</p>
+                  <div className="calibrate-question-card__meta" style={{ marginTop: "0.25rem" }}>
+                    <span style={{ fontSize: "0.8rem", opacity: 0.7 }}>
+                      {linkedCount} question{linkedCount === 1 ? "" : "s"}
+                      {linkedCount > 0 ? " — click to highlight" : ""}
+                    </span>
+                  </div>
                   <div className="calibrate-question-card__actions">
                     <button
                       type="button"
-                      onClick={() => void deleteMaterial(mat.id, mat.title)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void deleteMaterial(mat.id, mat.title);
+                      }}
                       className="calibrate-question-card__delete"
                     >
                       Delete material
@@ -314,7 +338,13 @@ export default function QuestionsPage() {
         ) : (
           <div className="calibrate-question-list">
             {visibleQuestions.map((question) => (
-              <QuestionCard key={question.id} question={question} onDelete={deleteQuestion} />
+              <QuestionCard
+                key={question.id}
+                question={question}
+                materialTitle={question.materialId ? materialTitleById[question.materialId] : undefined}
+                highlighted={!!question.materialId && question.materialId === highlightedMaterialId}
+                onDelete={deleteQuestion}
+              />
             ))}
           </div>
         )}
@@ -325,9 +355,13 @@ export default function QuestionsPage() {
 
 function QuestionCard({
   question,
+  materialTitle,
+  highlighted,
   onDelete,
 }: {
   question: Question;
+  materialTitle?: string;
+  highlighted?: boolean;
   onDelete: (id: string) => Promise<void>;
 }) {
   const [revealed, setRevealed] = useState(false);
@@ -364,10 +398,15 @@ function QuestionCard({
   }
 
   return (
-    <article className="calibrate-question-card">
+    <article className={`calibrate-question-card${highlighted ? " is-highlighted" : ""}`}>
       <div className="calibrate-question-card__meta">
         <span>{TYPE_LABEL[question.type] ?? question.type}</span>
         <span>{question.source === "ai" ? "AI" : "User"}</span>
+        {materialTitle && (
+          <span className="calibrate-question-card__material-tag" title="Source material">
+            📄 {materialTitle}
+          </span>
+        )}
       </div>
       <p className="calibrate-question-card__prompt">{question.prompt}</p>
 
