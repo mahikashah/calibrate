@@ -43,6 +43,7 @@ export default function QuestionsPage() {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [subjectId, setSubjectId] = useState("");
   const [filter, setFilter] = useState("all");
+  const [materialFilter, setMaterialFilter] = useState("all");
   const [highlightedMaterialId, setHighlightedMaterialId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -62,6 +63,8 @@ export default function QuestionsPage() {
     setQuestions(qs);
     setMaterials(mats);
     if (subs[0] && !subjectId) setSubjectId(subs[0].id);
+    // Reset material filter if the selected material was removed
+    setMaterialFilter((prev) => (prev === "all" || mats.some((m) => m.id === prev) ? prev : "all"));
   }
 
   useEffect(() => {
@@ -113,8 +116,13 @@ export default function QuestionsPage() {
   );
 
   const visibleQuestions = useMemo(
-    () => questions.filter((question) => filter === "all" || question.type === filter),
-    [questions, filter],
+    () =>
+      questions.filter(
+        (question) =>
+          (filter === "all" || question.type === filter) &&
+          (materialFilter === "all" || question.materialId === materialFilter),
+      ),
+    [questions, filter, materialFilter],
   );
 
   async function deleteMaterial(id: string, matTitle: string) {
@@ -328,6 +336,21 @@ export default function QuestionsPage() {
                 {value === "all" ? "All" : TYPE_LABEL[value]}
               </button>
             ))}
+            {materials.length > 0 && (
+              <select
+                aria-label="Filter by material"
+                value={materialFilter}
+                onChange={(e) => setMaterialFilter(e.target.value)}
+                className="calibrate-question-filters__material-select"
+              >
+                <option value="all">All materials</option>
+                {materials.map((mat) => (
+                  <option key={mat.id} value={mat.id}>
+                    {mat.title}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
         </div>
 
