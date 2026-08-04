@@ -51,7 +51,7 @@ function daysAgo(d: number) {
   return new Date(Date.now() - d * 86_400_000).toISOString();
 }
 
-console.log("Seeding StudyCoach demo data...");
+console.log("Seeding Calibrate demo data...");
 
 // Wipe existing rows (idempotent reseed).
 for (const t of [outcomes, sessions, questions, materials, onboarding, subjects, users]) {

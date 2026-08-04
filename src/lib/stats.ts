@@ -2,7 +2,7 @@
  * Tiny, dependency-free statistics used by the recommendation engine.
  *
  * Everything here is deliberately simple and inspectable. The whole point of
- * StudyCoach is that a student (or a curious 4th-year CS reader) can open this
+ * Calibrate is that a student (or a curious 4th-year CS reader) can open this
  * file and see exactly how a recommendation is computed — no black box.
  */
 

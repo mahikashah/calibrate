@@ -1,4 +1,4 @@
-# StudyCoach
+# Calibrate
 
 > TODO: The future flow is welcome click-to-begin → onboarding steps → dashboard app shell, with onboarding remaining accessible later from the sidebar.
 
@@ -6,7 +6,7 @@ An AI‑assisted study coach that helps students discover **which evidence‑bas
 techniques actually work for them** — through real experimentation, not learning‑style
 labels.
 
-StudyCoach starts with a short behavioral onboarding to form a *starting hypothesis*, then
+Calibrate starts with a short behavioral onboarding to form a *starting hypothesis*, then
 guides you through techniques like **active recall, spaced repetition, Feynman /
 self‑explanation, and practice questions**. You log study sessions and take a quick outcome
 check after each one. Over time the app compares results per subject and shows which methods
@@ -47,7 +47,7 @@ Useful scripts:
 
 ## The AI is optional and swappable
 
-By default StudyCoach uses a built‑in **offline mock** that turns your pasted material into
+By default Calibrate uses a built‑in **offline mock** that turns your pasted material into
 sensible questions using plain heuristics — zero setup, zero keys. To use a real model, set
 `LLM_PROVIDER` in `.env.local`:
 

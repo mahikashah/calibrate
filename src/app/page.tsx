@@ -218,7 +218,7 @@ function GetStarted({ hasSubjects }: { hasSubjects: boolean }) {
     <div className="card p-6">
       <p className="mb-1 text-sm font-semibold">Get started in three steps</p>
       <p className="mb-5 text-sm text-muted">
-        StudyCoach needs a little of your real study data before it can recommend anything.
+        Calibrate needs a little of your real study data before it can recommend anything.
       </p>
       <div className="grid gap-3 sm:grid-cols-3">
         {steps.map((s) => (

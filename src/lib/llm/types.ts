@@ -1,5 +1,5 @@
 /**
- * The narrow surface where AI is allowed to touch StudyCoach.
+ * The narrow surface where AI is allowed to touch Calibrate.
  *
  * AI does exactly three jobs, all assistive and all optional:
  *   1. generateQuestions  — turn a student's own material into practice items

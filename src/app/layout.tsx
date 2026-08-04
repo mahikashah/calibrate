@@ -3,9 +3,9 @@ import { MobileNav, Sidebar } from "@/components/Sidebar";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "StudyCoach — find the study techniques that work for you",
+  title: "Calibrate",
   description:
-    "An AI-assisted study coach that runs evidence-based techniques as experiments and lets your own data pick the winner.",
+    "Calibrate helps you test evidence-based study techniques and learn what works from your own data.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

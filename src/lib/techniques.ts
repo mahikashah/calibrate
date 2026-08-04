@@ -2,7 +2,7 @@
  * The catalog of study techniques the app knows how to run and compare.
  *
  * The `evidence` field is a plain-language pointer to the cognitive-science
- * literature. StudyCoach never tells a student "you are a visual learner" — the
+ * literature. Calibrate never tells a student "you are a visual learner" — the
  * learning-styles idea has no experimental support. Instead it runs the
  * techniques below *as experiments* and lets each student's own data decide.
  */

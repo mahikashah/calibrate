@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import { integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 /**
- * Data model for StudyCoach.
+ * Data model for Calibrate.
  *
  * The whole app is single-user and local-first: one row in `users` acts as the
  * owner of everything. Auth is intentionally out of scope for the MVP. All

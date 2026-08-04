@@ -102,7 +102,7 @@ export function computeHypothesis(answers: Record<string, number>): Hypothesis {
   const rationale =
     `Based on your answers, a good first technique to test is ${ranked[0].label.toLowerCase()}` +
     (ranked[1] ? `, followed by ${ranked[1].label.toLowerCase()}` : "") +
-    `. This is only a starting guess — StudyCoach will confirm or overturn it with your real session data.`;
+    `. This is only a starting guess — Calibrate will confirm or overturn it with your real session data.`;
 
   return { ranked, primary, rationale };
 }

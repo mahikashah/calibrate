@@ -4,7 +4,7 @@ import { users } from "./db/schema";
 import { newId } from "./ids";
 
 /**
- * StudyCoach is single-user and local. We keep exactly one owner row and always
+ * Calibrate is single-user and local. We keep exactly one owner row and always
  * resolve to it. Introducing real auth later means swapping this one function.
  */
 export const DEFAULT_USER_ID = "local-user";

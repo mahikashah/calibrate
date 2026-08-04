@@ -4,7 +4,7 @@ import { techniqueLabel, type TechniqueId } from "./techniques";
 /**
  * The recommendation engine.
  *
- * This is the heart of StudyCoach and it is deliberately NOT an AI model. Given
+ * This is the heart of Calibrate and it is deliberately NOT an AI model. Given
  * the raw evidence (one record per outcome-checked session) it computes, per
  * subject, which technique is producing the best learning outcomes for THIS
  * student, how confident we should be, and how that compares to the starting
