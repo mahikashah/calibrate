@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AiTag, Empty } from "@/components/ui";
-import { getJSON, postJSON } from "@/lib/client";
+import { deleteJSON, getJSON, postJSON } from "@/lib/client";
 
 interface Subject {
   id: string;
@@ -13,10 +13,18 @@ interface Subject {
 interface Question {
   id: string;
   subjectId: string;
+  materialId?: string | null;
   type: string;
   prompt: string;
   answer: string;
   source: string;
+  createdAt: string;
+}
+
+interface Material {
+  id: string;
+  subjectId: string;
+  title: string;
   createdAt: string;
 }
 
@@ -32,6 +40,7 @@ const FILTERS = ["all", "recall", "cloze", "feynman", "practice"];
 export default function QuestionsPage() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [materials, setMaterials] = useState<Material[]>([]);
   const [subjectId, setSubjectId] = useState("");
   const [filter, setFilter] = useState("all");
   const [title, setTitle] = useState("");
@@ -43,12 +52,14 @@ export default function QuestionsPage() {
   const [error, setError] = useState<string | null>(null);
 
   async function refresh() {
-    const [subs, qs] = await Promise.all([
+    const [subs, qs, mats] = await Promise.all([
       getJSON<Subject[]>("/api/subjects"),
       getJSON<Question[]>("/api/questions"),
+      getJSON<Material[]>("/api/materials"),
     ]);
     setSubjects(subs);
     setQuestions(qs);
+    setMaterials(mats);
     if (subs[0] && !subjectId) setSubjectId(subs[0].id);
   }
 
@@ -88,7 +99,7 @@ export default function QuestionsPage() {
       setError(
         generationError instanceof Error
           ? generationError.message
-          : "We couldn’t generate questions right now. Please try again.",
+          : "We couldn't generate questions right now. Please try again.",
       );
     } finally {
       setGenerating(false);
@@ -99,6 +110,21 @@ export default function QuestionsPage() {
     () => questions.filter((question) => filter === "all" || question.type === filter),
     [questions, filter],
   );
+
+  async function deleteMaterial(id: string, matTitle: string) {
+    const linkedCount = questions.filter((q) => q.materialId === id).length;
+    const confirmMsg = linkedCount > 0
+      ? `Delete "${matTitle}" and its ${linkedCount} linked question${linkedCount === 1 ? "" : "s"}? This cannot be undone.`
+      : `Delete "${matTitle}"? This cannot be undone.`;
+    if (!confirm(confirmMsg)) return;
+    await deleteJSON(`/api/materials/${id}`);
+    await refresh();
+  }
+
+  async function deleteQuestion(id: string) {
+    await deleteJSON(`/api/questions/${id}`);
+    setQuestions((prev) => prev.filter((q) => q.id !== id));
+  }
 
   return (
     <div className="calibrate-question-bank animate-rise">
@@ -222,6 +248,42 @@ export default function QuestionsPage() {
         </section>
       )}
 
+      {materials.length > 0 && (
+        <section className="calibrate-saved-questions" aria-labelledby="saved-materials-title">
+          <div className="calibrate-saved-questions__heading">
+            <div>
+              <p className="calibrate-question-bank__eyebrow">Your library</p>
+              <h2 id="saved-materials-title">
+                Saved materials <span>{materials.length}</span>
+              </h2>
+            </div>
+          </div>
+          <div className="calibrate-question-list">
+            {materials.map((mat) => {
+              const subject = subjects.find((s) => s.id === mat.subjectId);
+              return (
+                <article key={mat.id} className="calibrate-question-card">
+                  <div className="calibrate-question-card__meta">
+                    <span>{subject?.name ?? "Unknown subject"}</span>
+                    <span>{new Date(mat.createdAt).toLocaleDateString()}</span>
+                  </div>
+                  <p className="calibrate-question-card__prompt">{mat.title}</p>
+                  <div className="calibrate-question-card__actions">
+                    <button
+                      type="button"
+                      onClick={() => void deleteMaterial(mat.id, mat.title)}
+                      className="calibrate-question-card__delete"
+                    >
+                      Delete material
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       <section className="calibrate-saved-questions" aria-labelledby="saved-questions-title">
         <div className="calibrate-saved-questions__heading">
           <div>
@@ -252,7 +314,7 @@ export default function QuestionsPage() {
         ) : (
           <div className="calibrate-question-list">
             {visibleQuestions.map((question) => (
-              <QuestionCard key={question.id} question={question} />
+              <QuestionCard key={question.id} question={question} onDelete={deleteQuestion} />
             ))}
           </div>
         )}
@@ -261,12 +323,19 @@ export default function QuestionsPage() {
   );
 }
 
-function QuestionCard({ question }: { question: Question }) {
+function QuestionCard({
+  question,
+  onDelete,
+}: {
+  question: Question;
+  onDelete: (id: string) => Promise<void>;
+}) {
   const [revealed, setRevealed] = useState(false);
   const [practicing, setPracticing] = useState(false);
   const [answer, setAnswer] = useState("");
   const [feedback, setFeedback] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   async function getFeedback() {
     if (!answer.trim()) return;
@@ -284,6 +353,16 @@ function QuestionCard({ question }: { question: Question }) {
     }
   }
 
+  async function handleDelete() {
+    if (!confirm("Delete this question? This cannot be undone.")) return;
+    setDeleting(true);
+    try {
+      await onDelete(question.id);
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <article className="calibrate-question-card">
       <div className="calibrate-question-card__meta">
@@ -298,6 +377,14 @@ function QuestionCard({ question }: { question: Question }) {
         </button>
         <button type="button" onClick={() => setPracticing((isPracticing) => !isPracticing)}>
           {practicing ? "Cancel practice" : "Practice this"}
+        </button>
+        <button
+          type="button"
+          onClick={() => void handleDelete()}
+          disabled={deleting}
+          className="calibrate-question-card__delete"
+        >
+          {deleting ? "Deleting…" : "Delete"}
         </button>
       </div>
 
