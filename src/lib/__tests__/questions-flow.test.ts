@@ -325,6 +325,37 @@ describe("Question-Bank persistence flow", () => {
     expect(res.status).toBe(404);
   });
 
+  it("generate route returns 404 when subjectId belongs to a different user", async () => {
+    // Seed a subject owned by a different user.
+    const OTHER_USER_ID = "other-user";
+    const OTHER_SUBJECT_ID = "other-subject";
+    sharedDb
+      .insert(schema.users)
+      .values({ id: OTHER_USER_ID, name: "Other", createdAt: new Date().toISOString() })
+      .run();
+    sharedDb
+      .insert(schema.subjects)
+      .values({
+        id: OTHER_SUBJECT_ID,
+        userId: OTHER_USER_ID,
+        name: "Other Science",
+        color: "#6366f1",
+        createdAt: new Date().toISOString(),
+      })
+      .run();
+
+    // The current user (SEED_USER_ID) tries to generate questions under the
+    // other user's subject — must be rejected with 404.
+    const res = await generateQuestions(
+      postRequest({
+        subjectId: OTHER_SUBJECT_ID,
+        materialText: "Some content.",
+        count: 3,
+      }),
+    );
+    expect(res.status).toBe(404);
+  });
+
   it("generate route returns 422 when subjectId is missing", async () => {
     const res = await generateQuestions(
       postRequest({
