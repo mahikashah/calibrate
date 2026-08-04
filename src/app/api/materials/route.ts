@@ -1,8 +1,8 @@
 import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { materials } from "@/lib/db/schema";
-import { handle, ok } from "@/lib/http";
+import { materials, subjects } from "@/lib/db/schema";
+import { handle, ok, fail } from "@/lib/http";
 import { newId } from "@/lib/ids";
 import { currentUserId } from "@/lib/user";
 
@@ -33,9 +33,14 @@ const CreateMaterial = z.object({
 export async function POST(req: Request) {
   return handle(async () => {
     const body = CreateMaterial.parse(await req.json());
+    const userId = currentUserId();
+
+    const subject = db.select().from(subjects).where(eq(subjects.id, body.subjectId)).get();
+    if (!subject || subject.userId !== userId) return fail("Subject not found.", 404);
+
     const row = {
       id: newId("mat"),
-      userId: currentUserId(),
+      userId,
       subjectId: body.subjectId,
       title: body.title.trim(),
       content: body.content,

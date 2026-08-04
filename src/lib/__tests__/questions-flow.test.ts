@@ -376,4 +376,46 @@ describe("Question-Bank persistence flow", () => {
     );
     expect(res.status).toBe(422);
   });
+
+  it("materials route returns 404 when subjectId does not exist", async () => {
+    const res = await createMaterial(
+      postRequest({
+        subjectId: "sub_does_not_exist",
+        title: "Orphan notes",
+        content: "Some content that should not be saved.",
+      }),
+    );
+    expect(res.status).toBe(404);
+  });
+
+  it("materials route returns 404 when subjectId belongs to a different user", async () => {
+    // Seed a subject owned by a different user.
+    const OTHER_USER_ID = "other-user-mat";
+    const OTHER_SUBJECT_ID = "other-subject-mat";
+    sharedDb
+      .insert(schema.users)
+      .values({ id: OTHER_USER_ID, name: "Other", createdAt: new Date().toISOString() })
+      .run();
+    sharedDb
+      .insert(schema.subjects)
+      .values({
+        id: OTHER_SUBJECT_ID,
+        userId: OTHER_USER_ID,
+        name: "Other Science",
+        color: "#6366f1",
+        createdAt: new Date().toISOString(),
+      })
+      .run();
+
+    // The current user (SEED_USER_ID) tries to create a material under the
+    // other user's subject — must be rejected with 404.
+    const res = await createMaterial(
+      postRequest({
+        subjectId: OTHER_SUBJECT_ID,
+        title: "Stolen notes",
+        content: "Content that should be rejected.",
+      }),
+    );
+    expect(res.status).toBe(404);
+  });
 });
