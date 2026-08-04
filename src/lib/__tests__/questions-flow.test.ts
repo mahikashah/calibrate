@@ -302,4 +302,47 @@ describe("Question-Bank persistence flow", () => {
     );
     expect(res.status).toBe(422);
   });
+
+  it("generate route returns 404 when materialId references a non-existent row", async () => {
+    const res = await generateQuestions(
+      postRequest({
+        subjectId: SEED_SUBJECT_ID,
+        materialId: "mat_does_not_exist",
+        count: 3,
+      }),
+    );
+    expect(res.status).toBe(404);
+  });
+
+  it("generate route returns 404 when subjectId references a non-existent row", async () => {
+    const res = await generateQuestions(
+      postRequest({
+        subjectId: "sub_does_not_exist",
+        materialText: "Some content.",
+        count: 3,
+      }),
+    );
+    expect(res.status).toBe(404);
+  });
+
+  it("generate route returns 422 when subjectId is missing", async () => {
+    const res = await generateQuestions(
+      postRequest({
+        materialText: "Some content.",
+        count: 3,
+      }),
+    );
+    expect(res.status).toBe(422);
+  });
+
+  it("generate route returns 422 when subjectId is blank", async () => {
+    const res = await generateQuestions(
+      postRequest({
+        subjectId: "",
+        materialText: "Some content.",
+        count: 3,
+      }),
+    );
+    expect(res.status).toBe(422);
+  });
 });

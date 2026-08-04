@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { materials, questions } from "@/lib/db/schema";
+import { materials, questions, subjects } from "@/lib/db/schema";
 import { handle, ok, fail } from "@/lib/http";
 import { newId } from "@/lib/ids";
 import { withFallback } from "@/lib/llm";
@@ -21,10 +21,14 @@ export async function POST(req: Request) {
     const body = GenerateReq.parse(await req.json());
     const userId = currentUserId();
 
+    const subject = db.select().from(subjects).where(eq(subjects.id, body.subjectId)).get();
+    if (!subject || subject.userId !== userId) return fail("Subject not found.", 404);
+
     let material = body.materialText ?? "";
-    if (!material && body.materialId) {
+    if (body.materialId) {
       const m = db.select().from(materials).where(eq(materials.id, body.materialId)).get();
-      material = m?.content ?? "";
+      if (!m || m.userId !== userId) return fail("Material not found.", 404);
+      if (!material) material = m.content;
     }
     if (!material.trim()) return fail("Provide materialText or a materialId with content.", 422);
 
