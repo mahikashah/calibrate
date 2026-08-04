@@ -1,5 +1,7 @@
 # StudyCoach
 
+> TODO: The future flow is welcome click-to-begin → onboarding steps → dashboard app shell, with onboarding remaining accessible later from the sidebar.
+
 An AI‑assisted study coach that helps students discover **which evidence‑based study
 techniques actually work for them** — through real experimentation, not learning‑style
 labels.

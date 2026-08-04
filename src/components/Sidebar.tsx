@@ -18,7 +18,7 @@ export function Sidebar() {
     <aside className="flex h-full w-full flex-col gap-1 md:w-64">
       <Link href="/" className="mb-6 flex items-center gap-2.5 px-2">
         <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand text-white shadow-card">
-          <span className="font-mono text-sm font-bold">S</span>
+          <span className="font-mono text-sm font-bold">C</span>
         </span>
         <span className="text-[15px] font-semibold tracking-tight">
           Calibrate
@@ -62,7 +62,7 @@ export function MobileNav() {
     <div className="mb-4 flex items-center gap-3 md:hidden">
       <Link href="/" className="flex items-center gap-2">
         <span className="grid h-7 w-7 place-items-center rounded-lg bg-brand text-white">
-          <span className="font-mono text-xs font-bold">S</span>
+          <span className="font-mono text-xs font-bold">C</span>
         </span>
         <span className="text-sm font-semibold tracking-tight">Calibrate</span>
       </Link>
