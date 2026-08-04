@@ -5,21 +5,21 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        paper: "#F5F6F8",
-        surface: "#FFFFFF",
-        ink: "#15171C",
-        muted: "#697086",
-        line: "#E4E7EC",
-        // Primary accent — an ink-indigo, used with restraint.
+        paper: "#F7F5EC",
+        surface: "#FFFEF9",
+        ink: "#171814",
+        muted: "#5F665E",
+        line: "#D8E4D5",
+        // Primary accent — calm turquoise and green, used with restraint.
         brand: {
-          DEFAULT: "#4F46B8",
-          soft: "#EEEDF9",
-          ink: "#332C82",
+          DEFAULT: "#27834F",
+          soft: "#E1F0DD",
+          ink: "#1E613B",
         },
         // Semantic confidence colors — these ENCODE data, not decoration.
-        clear: "#0E7C66", // technique is clearly winning
-        emerging: "#B26A00", // still close, keep testing
-        insufficient: "#8A90A2", // not enough data yet
+        clear: "#208B8B", // technique is clearly winning
+        emerging: "#A16B2B", // still close, keep testing
+        insufficient: "#91A88D", // not enough data yet
       },
       fontFamily: {
         sans: [
@@ -43,8 +43,8 @@ const config: Config = {
         ],
       },
       boxShadow: {
-        card: "0 1px 2px rgba(21,23,28,0.04), 0 1px 3px rgba(21,23,28,0.06)",
-        lift: "0 8px 24px rgba(21,23,28,0.10)",
+        card: "0 1px 2px rgba(23,24,20,0.04), 0 1px 3px rgba(23,24,20,0.06)",
+        lift: "0 8px 24px rgba(23,24,20,0.10)",
       },
       borderRadius: {
         xl: "14px",

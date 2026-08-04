@@ -33,7 +33,7 @@ export function Sidebar() {
               key={item.href}
               href={item.href}
               className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
-                active ? "bg-brand-soft text-brand-ink" : "text-muted hover:bg-paper hover:text-ink"
+                active ? "bg-brand-soft text-brand-ink" : "text-muted hover:bg-brand-soft/60 hover:text-ink"
               }`}
             >
               <span className={`font-mono text-[11px] ${active ? "text-brand" : "text-muted/60"}`}>
@@ -73,7 +73,7 @@ export function MobileNav() {
             <Link
               key={item.href}
               href={item.href}
-              className={`whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium ${
+                className={`whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium ${
                 active ? "bg-brand-soft text-brand-ink" : "text-muted"
               }`}
             >

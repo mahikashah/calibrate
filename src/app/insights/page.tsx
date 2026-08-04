@@ -186,7 +186,7 @@ function SubjectPanel({ subject }: { subject: SubjectInsight }) {
               type="category"
               dataKey="name"
               width={128}
-              tick={{ fontSize: 12, fill: "#15171C" }}
+              tick={{ fontSize: 12, fill: "#171814" }}
               axisLine={false}
               tickLine={false}
             />
@@ -194,7 +194,7 @@ function SubjectPanel({ subject }: { subject: SubjectInsight }) {
               cursor={{ fill: "rgba(21,23,28,0.03)" }}
               formatter={(v: number, _n, p) => [`${v}/100 (n=${p.payload.n})`, "avg score"]}
               contentStyle={{
-                border: "1px solid #E4E7EC",
+                border: "1px solid #D8E4D5",
                 borderRadius: 10,
                 fontSize: 12,
                 boxShadow: "0 8px 24px rgba(21,23,28,0.10)",
@@ -202,14 +202,14 @@ function SubjectPanel({ subject }: { subject: SubjectInsight }) {
             />
             <Bar dataKey="score" radius={[0, 6, 6, 0]} isAnimationActive={false}>
               {chartData.map((d, i) => (
-                <Cell key={i} fill={d.best ? "#0E7C66" : "#C4C9D4"} />
+                <Cell key={i} fill={d.best ? "#208B8B" : "#B9CCB5"} />
               ))}
-              <ErrorBar dataKey="ci" width={4} strokeWidth={1.5} stroke="#697086" direction="x" />
+              <ErrorBar dataKey="ci" width={4} strokeWidth={1.5} stroke="#5F665E" direction="x" />
               <LabelList
                 dataKey="score"
                 position="right"
                 formatter={(v: number) => `${v}`}
-                style={{ fontSize: 11, fill: "#697086", fontFamily: "ui-monospace" }}
+                style={{ fontSize: 11, fill: "#5F665E", fontFamily: "ui-monospace" }}
               />
             </Bar>
           </BarChart>

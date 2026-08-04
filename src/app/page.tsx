@@ -183,7 +183,7 @@ export default function Dashboard() {
                       </div>
                       <Bar
                         value={t.avgScore}
-                        color={t.technique === s.best?.technique ? "#0E7C66" : "#C4C9D4"}
+                        color={t.technique === s.best?.technique ? "#208B8B" : "#B9CCB5"}
                       />
                     </div>
                   ))}

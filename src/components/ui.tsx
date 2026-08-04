@@ -30,8 +30,8 @@ export function ConfidenceBadge({ level }: { level: string }) {
 export function Bar({
   value,
   max = 100,
-  color = "#4F46B8",
-  track = "#EEF0F4",
+  color = "#208B8B",
+  track = "#D8E4D5",
 }: {
   value: number;
   max?: number;

@@ -10,7 +10,7 @@ interface Subject {
   color: string;
 }
 
-const SWATCHES = ["#4F46B8", "#0E7C66", "#B26A00", "#B23A48", "#2563A6", "#6D28A6"];
+const SWATCHES = ["#27834F", "#208B8B", "#70B8B8", "#91A88D", "#A16B2B", "#536A55"];
 
 export default function SubjectsPage() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
