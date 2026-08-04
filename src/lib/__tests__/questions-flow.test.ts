@@ -258,4 +258,48 @@ describe("Question-Bank persistence flow", () => {
     const fourQuestions = await generateWithCount(longContent, 4);
     expect(fourQuestions).toHaveLength(4);
   });
+
+  it("generate route returns 422 when count is 0", async () => {
+    const res = await generateQuestions(
+      postRequest({
+        subjectId: SEED_SUBJECT_ID,
+        materialText: "Some content.",
+        count: 0,
+      }),
+    );
+    expect(res.status).toBe(422);
+  });
+
+  it("generate route returns 422 when count exceeds 15", async () => {
+    const res = await generateQuestions(
+      postRequest({
+        subjectId: SEED_SUBJECT_ID,
+        materialText: "Some content.",
+        count: 16,
+      }),
+    );
+    expect(res.status).toBe(422);
+  });
+
+  it("materials route rejects an empty title", async () => {
+    const res = await createMaterial(
+      postRequest({
+        subjectId: SEED_SUBJECT_ID,
+        title: "",
+        content: "Some valid content.",
+      }),
+    );
+    expect(res.status).toBe(422);
+  });
+
+  it("materials route rejects empty content", async () => {
+    const res = await createMaterial(
+      postRequest({
+        subjectId: SEED_SUBJECT_ID,
+        title: "Valid title",
+        content: "",
+      }),
+    );
+    expect(res.status).toBe(422);
+  });
 });
