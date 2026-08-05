@@ -1,0 +1,54 @@
+[
+  {
+    "type": "mcq",
+    "question": "If events A and B are independent, what is the probability of both A and B occurring?",
+    "answer": "P(A) x P(B)",
+    "answer_choices": [
+      "P(A) + P(B)",
+      "P(A) - P(B)",
+      "P(A) x P(B)",
+      "P(A) / P(B)"
+    ],
+    "source_excerpt": "If events are independent, P(A and B) = P(A) x P(B)"
+  },
+  {
+    "type": "fill_in_blank",
+    "question": "The probability of at least one success in a series of trials can be calculated as 1 - ____^number_of_trials",
+    "answer": "P(A^c)",
+    "answer_choices": [],
+    "source_excerpt": "P(at least 1) = 1 - P(A^c)^some number"
+  },
+  {
+    "type": "active_recall",
+    "question": "What is the formula for the mean of a discrete random variable?",
+    "answer": "\u03bc = (n*p) + (n*p) + (n*p).....",
+    "answer_choices": [],
+    "source_excerpt": "Mean for discrete variables (n = any number) p = respective probability for said number\na. \u03bc = (n*p) + (n*p) + (n*p)...."
+  },
+  {
+    "type": "feynman",
+    "question": "Explain the concept of a binomial distribution in your own words, including its requirements and how to calculate the mean and standard deviation.",
+    "answer": "A binomial distribution is a probability distribution that describes the number of successes in a fixed number of independent trials, where each trial has only two possible outcomes: success or failure. The requirements for a binomial distribution are that the trials must be binary (success or failure), independent, and the probability of success must be the same for each trial. The number of trials is denoted by n, and the probability of success in each trial is denoted by p. The mean (\u03bc) of a binomial distribution is calculated as the product of n and p, and the standard deviation (\u03c3) is calculated as the square root of the product of n, p, and (1-p).",
+    "answer_choices": [],
+    "source_excerpt": "Requirements:\ni. Binary = have specific success and failure events\nii. Independent = trials are independent\niii. n = number (specified number of trials)\niv. p = number (probability is same throughout)\nb. If requirements are met \u2192 binomial distribution\nc. Equation for binomial distribution\ni.\nd. If need to do less than k\ni. Do all calculations of the number below k (dont include k)\ne. If need to do above k\ni. Do all calculations of the number above k (dont include k)\nf. Include k if specified\ng. \u03bc = \u03b7\u03c1\nh. \u03c3 = \u221a\u03b7\u03c1(1-\u03c1)"
+  },
+  {
+    "type": "mcq",
+    "question": "What is the formula for the standard deviation of a binomial distribution?",
+    "answer": "\u03c3 = \u221a\u03b7\u03c1(1-\u03c1)",
+    "answer_choices": [
+      "\u03c3 = \u03b7\u03c1(1-\u03c1)",
+      "\u03c3 = \u03b7\u03c1 + (1-\u03c1)",
+      "\u03c3 = \u221a\u03b7\u03c1(1-\u03c1)",
+      "\u03c3 = \u03b7\u03c1 - (1-\u03c1)"
+    ],
+    "source_excerpt": "\u03c3 = \u221a\u03b7\u03c1(1-\u03c1)"
+  },
+  {
+    "type": "fill_in_blank",
+    "question": "The probability of a geometric distribution can be calculated using the formula: P(Y = k) = ____ * (1 - p)^(k-1)",
+    "answer": "p",
+    "answer_choices": [],
+    "source_excerpt": "Equation:\ni."
+  }
+]

@@ -1,0 +1,54 @@
+[
+  {
+    "type": "mcq",
+    "question": "Which part of the human brain is different from other animals and what functions do scientists attribute to that part of the brain?",
+    "answer_choices": [
+      "The midbrain causes blindsight and the association cortex is the largest in humans, giving us a cognitive advantage",
+      "The cerebellum is the main visual center in humans",
+      "The thalamus is the main emotional center in humans",
+      "The hippocampus is the main decision-making center in humans"
+    ],
+    "answer": "The midbrain causes blindsight and the association cortex is the largest in humans, giving us a cognitive advantage",
+    "source_excerpt": "The midbrain in frogs and reptiles is their main visual center; whereas in humans, it causes blindsight. The association cortex is the largest in humans than any other animal, giving us a cognitive advantage."
+  },
+  {
+    "type": "fill_in_blank",
+    "question": "The _______ in frogs and reptiles is their main visual center; whereas in humans, it causes blindsight.",
+    "answer": "midbrain",
+    "answer_choices": [],
+    "source_excerpt": "The midbrain in frogs and reptiles is their main visual center; whereas in humans, it causes blindsight."
+  },
+  {
+    "type": "active_recall",
+    "question": "How does the analogy of an ice-cream cone by Linden apply to animal brain evolution?",
+    "answer": "For each animal brain, the entire structure isn\u2019t remade. Instead, the old parts (the first scoops) are used and they are added on top of them to make the brain more complex than the brain\u2019s of their ancestors.",
+    "answer_choices": [],
+    "source_excerpt": "For each animal brain, the entire structure isn\u2019t remade. Instead, the old parts (the first scoops) are used and they are added on top of them to make the brain more complex than the brain\u2019s of their ancestor\u2019s"
+  },
+  {
+    "type": "feynman",
+    "question": "Explain the function of the thalamus in the human brain in your own words.",
+    "answer": "The thalamus acts as a relay station for sensory information, sending it to the appropriate parts of the brain for processing. It also relays command signals from higher areas of the brain to different pathways, which can activate muscles.",
+    "answer_choices": [],
+    "source_excerpt": "The thalamus is a relay station for sending sensory info to higher regions of the brain, relays command signals from higher areas of the brain and sends out to different pathways = activating muscles"
+  },
+  {
+    "type": "mcq",
+    "question": "Which brain parts comprise the Forebrain, Midbrain, and the Hindbrain?",
+    "answer_choices": [
+      "Forebrain: thalamus, hypothalamus, hippocampus, amygdala, cerebrum; Midbrain: superior colliculus, inferior colliculus; Hindbrain: pons, medulla, cerebellum",
+      "Forebrain: cerebrum, cerebellum, hypothalamus; Midbrain: thalamus, hippocampus; Hindbrain: pons, medulla, cerebellum",
+      "Forebrain: thalamus, hypothalamus, hippocampus, amygdala, cerebrum; Midbrain: pons, medulla; Hindbrain: superior colliculus, inferior colliculus, cerebellum",
+      "Forebrain: thalamus, hypothalamus, hippocampus, amygdala, cerebrum; Midbrain: superior colliculus, inferior colliculus; Hindbrain: pons, medulla, cerebellum"
+    ],
+    "answer": "Forebrain: thalamus, hypothalamus, hippocampus, amygdala, cerebrum; Midbrain: superior colliculus, inferior colliculus; Hindbrain: pons, medulla, cerebellum",
+    "source_excerpt": "Forebrain: thalamus, hypothalamus, hippocampus, amygdala, cerebrum; Midbrain: superior colliculus, inferior colliculus; Hindbrain: pons, medulla, cerebellum"
+  },
+  {
+    "type": "active_recall",
+    "question": "What is the function of the Cerebrum in the human brain?",
+    "answer": "The cerebrum is the largest part of the brain, performing higher functions such as memory, speech, senses, and emotional response.",
+    "answer_choices": [],
+    "source_excerpt": "Cerebrum- the largest part of the brain, performs the higher functions: memory, speech, senses, emotional response"
+  }
+]

@@ -25,7 +25,6 @@ Output is parsed to keep the generated questions, with a strict generation numbe
 from dotenv import load_dotenv
 import os, sys, json
 import requests
-from transformers import AutoModelForCausalLM, AutoTokenizer
 
 load_dotenv()
 HF_TOKEN = os.getenv('HF_TOKEN')
@@ -35,14 +34,35 @@ headers = {
     "Authorization": f"Bearer {os.environ['HF_TOKEN']}",
 }
 
-SYSTEM_PROMPT = ("You are a question generator who takes in parsed notes from PDF files and creates questions on the subject matter. "
-    "Each question is used to test the user on their understanding of the material. "
-    "Create every question strictly based on the information explicitly stated in the provided notes. Do not include outside facts. "
-    "Generate exactly 6 questions if the material supports it; if there is not enough content to generate 6 grounded questions, generate fewer questions rather"
-    "than creating content. "
-    "Return your output as a numbered list from 1 to 6, one question per line. Do not include introductory or closing statements"
-    "After each question, include a small source excerpt from where the question is based on.")
-
+SYSTEM_PROMPT = (
+    "You are a question generator who takes in parsed notes from PDF files and creates "
+    "questions on the subject matter. Each question is used to test the user on their "
+    "understanding of the material.\n\n"
+    "Create every question strictly based on the information explicitly stated in the "
+    "provided notes. Do not include outside facts.\n\n"
+    "Generate exactly 6 questions if the material supports it; if there is not enough "
+    "content to generate 6 grounded questions, generate fewer questions rather than "
+    "creating content.\n\n"
+    "Each question must be one of these four types:\n"
+    "- active_recall: an open-ended question testing recall of a specific fact or concept\n"
+    "- mcq: a multiple-choice question with exactly 4 answer choices, one of which is correct\n"
+    "- feynman: a question asking the user to explain a concept in their own words, "
+    "as if teaching it to someone else\n"
+    "- fill_in_blank: a sentence from or closely based on the notes with one key term "
+    "replaced by a blank\n\n"
+    "Choose a reasonable mix of types across the 6 questions based on what the material "
+    "supports well — do not force a type onto content it doesn't fit.\n\n"
+    "Return your output as a JSON array only — no other text, no introductory or closing "
+    "statements, no markdown code fences. Each element must be an object with exactly "
+    "these fields:\n"
+    '  "type": one of "active_recall", "mcq", "feynman", "fill_in_blank"\n'
+    '  "question": the question text (for fill_in_blank, include "____" where the blank goes)\n'
+    '  "answer": the correct answer\n'
+    '  "answer_choices": an array of exactly 4 strings if type is "mcq" (including the '
+    'correct answer among them), otherwise an empty array []\n'
+    '  "source_excerpt": a short, verbatim excerpt copied directly from the provided notes '
+    'that this question and answer are based on — used to verify the question is grounded\n\n'
+)
 
 def build_input_context(parsed_notes: str, subject_name: str) -> str:
     with open(parsed_notes, 'r') as file:
@@ -66,13 +86,21 @@ def generate_questions(subject: str, notes: str) -> str:
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": user_message},
         ],
-        "max_tokens": 512,
+        "max_tokens": 2000,
     }
  
-    response = requests.post(HF_ROUTER_URL, headers=headers, json=payload, timeout=60)
-    response.raise_for_status()
+    try:
+        response = requests.post(HF_ROUTER_URL, headers=headers, json=payload, timeout=90)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        raise RuntimeError(f"HF router request failed: {e}") from e
  
     data = response.json()
+ 
+    finish_reason = data["choices"][0].get("finish_reason")
+    if finish_reason == "length":
+        print("WARNING: response was cut off by max_tokens — output may be incomplete/invalid JSON.")
+ 
     return data["choices"][0]["message"]["content"]
 
 
@@ -85,14 +113,24 @@ def main():
     subject_name = subject.replace(" ", "_").lower()
     data_file = sys.argv[1]
 
-    file_name = f"{subject_name}_generated_questions.txt"
+    file_name = f"{subject_name}_generated_questions_v2.txt"
 
     context_notes = build_input_context(data_file, subject)
 
     generated_response = generate_questions(subject, context_notes)
 
+    try:
+        questions = json.loads(generated_response)
+    except json.JSONDecodeError as e:
+        print(f"ERROR: model output was not valid JSON: {e}")
+        print("Raw output has been saved to a .raw.txt file for inspection.")
+        with open(f"{subject_name}_generated_questions.raw.txt", 'w') as f:
+            f.write(generated_response)
+        sys.exit(1)
+ 
     with open(file_name, 'w') as f:
-        f.write(generated_response)
+        json.dump(questions, f, indent=2)
+ 
 
 if __name__ == '__main__':
     main()

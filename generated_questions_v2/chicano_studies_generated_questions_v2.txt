@@ -1,0 +1,54 @@
+[
+  {
+    "type": "mcq",
+    "question": "Which of the following was a key factor in the establishment of Chicano studies departments in the late 1960s and early 1970s?",
+    "answer_choices": [
+      "Global decolonial movements and student protests",
+      "The invention of the internet",
+      "The discovery of new lands in the Americas",
+      "The establishment of the United Nations"
+    ],
+    "answer": "Global decolonial movements and student protests",
+    "source_excerpt": "Global decolonial movements + student protests"
+  },
+  {
+    "type": "fill_in_blank",
+    "question": "Chicano people are an empowering alternative name to _____, _____, and _____, which signal a connection to indigeneity.",
+    "answer": "hispanic, mexican, and mexican american",
+    "answer_choices": [],
+    "source_excerpt": "Empowering alternative name to hispanic, mexican, and mexican american"
+  },
+  {
+    "type": "active_recall",
+    "question": "What does the term 'latino/a/x' refer to, and why is it considered a 'huge umbrella term'?",
+    "answer_choices": [],
+    "answer": "People of Latin American origin or descent; it is a huge umbrella term because it encompasses a wide range of cultural and national backgrounds from Latin America.",
+    "source_excerpt": "People of Latin american origin or descent"
+  },
+  {
+    "type": "feynman",
+    "question": "Explain the concept of 'racial projects' in your own words, as if teaching it to someone else.",
+    "answer_choices": [],
+    "answer": "Racial projects are instances, acts, or policies that actively create or reproduce structures of domination based on racial significations and identities. They can be seen in everyday actions like how we greet someone or how we read a character in a book, and they can also be more systemic, like how schools are racially segregated.",
+    "source_excerpt": "Instances, acts, or policies that do the act of racism"
+  },
+  {
+    "type": "mcq",
+    "question": "Which of the following events is an example of a racial project that reproduces racism in the context of schooling?",
+    "answer_choices": [
+      "The implementation of racially segregated schools",
+      "The desegregation of schools in the 1950s",
+      "The establishment of the first Chicano studies department",
+      "The founding of the United Nations"
+    ],
+    "answer": "The implementation of racially segregated schools",
+    "source_excerpt": "Racially segregated schools has historically been a racist racial project"
+  },
+  {
+    "type": "fill_in_blank",
+    "question": "According to the notes, the conquest of the Americas was not a reconquest, but rather a (______).",
+    "answer": "conquest",
+    "answer_choices": [],
+    "source_excerpt": "Seen as conquest (NOT reconquest)"
+  }
+]

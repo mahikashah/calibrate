@@ -1,0 +1,54 @@
+[
+  {
+    "type": "mcq",
+    "question": "What is the primary purpose of the epic genre according to the notes?",
+    "answer_choices": [
+      "To entertain with no deeper meaning",
+      "To represent ideals and cultural standards of a society",
+      "To provide a historical account of events",
+      "To document personal experiences of the author"
+    ],
+    "answer": "To represent ideals and cultural standards of a society",
+    "source_excerpt": "Epic = long narrative poem representing values of culture + encompassing that culture\u2019s experience"
+  },
+  {
+    "type": "fill_in_blank",
+    "question": "The Odyssey is an example of an epic written in ______ hexameter.",
+    "answer": "dactylic",
+    "answer_choices": [],
+    "source_excerpt": "Odyssey = dactylic hexameter"
+  },
+  {
+    "type": "active_recall",
+    "question": "What is the significance of the term 'Mycenaean past mythologized' in the context of Archaic Greece?",
+    "answer_choices": [],
+    "answer": "It refers to the transformation of the Mycenaean past into a kind of myth history that was incorporated into the culture of Archaic Greece, serving as a foundation for the collective memory and identity of the people.",
+    "source_excerpt": "*Mycenaean past mythologized + incorporated in own culture*"
+  },
+  {
+    "type": "feynman",
+    "question": "Explain the concept of 'xenia' in the context of the Odyssey and its importance in ancient Greek society.",
+    "answer_choices": [],
+    "answer": "Xenia is a sacred rule of hospitality and reciprocity in ancient Greek society. It involves the obligation to welcome strangers, satisfy their base desires, and then assess whether they are friends or foes. The host must show good faith and assume the best of someone to build a relationship. This practice is crucial as it establishes a guest friendship and is a fundamental aspect of social and political organization in ancient Greek culture.",
+    "source_excerpt": "Xenia = Sacred rule of hospitality + reciprocity"
+  },
+  {
+    "type": "mcq",
+    "question": "What is the significance of the term 'Odyne' in the context of Odysseus's journey?",
+    "answer_choices": [
+      "It refers to the physical pain Odysseus experiences during his journey.",
+      "It is a term for the pain and anguish Odysseus feels, symbolizing the emotional and psychological suffering he endures.",
+      "It is a term for the joy and happiness Odysseus feels upon returning home.",
+      "It is a term for the success and triumph Odysseus experiences after his journey."
+    ],
+    "answer": "It is a term for the pain and anguish Odysseus feels, symbolizing the emotional and psychological suffering he endures.",
+    "source_excerpt": "Odysseus = man of sorrow / Odyssey is tale of hope, not despair"
+  },
+  {
+    "type": "fill_in_blank",
+    "question": "In the context of the Odyssey, Odysseus is described as a 'man of many ______' which refers to his multifaceted identity with different good and bad qualities and forms, and his cunning nature.",
+    "answer": "turns",
+    "answer_choices": [],
+    "source_excerpt": "Man of many turns - (many turns/ways/forms) - Tell me about a complicated man"
+  }
+]

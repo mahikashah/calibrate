@@ -31,6 +31,7 @@ import json
 import re
 from pathlib import Path
 import pdfplumber
+from datetime import datetime
 
 
 def extract_text(pdf_path: Path) -> str:
@@ -53,8 +54,6 @@ def clean_text(text: str) -> str:
     text = re.sub(r"\n{3,}", "\n\n", text)
     text = re.sub(r"[ \t]{2,}", " ", text)
     return text.strip()
-
-
 
 
 def main():
@@ -87,13 +86,15 @@ def main():
         cleaned_data = clean_text(raw_text)
         word_count = len(cleaned_data.split())
         approx_token_count = int(word_count * 1.33)
+        date = datetime.now()
 
         text_per_file.append({
             'id' : file.stem,
             'subject' : subjects[i],
             "file_name" : file.name, 
             'text' : cleaned_data,
-            'word_count' : approx_token_count
+            'word_count' : approx_token_count,
+            'date_uploaded' : date
         })
 
     with open(export_file, 'w') as o_file:
