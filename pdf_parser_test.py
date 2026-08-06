@@ -86,14 +86,15 @@ def main():
         cleaned_data = clean_text(raw_text)
         word_count = len(cleaned_data.split())
         approx_token_count = int(word_count * 1.33)
-        date = datetime.now()
+        date = datetime.now().isoformat()
 
         text_per_file.append({
             'id' : file.stem,
             'subject' : subjects[i],
             "file_name" : file.name, 
             'text' : cleaned_data,
-            'word_count' : approx_token_count,
+            'word_count' : word_count,
+            'approx_token_count' : approx_token_count,
             'date_uploaded' : date
         })
 

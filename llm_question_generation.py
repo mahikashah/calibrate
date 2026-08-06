@@ -25,14 +25,16 @@ Output is parsed to keep the generated questions, with a strict generation numbe
 from dotenv import load_dotenv
 import os, sys, json
 import requests
+from context_token_count import count_tokens
 
 load_dotenv()
 HF_TOKEN = os.getenv('HF_TOKEN')
 HF_ROUTER_URL = "https://router.huggingface.co/v1/chat/completions"
 MODEL_NAME = "Qwen/Qwen2.5-7B-Instruct"
 headers = {
-    "Authorization": f"Bearer {os.environ['HF_TOKEN']}",
+    "Authorization": f"Bearer {HF_TOKEN}",
 }
+WORD_LIMIT = 4600 #6000 tokens / 1.33 (token per word) rounded up to the nearest hundredth
 
 SYSTEM_PROMPT = (
     "You are a question generator who takes in parsed notes from PDF files and creates "
@@ -113,9 +115,18 @@ def main():
     subject_name = subject.replace(" ", "_").lower()
     data_file = sys.argv[1]
 
-    file_name = f"{subject_name}_generated_questions_v2.txt"
+    file_name = f"{subject_name}_generated_questions_v3.json"
 
     context_notes = build_input_context(data_file, subject)
+
+    token_count = count_tokens(context_notes)
+    word_count = token_count / 1.33
+
+    if word_count > WORD_LIMIT:
+        number_words_over = word_count - WORD_LIMIT
+        print(f"{number_words_over} over the limit of {WORD_LIMIT} words")
+        print("Notes exceed maximum token count, exiting question generation.")
+        sys.exit(1)
 
     generated_response = generate_questions(subject, context_notes)
 
