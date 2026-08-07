@@ -1,0 +1,864 @@
+We are continuing the Calibrate MVP with the next core milestone:
+
+QUESTION BANK
+→ APPROVED QUESTIONS
+→ STUDY SESSION
+
+IMPORTANT CONTEXT
+
+Before making changes, read:
+
+- replit.md
+- docs/CALIBRATE_MASTER_CONTEXT.md
+- docs/ML_INTEGRATION_CONTRACT.md
+- ml-service/README.md
+
+CURRENT VERIFIED STATE
+
+The application now supports:
+
+Start
+→ How It Works
+→ Onboarding
+→ Starting Hypothesis
+→ Subject
+→ Material
+→ Real/Demo structured question generation
+→ Question Bank
+→ Review / Edit / Approve / Reject
+
+Question statuses now include:
+
+generated
+edited
+approved
+rejected
+
+Only approved questions are eligible for Study Session.
+
+The real ML path remains:
+
+Next.js
+→ FastAPI
+→ Hugging Face / Qwen
+
+Explicit presentation-safe demo generation is available through:
+
+CALIBRATE_DEMO_MODE=true
+
+The existing seeded/demo Dashboard, Study Session, and Insights data has intentionally been preserved.
+
+--------------------------------------------------
+PRIMARY GOAL
+--------------------------------------------------
+
+Turn the existing Study Session into the real next step after Question Bank review.
+
+The intended flow should become:
+
+Approved Questions
+→ Start Study Session
+→ Work through approved questions
+→ Reveal/check answers
+→ Record results
+→ Complete session
+→ NEXT milestone: Post-session Feedback
+
+This milestone should make Study Session FUNCTIONAL with the real structured question data.
+
+Do NOT redesign Insights or Dashboard yet.
+
+--------------------------------------------------
+1. INSPECT EXISTING STUDY ARCHITECTURE FIRST
+--------------------------------------------------
+
+Before changing code, inspect:
+
+- src/app/study/page.tsx
+- existing Study Session components
+- /api/sessions
+- /api/outcomes
+- current session/database schema
+- current Study Session seeded/demo behavior
+- current technique-selection logic
+- current recommendation/suggested-technique behavior
+- existing timer/session-duration behavior
+- current Figma-inspired study screens
+
+Reuse the existing architecture wherever possible.
+
+Do NOT create a parallel Study Session system.
+
+--------------------------------------------------
+2. REAL VS DEMO SESSION RULE
+--------------------------------------------------
+
+Preserve presentation-friendly seeded/demo Study Session content.
+
+However:
+
+When a student enters Study Session from Question Bank with a real:
+
+subjectId
+and/or
+materialId
+
+the session must use ONLY approved questions belonging to that verified context.
+
+Do NOT silently mix seeded demo questions into a real subject/material session.
+
+If no approved questions exist for that real context:
+
+show:
+
+“No approved questions are ready for this session.”
+
+and provide:
+
+“Back to Question Bank”
+
+Do NOT substitute demo questions automatically.
+
+Existing seeded/demo sessions may remain accessible separately for presentation purposes.
+
+--------------------------------------------------
+3. QUESTION BANK HANDOFF
+--------------------------------------------------
+
+The existing Question Bank:
+
+“Start study session”
+
+action should carry the selected context into Study Session.
+
+Prefer query/context such as:
+
+/study?subjectId=...&materialId=...
+
+or the smallest route structure consistent with the current implementation.
+
+On Study Session load:
+
+- verify the subject belongs to the current user
+- verify material context if supplied
+- fetch ONLY approved questions
+- preserve ownership/data isolation
+
+Do not trust browser IDs blindly.
+
+--------------------------------------------------
+4. STUDY SESSION START SCREEN
+--------------------------------------------------
+
+Refine the Study Session entry state so the student clearly sees:
+
+STUDY SESSION
+
+Subject:
+[Selected Subject]
+
+Material:
+[Selected Material] if applicable
+
+Suggested technique:
+[Existing Calibrate recommendation]
+
+Approved questions available:
+[#]
+
+Then show the existing technique choices.
+
+Preserve the current technique system rather than inventing a new recommendation algorithm.
+
+Possible existing techniques may include:
+
+- Active Recall
+- Spaced Repetition
+- Feynman / Self-Explanation
+- Practice Questions
+- Re-reading control
+
+The recommendation should remain transparent.
+
+Do NOT let an LLM choose the technique.
+
+--------------------------------------------------
+5. TECHNIQUE VS QUESTION TYPE
+--------------------------------------------------
+
+Keep these concepts separate:
+
+STUDY TECHNIQUE
+= the experiment the student is testing
+
+QUESTION TYPE
+= how an individual generated question is rendered
+
+Do not assume they are identical.
+
+For this MVP:
+
+- preserve the selected technique as session metadata
+- render each approved question according to its structured question type
+
+Question types currently supported:
+
+active_recall
+mcq
+feynman
+fill_in_blank
+
+Do not invent new ML question types.
+
+--------------------------------------------------
+6. SESSION PROGRESS
+--------------------------------------------------
+
+When the student starts:
+
+show one question at a time.
+
+Display clear progress such as:
+
+Question 1 of 6
+
+Use a subtle progress indicator.
+
+Also preserve/use the existing session timer if one exists.
+
+The experience should feel focused and distraction-free.
+
+--------------------------------------------------
+7. ACTIVE RECALL RENDERING
+--------------------------------------------------
+
+For:
+
+type = active_recall
+
+Show:
+
+- “Active Recall”
+- question/prompt
+- text answer field
+- timer/progress
+- Submit and reveal
+
+After submission:
+
+show:
+
+“Your answer”
+
+and:
+
+“Suggested answer”
+
+Do NOT use another LLM call to judge free-response answers in this milestone.
+
+Instead provide a simple self-assessment:
+
+“Got it”
+“Missed it”
+
+or similarly clear wording.
+
+Record that result using the existing outcome/session architecture where possible.
+
+--------------------------------------------------
+8. MULTIPLE CHOICE RENDERING
+--------------------------------------------------
+
+For:
+
+type = mcq
+
+Show:
+
+- Multiple Choice
+- question
+- four answer choices
+- one selectable choice
+- Submit
+
+After submit:
+
+compare the selected answer against the stored correct answer.
+
+Show clearly:
+
+Correct
+
+or:
+
+Not quite
+
+If incorrect:
+
+show the correct answer.
+
+Do not reveal the correct answer before submission.
+
+Record the result automatically.
+
+--------------------------------------------------
+9. FILL IN THE BLANK RENDERING
+--------------------------------------------------
+
+For:
+
+type = fill_in_blank
+
+Show:
+
+- Fill in the Blank
+- question
+- short answer input
+- Submit and reveal
+
+For MVP grading:
+
+normalize simple differences such as:
+
+- leading/trailing whitespace
+- capitalization
+
+Do NOT build complicated semantic grading.
+
+After submission:
+
+show the expected answer.
+
+If exact/simple normalized comparison is unreliable for a given answer:
+
+allow the same self-assessment approach used by Active Recall.
+
+Do not call an LLM judge.
+
+--------------------------------------------------
+10. FEYNMAN RENDERING
+--------------------------------------------------
+
+For:
+
+type = feynman
+
+Use the Figma/product direction.
+
+Show:
+
+“Feynman / Self-Explanation”
+
+Question/prompt
+
+Large textarea:
+
+“Explain it in your own words…”
+
+After submit/reveal:
+
+show:
+
+- student explanation
+- suggested/reference answer
+- supporting notes where useful
+
+Then ask for simple self-assessment such as:
+
+“Good”
+“Needs work”
+
+Do NOT use an LLM judge in the live session.
+
+--------------------------------------------------
+11. SUPPORTING SOURCE
+--------------------------------------------------
+
+Preserve sourceExcerpt/supporting notes.
+
+During Study Session:
+
+do NOT show sourceExcerpt before the student attempts the question.
+
+After reveal:
+
+allow an optional:
+
+“View supporting notes”
+
+section.
+
+This helps students understand where the answer came from without giving away the answer beforehand.
+
+--------------------------------------------------
+12. QUESTION ORDER
+--------------------------------------------------
+
+For the MVP:
+
+use the approved questions belonging to the selected subject/material.
+
+Do not include:
+
+generated
+edited
+rejected
+
+questions.
+
+A reasonable stable order is acceptable.
+
+If the existing application already randomizes or orders questions deliberately, preserve that behavior.
+
+Do not add complicated adaptive sequencing yet.
+
+--------------------------------------------------
+13. RE-READING CONTROL
+--------------------------------------------------
+
+If the existing Study Session supports:
+
+Re-reading (control)
+
+preserve it.
+
+Re-reading is different from generated-question practice.
+
+For a re-reading session:
+
+- show the selected material text
+- preserve timer behavior
+- allow “Done reading”
+- record the session technique as the re-reading/control condition
+
+Do not force Question Bank questions into the re-reading screen.
+
+If the selected material text is not available:
+
+show a clear message rather than fake content.
+
+--------------------------------------------------
+14. SPACED REPETITION
+--------------------------------------------------
+
+Do NOT build a full scheduling engine in this milestone.
+
+If the existing app already has spaced-repetition behavior:
+
+preserve it.
+
+Otherwise:
+
+- record the selected technique as spaced repetition
+- use the approved questions in the normal recall/reveal session flow
+- document that future scheduling/cadence is a later refinement
+
+Do not overbuild SM-2 or another scheduling algorithm right now.
+
+--------------------------------------------------
+15. PRACTICE QUESTIONS TECHNIQUE
+--------------------------------------------------
+
+If the student selects:
+
+Practice Questions
+
+use the approved question set normally.
+
+MCQ and Fill in the Blank should use automatic/simple grading where possible.
+
+Active Recall/Feynman responses may use self-assessment.
+
+--------------------------------------------------
+16. SESSION CREATION
+--------------------------------------------------
+
+Use the existing /api/sessions architecture.
+
+When a real study session starts:
+
+create/use the existing session record with the appropriate existing fields.
+
+Preserve:
+
+- current user
+- subject
+- selected technique
+- start/session timing
+- existing session model
+
+Do NOT create a second session table or parallel persistence system.
+
+If materialId is not currently stored on sessions and adding it would require a substantial migration:
+
+do not overbuild it in this task.
+
+Use the existing architecture and report the limitation.
+
+--------------------------------------------------
+17. SESSION RESULTS
+--------------------------------------------------
+
+As the student works through questions, track enough information to produce:
+
+- total questions attempted
+- correct / successful count where applicable
+- missed / needs-work count
+- elapsed time
+- technique used
+- subject
+- completion state
+
+Reuse:
+
+/api/outcomes
+
+or the existing result/outcome persistence where appropriate.
+
+Do not invent a second analytics system.
+
+--------------------------------------------------
+18. SESSION COMPLETION
+--------------------------------------------------
+
+After the final question:
+
+show a simple session completion state.
+
+Example:
+
+“Session complete”
+
+Then display:
+
+Questions reviewed:
+6
+
+Got it / correct:
+4
+
+Needs work:
+2
+
+Focused time:
+12m
+
+Technique:
+Active Recall
+
+Do NOT build the full post-session reflection UI in this task.
+
+Provide a clear CTA:
+
+“Continue”
+
+The next milestone will turn that into the full:
+
+How’d it go?
+→ Rough / Good
+→ anxiety/focus
+→ Why did the score dip?
+
+flow.
+
+If an existing post-session route already exists, preserve/use it.
+
+Otherwise keep the completion handoff minimal and clearly document the next integration point.
+
+--------------------------------------------------
+19. DO NOT AUTO-UPDATE THE RECOMMENDATION YET
+--------------------------------------------------
+
+Completing one Study Session should record the result.
+
+Do NOT redesign the recommendation engine in this milestone.
+
+Do NOT immediately declare a technique the winner.
+
+The later Insights/recommendation milestone will use multiple real outcomes.
+
+--------------------------------------------------
+20. PRESENTATION-SAFE DEMO BEHAVIOR
+--------------------------------------------------
+
+Preserve existing seeded/demo Study Session content where useful.
+
+The project may temporarily support:
+
+A. Real session path:
+real subject/material
+→ approved real/demo-generated structured questions
+→ real persisted session results
+
+B. Existing seeded presentation path:
+stable example session content for presentation
+
+Do not delete B merely because A now exists.
+
+BUT:
+
+do not disguise B as data produced by A.
+
+Keep the workflows logically separate.
+
+--------------------------------------------------
+21. UI / UX DIRECTION
+--------------------------------------------------
+
+Bring the real Study Session closer to the existing Calibrate Figma screens.
+
+Use:
+
+- warm cream/off-white background
+- charcoal typography
+- turquoise primary actions
+- sage success states
+- thin borders
+- large readable question text
+- generous whitespace
+- minimal distractions
+- visible timer
+- clear progress
+- large answer areas
+
+Study Session should feel more focused than Dashboard pages.
+
+Do not show unnecessary navigation/sidebar clutter during an active question if the existing architecture allows a focused state safely.
+
+Avoid:
+
+- purple StudyCoach styling
+- generic quiz-app appearance
+- excessive animations
+- crowded metadata
+
+--------------------------------------------------
+22. RESPONSIVE DESIGN
+--------------------------------------------------
+
+Desktop:
+
+- focused centered study area
+- readable question widths
+- large answer controls
+- clear timer/progress
+
+Mobile:
+
+- no horizontal scrolling
+- choices/buttons comfortably tappable
+- answer inputs full width
+- progress and timer remain visible
+- result/reveal sections stack cleanly
+
+--------------------------------------------------
+23. ACCESSIBILITY
+--------------------------------------------------
+
+Ensure:
+
+- MCQ choices use accessible single-select semantics
+- answer inputs have labels
+- keyboard navigation works
+- focus states are visible
+- results are not communicated through color alone
+- progress is understandable to screen readers
+- disabled/submit states are semantically correct
+
+--------------------------------------------------
+24. ERROR STATES
+--------------------------------------------------
+
+Handle:
+
+No approved questions
+
+Session creation failure
+
+Question-loading failure
+
+Outcome-save failure
+
+Use clear student-friendly errors.
+
+Do not expose database stack traces.
+
+If outcome persistence fails after an answer:
+
+do not unnecessarily erase the student’s current work.
+
+--------------------------------------------------
+25. TESTS
+--------------------------------------------------
+
+Add/update automated tests for at least:
+
+1. Study Session loads approved questions only.
+
+2. generated questions are excluded.
+
+3. edited questions are excluded until approved.
+
+4. rejected questions are excluded.
+
+5. subject/material ownership is preserved.
+
+6. MCQ correct answer grading.
+
+7. MCQ incorrect answer grading.
+
+8. Active Recall self-assessment recording.
+
+9. Feynman self-assessment recording.
+
+10. Fill-in-the-Blank normalized grading/self-assessment behavior.
+
+11. supporting notes are hidden before reveal.
+
+12. session creation uses existing session API/schema.
+
+13. completion/result persistence uses existing outcome architecture.
+
+14. no approved questions → Question Bank handoff.
+
+15. seeded/demo presentation path remains available without contaminating real-context sessions.
+
+Do not call Hugging Face in Study Session tests.
+
+--------------------------------------------------
+26. DO NOT CHANGE YET
+--------------------------------------------------
+
+Do NOT fully redesign:
+
+- Post-session Feedback
+- Insights
+- Dashboard
+- Start
+- How It Works
+- Onboarding
+
+Do NOT:
+
+- change Qwen
+- add LLM grading
+- add LLM-as-judge
+- add OCR
+- migrate databases
+- add authentication
+- add RAG
+- add a spaced-repetition scheduling engine
+
+This milestone is:
+
+APPROVED QUESTIONS
+→ FUNCTIONAL STUDY SESSION
+→ RECORDED SESSION RESULT
+
+--------------------------------------------------
+27. VALIDATION
+--------------------------------------------------
+
+Run:
+
+npm test
+npm run typecheck
+npm run build
+
+Run:
+
+PYTHONPATH=ml-service python -m pytest ml-service/tests -q
+
+Verify:
+
+FastAPI /health
+
+Then manually test:
+
+Create/select subject
+↓
+Material
+↓
+Question Bank
+↓
+Approve several questions
+↓
+Start study session
+↓
+verify only approved questions appear
+↓
+answer MCQ
+↓
+answer Active Recall
+↓
+answer Feynman / Fill Blank where available
+↓
+complete session
+↓
+verify result/session persisted
+
+Also verify:
+
+- rejected questions never appear
+- source excerpt appears only after reveal
+- existing seeded/demo Study Session still works where intended
+
+--------------------------------------------------
+28. COMPLETION REPORT
+--------------------------------------------------
+
+Before finishing, report:
+
+1. Exact files changed.
+
+2. Existing Study Session/session/outcome architecture discovered.
+
+3. How Question Bank context is passed into Study Session.
+
+4. Approved-only question query behavior.
+
+5. Active Recall rendering and result handling.
+
+6. MCQ rendering and grading.
+
+7. Fill-in-the-Blank rendering and grading.
+
+8. Feynman rendering and self-assessment.
+
+9. Supporting-source reveal behavior.
+
+10. Re-reading behavior.
+
+11. Spaced-repetition MVP behavior.
+
+12. Session creation behavior.
+
+13. Session/outcome persistence behavior.
+
+14. Final completion-summary behavior.
+
+15. How seeded/demo Study Session data was preserved.
+
+16. Confirmation demo data does not silently mix into real subject/material sessions.
+
+17. Tests added.
+
+18. npm test result.
+
+19. npm run typecheck result.
+
+20. npm run build result.
+
+21. FastAPI test result.
+
+22. /health result.
+
+23. Confirmation Post-session Feedback was NOT fully redesigned yet.
+
+24. Confirmation Insights/Dashboard were preserved.
+
+25. Exact next recommended milestone:
+
+Post-session Feedback
+→ session explanation/context
+→ real outcome data for Insights.
