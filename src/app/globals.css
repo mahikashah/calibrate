@@ -577,6 +577,112 @@ body {
 }
 .calibrate-back.static { margin: 0; }
 
+.calibrate-result {
+  width: min(100%, 720px);
+  padding-block: clamp(3rem, 8vh, 6.5rem);
+}
+.calibrate-result__eyebrow {
+  margin-bottom: 0.8rem;
+  color: #278783;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.calibrate-title.calibrate-result__title { margin-bottom: 1rem; }
+.calibrate-result__intro {
+  max-width: 39rem;
+  margin: 0 auto 2.5rem;
+  color: #3e403a;
+  font-size: 1rem;
+  line-height: 1.7;
+}
+.calibrate-result__card {
+  width: 100%;
+  margin: 0 auto 1.5rem;
+  border: 1px solid #76776d;
+  border-radius: 1rem;
+  background: rgba(255, 255, 252, 0.92);
+  padding: clamp(1.35rem, 3vw, 2rem);
+  text-align: left;
+  box-shadow: 0 10px 26px rgba(47, 54, 45, 0.07);
+}
+.calibrate-result__card-label {
+  margin-bottom: 1.1rem;
+  color: #59605a;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.calibrate-result__ranking {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.calibrate-result__ranking li {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  min-height: 2.6rem;
+  color: #20211d;
+}
+.calibrate-result__rank {
+  display: grid;
+  width: 1.75rem;
+  height: 1.75rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 999px;
+  background: #d8eee4;
+  color: #16775a;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+.calibrate-result__technique { font-weight: 600; }
+.calibrate-result__start-here {
+  margin-left: auto;
+  border-radius: 999px;
+  background: #d8eee4;
+  padding: 0.28rem 0.65rem;
+  color: #16775a;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.calibrate-result__rationale {
+  margin-top: 1.3rem;
+  border-top: 1px solid #d7d7c9;
+  padding-top: 1rem;
+  color: #555750;
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+.calibrate-result__next-step {
+  max-width: 35rem;
+  margin: 0 auto 1.25rem;
+  color: #4a4d47;
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+.calibrate-result__next-step span {
+  display: block;
+  margin-bottom: 0.2rem;
+  color: #278783;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.calibrate-result__actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
 .calibrate-question-screen { max-width: 850px; }
 .calibrate-question-screen {
   width: min(100%, 720px);

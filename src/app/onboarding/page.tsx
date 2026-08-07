@@ -160,26 +160,32 @@ export default function OnboardingPage() {
 
         {screen === "result" && result && (
           <div className="calibrate-screen calibrate-result">
-            <p className="mb-3 text-sm font-semibold uppercase tracking-[0.16em] text-[#278783]">Onboarding complete</p>
-            <h1 className="calibrate-title mb-5">Your starting hypothesis</h1>
-            <p className="mx-auto mb-8 max-w-xl text-center text-base leading-relaxed text-[#3e403a]">
+            <p className="calibrate-result__eyebrow">Onboarding complete</p>
+            <h1 className="calibrate-title calibrate-result__title">Your starting hypothesis</h1>
+            <p className="calibrate-result__intro">
               This is a starting hypothesis based on your answers. It is not a learning-style label. We'll adjust it based on your actual results.
             </p>
-            <div className="mx-auto mb-7 w-full max-w-xl rounded-2xl border border-[#c8c8b8] bg-[#fdfcf6]/90 p-6 text-left shadow-sm">
-              <p className="mb-4 text-xs font-bold uppercase tracking-[0.14em] text-[#59605a]">Techniques to test first</p>
-              <ol className="space-y-3">
+            <div className="calibrate-result__card">
+              <p className="calibrate-result__card-label">Techniques to test first</p>
+              <ol className="calibrate-result__ranking">
                 {result.ranked.slice(0, 4).map((technique, index) => (
-                  <li key={technique.technique} className="flex items-center gap-3 text-[#20211d]">
-                    <span className="grid h-7 w-7 place-items-center rounded-full bg-[#d8eee4] text-sm font-semibold text-[#16775a]">{index + 1}</span>
-                    <span className="font-medium">{technique.label}</span>
-                    {index === 0 && <span className="ml-auto rounded-full bg-[#d8eee4] px-3 py-1 text-xs font-semibold text-[#16775a]">start here</span>}
+                  <li key={technique.technique}>
+                    <span className="calibrate-result__rank">{index + 1}</span>
+                    <span className="calibrate-result__technique">{technique.label}</span>
+                    {index === 0 && <span className="calibrate-result__start-here">Start here</span>}
                   </li>
                 ))}
               </ol>
-              <p className="mt-5 border-t border-[#d7d7c9] pt-4 text-sm leading-relaxed text-[#555750]">{result.rationale}</p>
+              <p className="calibrate-result__rationale">{result.rationale}</p>
             </div>
-            <div className="flex flex-col justify-center gap-3 sm:flex-row">
-              <Link href="/study" className="calibrate-button calibrate-button-dark">Start first session</Link>
+            <p className="calibrate-result__next-step">
+              <span>Next step</span>
+              Set up a subject so you can add your real class material before your first study experiment.
+            </p>
+            <div className="calibrate-result__actions">
+              <Link href="/subjects" className="calibrate-button calibrate-button-teal">
+                Set up my first subject <span aria-hidden="true">→</span>
+              </Link>
               <Link href="/dashboard" className="calibrate-button calibrate-button-outline">Go to dashboard</Link>
             </div>
             <button className="calibrate-back" onClick={retakeOnboarding}>Retake onboarding</button>
