@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { AiTag, Empty } from "@/components/ui";
-import { deleteJSON, getJSON, postJSON } from "@/lib/client";
+import { deleteJSON, getJSON, patchJSON, postJSON } from "@/lib/client";
 
 interface Subject {
   id: string;
@@ -17,6 +18,9 @@ interface Question {
   type: string;
   prompt: string;
   answer: string;
+  answerChoices?: string | null;
+  sourceExcerpt?: string | null;
+  status?: "generated" | "edited" | "approved" | "rejected";
   source: string;
   createdAt: string;
 }
@@ -30,10 +34,10 @@ interface Material {
 
 const TYPE_LABEL: Record<string, string> = {
   // FastAPI-generated types
-  active_recall: "Active recall",
-  mcq: "Multiple choice",
-  feynman: "Feynman",
-  fill_in_blank: "Fill-in-blank",
+  active_recall: "Active Recall",
+  mcq: "Multiple Choice",
+  feynman: "Feynman / Self-Explanation",
+  fill_in_blank: "Fill in the Blank",
   // Legacy mock-provider types (kept for existing rows)
   recall: "Active recall",
   practice: "Practice",
@@ -41,14 +45,25 @@ const TYPE_LABEL: Record<string, string> = {
 };
 
 const FILTERS = ["all", "active_recall", "mcq", "feynman", "fill_in_blank", "recall", "cloze"];
+const STATUS_FILTERS = ["all", "generated", "edited", "approved", "rejected"] as const;
 
 export default function QuestionsPage() {
+  return (
+    <Suspense fallback={<div className="calibrate-question-bank">Loading Question Bank…</div>}>
+      <QuestionsPageContent />
+    </Suspense>
+  );
+}
+
+function QuestionsPageContent() {
+  const searchParams = useSearchParams();
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [materials, setMaterials] = useState<Material[]>([]);
   const [subjectId, setSubjectId] = useState("");
   const [filter, setFilter] = useState("all");
   const [materialFilter, setMaterialFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<(typeof STATUS_FILTERS)[number]>("all");
   const [highlightedMaterialId, setHighlightedMaterialId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -67,14 +82,24 @@ export default function QuestionsPage() {
     setSubjects(subs);
     setQuestions(qs);
     setMaterials(mats);
-    if (subs[0] && !subjectId) setSubjectId(subs[0].id);
+    const requestedSubject = searchParams.get("subjectId");
+    const requestedMaterial = searchParams.get("materialId");
+    if (requestedSubject && subs.some((subject) => subject.id === requestedSubject)) {
+      setSubjectId(requestedSubject);
+    } else if (subs[0] && !subjectId) {
+      setSubjectId(subs[0].id);
+    }
+    if (requestedMaterial && mats.some((material) => material.id === requestedMaterial)) {
+      setMaterialFilter(requestedMaterial);
+      setHighlightedMaterialId(requestedMaterial);
+    }
     // Reset material filter if the selected material was removed
     setMaterialFilter((prev) => (prev === "all" || mats.some((m) => m.id === prev) ? prev : "all"));
   }
 
   useEffect(() => {
     void refresh();
-    // `subjectId` is intentionally read only for initial selection.
+    // Subject and material URL params are intentionally read only on initial load.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -94,13 +119,14 @@ export default function QuestionsPage() {
         title: title.trim() || "Untitled material",
         content,
       });
-      const result = await postJSON<{ provider: string; fellBack: boolean }>(
+      const result = await postJSON<{ provider: string; fellBack: boolean; questions: Question[] }>(
         "/api/questions/generate",
         { subjectId, subjectName, materialId: material.id, count },
       );
 
       setProvider(result.provider);
       setFellBack(result.fellBack);
+      setMaterialFilter(material.id);
       setTitle("");
       setContent("");
       await refresh();
@@ -125,10 +151,30 @@ export default function QuestionsPage() {
       questions.filter(
         (question) =>
           (filter === "all" || question.type === filter) &&
+          (statusFilter === "all" || (question.status ?? "approved") === statusFilter) &&
           (materialFilter === "all" || question.materialId === materialFilter),
       ),
-    [questions, filter, materialFilter],
+    [questions, filter, materialFilter, statusFilter],
   );
+
+  const scopedReviewable = visibleQuestions.filter((question) =>
+    ["generated", "edited"].includes(question.status ?? "approved"),
+  );
+  const scopedApproved = visibleQuestions.filter((question) => question.status === "approved");
+
+  async function updateQuestion(id: string, body: Record<string, unknown>) {
+    const updated = await patchJSON<Question>(`/api/questions/${id}`, body);
+    setQuestions((previous) => previous.map((question) => (question.id === id ? updated : question)));
+  }
+
+  async function approveAllRemaining() {
+    if (!subjectId) return;
+    const result = await patchJSON<{ approved: number }>("/api/questions", {
+      subjectId,
+      materialId: materialFilter === "all" ? null : materialFilter,
+    });
+    if (result.approved) await refresh();
+  }
 
   async function deleteMaterial(id: string, matTitle: string) {
     const linkedCount = questions.filter((q) => q.materialId === id).length;
@@ -324,7 +370,7 @@ export default function QuestionsPage() {
       <section className="calibrate-saved-questions" aria-labelledby="saved-questions-title">
         <div className="calibrate-saved-questions__heading">
           <div>
-            <p className="calibrate-question-bank__eyebrow">Your library</p>
+            <p className="calibrate-question-bank__eyebrow">Review queue</p>
             <h2 id="saved-questions-title">
               Saved questions <span>{questions.length}</span>
             </h2>
@@ -356,8 +402,39 @@ export default function QuestionsPage() {
                 ))}
               </select>
             )}
+              <select
+                aria-label="Filter by review status"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+                className="calibrate-question-filters__material-select"
+              >
+                {STATUS_FILTERS.map((status) => (
+                  <option key={status} value={status}>
+                    {status === "all" ? "All review states" : status[0].toUpperCase() + status.slice(1)}
+                  </option>
+                ))}
+              </select>
           </div>
         </div>
+
+          <div className="calibrate-question-review-summary">
+            <p>
+              Review generated questions before studying. {scopedApproved.length} approved in this view.
+            </p>
+            {scopedReviewable.length > 0 && (
+              <button type="button" className="calibrate-question-bank__button" onClick={() => void approveAllRemaining()}>
+                Approve all remaining ({scopedReviewable.length})
+              </button>
+            )}
+            {scopedApproved.length > 0 && (
+              <Link
+                className="calibrate-question-card__feedback"
+                href={`/study?subjectId=${encodeURIComponent(subjectId)}${materialFilter !== "all" ? `&materialId=${encodeURIComponent(materialFilter)}` : ""}`}
+              >
+                Start study session
+              </Link>
+            )}
+          </div>
 
         {visibleQuestions.length === 0 ? (
           <Empty title={questions.length ? "No questions match this filter" : "No questions yet"}>
@@ -370,8 +447,10 @@ export default function QuestionsPage() {
                 key={question.id}
                 question={question}
                 materialTitle={question.materialId ? materialTitleById[question.materialId] : undefined}
+                subjectName={subjects.find((subject) => subject.id === question.subjectId)?.name}
                 highlighted={!!question.materialId && question.materialId === highlightedMaterialId}
                 onDelete={deleteQuestion}
+                onUpdate={updateQuestion}
               />
             ))}
           </div>
@@ -384,20 +463,30 @@ export default function QuestionsPage() {
 function QuestionCard({
   question,
   materialTitle,
+  subjectName,
   highlighted,
   onDelete,
+  onUpdate,
 }: {
   question: Question;
   materialTitle?: string;
+  subjectName?: string;
   highlighted?: boolean;
   onDelete: (id: string) => Promise<void>;
+  onUpdate: (id: string, body: Record<string, unknown>) => Promise<void>;
 }) {
   const [revealed, setRevealed] = useState(false);
+  const [sourceVisible, setSourceVisible] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [practicing, setPracticing] = useState(false);
   const [answer, setAnswer] = useState("");
   const [feedback, setFeedback] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [draftPrompt, setDraftPrompt] = useState(question.prompt);
+  const [draftAnswer, setDraftAnswer] = useState(question.answer);
+  const [draftChoices, setDraftChoices] = useState(() => parseChoices(question.answerChoices));
 
   async function getFeedback() {
     if (!answer.trim()) return;
@@ -425,23 +514,64 @@ function QuestionCard({
     }
   }
 
+  async function update(action: "approve" | "reject" | "edit") {
+    setSaving(true);
+    try {
+      await onUpdate(
+        question.id,
+        action === "edit"
+          ? {
+              action,
+              prompt: draftPrompt,
+              answer: draftAnswer,
+              answerChoices: question.type === "mcq" ? draftChoices : [],
+            }
+          : { action },
+      );
+      if (action === "edit") setEditing(false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <article className={`calibrate-question-card${highlighted ? " is-highlighted" : ""}`}>
       <div className="calibrate-question-card__meta">
         <span>{TYPE_LABEL[question.type] ?? question.type}</span>
-        <span>{question.source === "ai" ? "AI" : "User"}</span>
+        <span className={`calibrate-question-status is-${question.status ?? "approved"}`}>
+          {question.status === "approved" ? "✓ Approved" : question.status ?? "approved"}
+        </span>
+        <span>{subjectName ?? "Unknown subject"}</span>
         {materialTitle && (
           <span className="calibrate-question-card__material-tag" title="Source material">
             📄 {materialTitle}
           </span>
         )}
       </div>
-      <p className="calibrate-question-card__prompt">{question.prompt}</p>
+      {editing ? (
+        <div className="calibrate-question-card__practice">
+          <label className="calibrate-question-bank__label">Question</label>
+          <textarea value={draftPrompt} onChange={(event) => setDraftPrompt(event.target.value)} rows={3} className="calibrate-question-bank__field calibrate-question-bank__textarea" />
+          <label className="calibrate-question-bank__label">Answer</label>
+          <textarea value={draftAnswer} onChange={(event) => setDraftAnswer(event.target.value)} rows={2} className="calibrate-question-bank__field calibrate-question-bank__textarea" />
+          {question.type === "mcq" && draftChoices.map((choice, index) => (
+            <input key={index} value={choice} onChange={(event) => setDraftChoices((current) => current.map((item, itemIndex) => itemIndex === index ? event.target.value : item))} className="calibrate-question-bank__field" aria-label={`Answer choice ${index + 1}`} />
+          ))}
+          <div className="calibrate-question-card__actions">
+            <button type="button" onClick={() => void update("edit")} disabled={saving}>Save edit</button>
+            <button type="button" onClick={() => setEditing(false)}>Cancel</button>
+          </div>
+        </div>
+      ) : <p className="calibrate-question-card__prompt">{question.prompt}</p>}
 
       <div className="calibrate-question-card__actions">
         <button type="button" onClick={() => setRevealed((isRevealed) => !isRevealed)}>
-          {revealed ? "Hide answer" : "Reveal answer"}
+          {revealed ? "Hide answer" : "Show answer"}
         </button>
+        {question.sourceExcerpt && <button type="button" onClick={() => setSourceVisible((visible) => !visible)}>{sourceVisible ? "Hide supporting notes" : "View supporting notes"}</button>}
+        {question.status !== "approved" && question.status !== "rejected" && <button type="button" onClick={() => setEditing(true)}>Edit</button>}
+        {question.status !== "approved" && question.status !== "rejected" && <button type="button" onClick={() => void update("approve")} disabled={saving}>Approve</button>}
+        {question.status !== "rejected" && <button type="button" onClick={() => void update("reject")} disabled={saving}>Reject</button>}
         <button type="button" onClick={() => setPracticing((isPracticing) => !isPracticing)}>
           {practicing ? "Cancel practice" : "Practice this"}
         </button>
@@ -456,8 +586,13 @@ function QuestionCard({
       </div>
 
       {revealed && question.answer && (
-        <p className="calibrate-question-card__answer">{question.answer}</p>
+        <div className="calibrate-question-card__answer">
+          <strong>Answer</strong>
+          <p>{question.answer}</p>
+          {question.type === "mcq" && <ul>{parseChoices(question.answerChoices).map((choice) => <li key={choice}><span>{choice === question.answer ? "✓ " : ""}</span>{choice}</li>)}</ul>}
+        </div>
       )}
+      {sourceVisible && question.sourceExcerpt && <div className="calibrate-question-card__answer"><strong>Supporting notes</strong><p>{question.sourceExcerpt}</p></div>}
 
       {practicing && (
         <div className="calibrate-question-card__practice">
@@ -481,4 +616,13 @@ function QuestionCard({
       )}
     </article>
   );
+}
+
+function parseChoices(value?: string | null) {
+  try {
+    const parsed = JSON.parse(value ?? "[]");
+    return Array.isArray(parsed) ? parsed.map(String) : [];
+  } catch {
+    return [];
+  }
 }

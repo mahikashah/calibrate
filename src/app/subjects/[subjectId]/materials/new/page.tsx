@@ -26,6 +26,7 @@ export default function AddMaterialPage() {
   // unified generating state covers both save+generate (notes) and parse+generate (pdf)
   const [generating, setGenerating] = useState(false);
   const [generatedCount, setGeneratedCount] = useState(0);
+  const [generatedMaterialId, setGeneratedMaterialId] = useState("");
   const [error, setError] = useState("");
 
   const isDone = generatedCount > 0;
@@ -72,8 +73,9 @@ export default function AddMaterialPage() {
         const body = await res.json().catch(() => ({})) as { error?: string };
         throw new Error(body.error ?? "Something went wrong. Please try again.");
       }
-      const result = await res.json() as { questionCount: number };
+      const result = await res.json() as { questionCount: number; materialId: string };
       setGeneratedCount(result.questionCount);
+      setGeneratedMaterialId(result.materialId);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -100,6 +102,7 @@ export default function AddMaterialPage() {
       );
       const count = result.questionCount ?? (result.questions as unknown[])?.length ?? 0;
       setGeneratedCount(count);
+      setGeneratedMaterialId(material.id);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -156,7 +159,7 @@ export default function AddMaterialPage() {
               session.
             </p>
             <div className="calibrate-material-actions">
-              <Link href="/questions" className="calibrate-button calibrate-button-teal">
+              <Link href={`/questions?subjectId=${encodeURIComponent(subjectId)}&materialId=${encodeURIComponent(generatedMaterialId)}`} className="calibrate-button calibrate-button-teal">
                 Go to Question Bank
               </Link>
               <button

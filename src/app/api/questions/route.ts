@@ -1,8 +1,8 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { questions } from "@/lib/db/schema";
-import { handle, ok } from "@/lib/http";
+import { fail, handle, ok } from "@/lib/http";
 import { newId } from "@/lib/ids";
 import { currentUserId } from "@/lib/user";
 
@@ -21,6 +21,28 @@ export async function GET(req: Request) {
       .orderBy(desc(questions.createdAt))
       .all();
     return ok(rows);
+  });
+}
+
+const BulkApprove = z.object({
+  subjectId: z.string().min(1),
+  materialId: z.string().nullish(),
+});
+
+export async function PATCH(req: Request) {
+  return handle(async () => {
+    const { subjectId, materialId } = BulkApprove.parse(await req.json());
+    const userId = currentUserId();
+    const where = and(
+      eq(questions.userId, userId),
+      eq(questions.subjectId, subjectId),
+      ...(materialId ? [eq(questions.materialId, materialId)] : []),
+      inArray(questions.status, ["generated", "edited"]),
+    );
+    const eligible = db.select({ id: questions.id }).from(questions).where(where).all();
+    if (!eligible.length) return ok({ approved: 0 });
+    db.update(questions).set({ status: "approved" }).where(where).run();
+    return ok({ approved: eligible.length });
   });
 }
 

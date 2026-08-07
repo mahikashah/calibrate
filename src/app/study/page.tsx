@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { getJSON, postJSON } from "@/lib/client";
 import { outcomeScore } from "@/lib/stats";
 import { TECHNIQUES, type TechniqueId } from "@/lib/techniques";
@@ -14,8 +16,25 @@ interface Subject {
   color: string;
 }
 
+interface EligibleQuestion {
+  id: string;
+  subjectId: string;
+  materialId: string | null;
+  status: string;
+}
+
 export default function StudyPage() {
+  return (
+    <Suspense fallback={<div className="animate-rise mx-auto max-w-2xl">Loading study session…</div>}>
+      <StudyPageContent />
+    </Suspense>
+  );
+}
+
+function StudyPageContent() {
+  const searchParams = useSearchParams();
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [approvedQuestions, setApprovedQuestions] = useState<EligibleQuestion[]>([]);
   const [subjectId, setSubjectId] = useState("");
   const [technique, setTechnique] = useState<TechniqueId>("active_recall");
   const [minutes, setMinutes] = useState(25);
@@ -36,17 +55,20 @@ export default function StudyPage() {
 
   useEffect(() => {
     (async () => {
-      const [subs, ins, onb] = await Promise.all([
+      const [subs, ins, onb, qs] = await Promise.all([
         getJSON<Subject[]>("/api/subjects"),
         getJSON<{ report: InsightsReport }>("/api/insights"),
         getJSON<{ hypothesis?: Hypothesis }>("/api/onboarding"),
+        getJSON<EligibleQuestion[]>("/api/questions"),
       ]);
       setSubjects(subs);
-      if (subs[0]) setSubjectId(subs[0].id);
+      const requestedSubject = searchParams.get("subjectId");
+      setSubjectId(subs.some((subject) => subject.id === requestedSubject) ? requestedSubject! : subs[0]?.id ?? "");
+      setApprovedQuestions(qs.filter((question) => question.status === "approved"));
       setReport(ins.report);
       setHypothesis(onb.hypothesis ?? null);
     })();
-  }, []);
+  }, [searchParams]);
 
   useEffect(() => {
     if (running) {
@@ -75,6 +97,12 @@ export default function StudyPage() {
   }, [report, hypothesis, subjectId]);
 
   const previewScore = outcomeScore({ quizScore, confidence, recall });
+  const requestedMaterial = searchParams.get("materialId");
+  const eligibleCount = approvedQuestions.filter(
+    (question) =>
+      question.subjectId === subjectId &&
+      (!requestedMaterial || question.materialId === requestedMaterial),
+  ).length;
 
   async function submit() {
     if (!subjectId) return;
@@ -162,6 +190,16 @@ export default function StudyPage() {
             </option>
           ))}
         </select>
+          <p className="mt-3 text-sm text-muted">
+            {eligibleCount > 0
+              ? `${eligibleCount} approved question${eligibleCount === 1 ? "" : "s"} ready for this study session.`
+              : "Review and approve at least one Question Bank item before using questions in a study session."}
+          </p>
+          {eligibleCount === 0 && (
+            <Link href="/questions" className="mt-3 inline-block text-sm text-brand hover:underline">
+              Go to Question Bank
+            </Link>
+          )}
         {recommended && (
           <button
             onClick={() => setTechnique(recommended.id as TechniqueId)}

@@ -140,7 +140,8 @@ vi.mock("@/lib/ml-service", async () => {
 const { POST: createMaterial } = await import("@/app/api/materials/route");
 const { POST: generateQuestions } = await import("@/app/api/questions/generate/route");
 const { POST: uploadPdf } = await import("@/app/api/pdf/route");
-const { GET: listQuestions } = await import("@/app/api/questions/route");
+const { GET: listQuestions, PATCH: bulkApprove } = await import("@/app/api/questions/route");
+const { PATCH: updateQuestion } = await import("@/app/api/questions/[id]/route");
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -156,6 +157,14 @@ function clearGeneratedRows() {
 function postRequest(body: unknown): Request {
   return new Request("http://localhost", {
     method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+function patchRequest(body: unknown): Request {
+  return new Request("http://localhost", {
+    method: "PATCH",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   });
@@ -298,6 +307,33 @@ describe("Question-Bank persistence flow", () => {
 
     const fourQuestions = await generateWithCount(longContent, 4);
     expect(fourQuestions).toHaveLength(4);
+  });
+
+  it("uses deterministic structured questions through the normal persistence path only in demo mode", async () => {
+    const previousDemoMode = process.env.CALIBRATE_DEMO_MODE;
+    process.env.CALIBRATE_DEMO_MODE = "true";
+    try {
+      const callsBefore = vi.mocked(mlService.generateQuestions).mock.calls.length;
+      const res = await generateQuestions(
+        postRequest({
+          subjectId: SEED_SUBJECT_ID,
+          materialText: "Sampling variability decreases as random sample size increases.",
+          count: 4,
+        }),
+      );
+      expect(res.status).toBe(201);
+      const body = await jsonBody<{ provider: string; questions: Array<{ id: string }> }>(res);
+      expect(body.provider).toBe("calibrate-demo");
+      expect(vi.mocked(mlService.generateQuestions).mock.calls).toHaveLength(callsBefore);
+      const rows = body.questions.map((question) =>
+        sharedDb.select().from(schema.questions).where(eq(schema.questions.id, question.id)).get(),
+      );
+      expect(rows).toHaveLength(4);
+      expect(rows.every((row) => row?.status === "generated" && !!row.sourceExcerpt && !!row.answerChoices)).toBe(true);
+    } finally {
+      if (previousDemoMode === undefined) delete process.env.CALIBRATE_DEMO_MODE;
+      else process.env.CALIBRATE_DEMO_MODE = previousDemoMode;
+    }
   });
 
   it("generate route returns 422 when count is 0", async () => {
@@ -618,5 +654,104 @@ describe("Question-Bank persistence flow", () => {
     const body = await jsonBody<{ error: string }>(res);
     expect(body.error).toContain("text-based PDF");
     expect(sharedDb.select().from(schema.materials).all()).toHaveLength(0);
+  });
+
+  it("approves a generated question without changing its structured data", async () => {
+    const generated = await generateQuestions(
+      postRequest({ subjectId: SEED_SUBJECT_ID, materialText: "A concept has evidence.", count: 1 }),
+    );
+    const { questions } = await jsonBody<{ questions: Array<{ id: string }> }>(generated);
+    const before = sharedDb.select().from(schema.questions).where(eq(schema.questions.id, questions[0].id)).get()!;
+
+    const res = await updateQuestion(patchRequest({ action: "approve" }), { params: { id: before.id } });
+    expect(res.status).toBe(200);
+    const after = sharedDb.select().from(schema.questions).where(eq(schema.questions.id, before.id)).get()!;
+    expect(after.status).toBe("approved");
+    expect(after).toMatchObject({
+      subjectId: before.subjectId,
+      materialId: before.materialId,
+      answer: before.answer,
+      answerChoices: before.answerChoices,
+      sourceExcerpt: before.sourceExcerpt,
+    });
+  });
+
+  it("edits a generated question and then allows approval", async () => {
+    const generated = await generateQuestions(
+      postRequest({ subjectId: SEED_SUBJECT_ID, materialText: "A concept has evidence.", count: 1 }),
+    );
+    const { questions } = await jsonBody<{ questions: Array<{ id: string }> }>(generated);
+    const id = questions[0].id;
+
+    expect(
+      (await updateQuestion(patchRequest({ action: "edit", prompt: "Explain the concept.", answer: "It has evidence.", answerChoices: [] }), { params: { id } })).status,
+    ).toBe(200);
+    expect(sharedDb.select().from(schema.questions).where(eq(schema.questions.id, id)).get()?.status).toBe("edited");
+
+    await updateQuestion(patchRequest({ action: "approve" }), { params: { id } });
+    expect(sharedDb.select().from(schema.questions).where(eq(schema.questions.id, id)).get()?.status).toBe("approved");
+  });
+
+  it("rejects questions without deleting them and excludes them from approved eligibility", async () => {
+    const generated = await generateQuestions(
+      postRequest({ subjectId: SEED_SUBJECT_ID, materialText: "A concept has evidence.", count: 1 }),
+    );
+    const { questions } = await jsonBody<{ questions: Array<{ id: string }> }>(generated);
+    const id = questions[0].id;
+    await updateQuestion(patchRequest({ action: "reject" }), { params: { id } });
+
+    const row = sharedDb.select().from(schema.questions).where(eq(schema.questions.id, id)).get();
+    expect(row?.status).toBe("rejected");
+    const approved = sharedDb.select().from(schema.questions).all().filter((question) => question.status === "approved");
+    expect(approved.map((question) => question.id)).not.toContain(id);
+  });
+
+  it("rejects invalid multiple-choice edits", async () => {
+    sharedDb.insert(schema.questions).values({
+      id: "mcq-question",
+      userId: SEED_USER_ID,
+      subjectId: SEED_SUBJECT_ID,
+      type: "mcq",
+      prompt: "Which option?",
+      answer: "Correct",
+      answerChoices: JSON.stringify(["Correct", "A", "B", "C"]),
+      sourceExcerpt: "Notes",
+      status: "generated",
+      source: "ai",
+      createdAt: new Date().toISOString(),
+    }).run();
+
+    const res = await updateQuestion(
+      patchRequest({ action: "edit", prompt: "Which option?", answer: "Not listed", answerChoices: ["Correct", "A", "B", "C"] }),
+      { params: { id: "mcq-question" } },
+    );
+    expect(res.status).toBe(422);
+    expect(sharedDb.select().from(schema.questions).where(eq(schema.questions.id, "mcq-question")).get()?.status).toBe("generated");
+  });
+
+  it("does not allow mutations of another user's question", async () => {
+    sharedDb.insert(schema.users).values({ id: "review-other-user", name: "Other", createdAt: new Date().toISOString() }).run();
+    sharedDb.insert(schema.subjects).values({ id: "review-other-subject", userId: "review-other-user", name: "Other", color: "#000000", createdAt: new Date().toISOString() }).run();
+    sharedDb.insert(schema.questions).values({
+      id: "review-other-question", userId: "review-other-user", subjectId: "review-other-subject",
+      type: "active_recall", prompt: "Private", answer: "Private", answerChoices: "[]",
+      sourceExcerpt: "Private", status: "generated", source: "ai", createdAt: new Date().toISOString(),
+    }).run();
+
+    expect((await updateQuestion(patchRequest({ action: "approve" }), { params: { id: "review-other-question" } })).status).toBe(404);
+    expect(sharedDb.select().from(schema.questions).where(eq(schema.questions.id, "review-other-question")).get()?.status).toBe("generated");
+  });
+
+  it("bulk approval is limited to current user subject and material scope", async () => {
+    sharedDb.insert(schema.materials).values({ id: "bulk-mat-a", userId: SEED_USER_ID, subjectId: SEED_SUBJECT_ID, title: "A", content: "A", createdAt: new Date().toISOString() }).run();
+    sharedDb.insert(schema.materials).values({ id: "bulk-mat-b", userId: SEED_USER_ID, subjectId: SEED_SUBJECT_ID, title: "B", content: "B", createdAt: new Date().toISOString() }).run();
+    for (const [id, materialId, status] of [["bulk-a", "bulk-mat-a", "generated"], ["bulk-b", "bulk-mat-b", "edited"], ["bulk-rejected", "bulk-mat-a", "rejected"]] as const) {
+      sharedDb.insert(schema.questions).values({ id, userId: SEED_USER_ID, subjectId: SEED_SUBJECT_ID, materialId, type: "active_recall", prompt: id, answer: id, answerChoices: "[]", sourceExcerpt: id, status, source: "ai", createdAt: new Date().toISOString() }).run();
+    }
+    const res = await bulkApprove(patchRequest({ subjectId: SEED_SUBJECT_ID, materialId: "bulk-mat-a" }));
+    expect(await jsonBody<{ approved: number }>(res)).toEqual({ approved: 1 });
+    expect(sharedDb.select().from(schema.questions).where(eq(schema.questions.id, "bulk-a")).get()?.status).toBe("approved");
+    expect(sharedDb.select().from(schema.questions).where(eq(schema.questions.id, "bulk-b")).get()?.status).toBe("edited");
+    expect(sharedDb.select().from(schema.questions).where(eq(schema.questions.id, "bulk-rejected")).get()?.status).toBe("rejected");
   });
 });

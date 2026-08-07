@@ -17,6 +17,7 @@ import { db } from "@/lib/db";
 import { materials, questions, subjects } from "@/lib/db/schema";
 import { handle, ok, fail } from "@/lib/http";
 import { newId } from "@/lib/ids";
+import { generateDemoQuestions } from "@/lib/demo-questions";
 import { generateQuestions as mlGenerate, MlServiceError } from "@/lib/ml-service";
 import { currentUserId } from "@/lib/user";
 
@@ -59,19 +60,25 @@ export async function POST(req: Request) {
     }
     if (!materialText.trim()) return fail("Provide materialText or a materialId with content.", 422);
 
-    // --- Call FastAPI ML service ---
+    // Demo mode is intentionally explicit. Real service failures never fall
+    // back to demo questions.
     let generated;
-    try {
-      generated = await mlGenerate({
-        subject: subject.name,
-        text: materialText,
-        requestedCount: body.count,
-      });
-    } catch (err) {
-      if (err instanceof MlServiceError) {
-        return fail(err.studentMessage, mlErrorStatus(err.code));
+    const demoMode = process.env.CALIBRATE_DEMO_MODE === "true";
+    if (demoMode) {
+      generated = generateDemoQuestions(materialText, body.count);
+    } else {
+      try {
+        generated = await mlGenerate({
+          subject: subject.name,
+          text: materialText,
+          requestedCount: body.count,
+        });
+      } catch (err) {
+        if (err instanceof MlServiceError) {
+          return fail(err.studentMessage, mlErrorStatus(err.code));
+        }
+        throw err;
       }
-      throw err;
     }
 
     // --- Map FastAPI response → database rows ---
@@ -93,7 +100,7 @@ export async function POST(req: Request) {
     if (body.save && rows.length) db.insert(questions).values(rows).run();
 
     // provider/fellBack kept for Question Bank UI backwards compatibility.
-    return ok({ provider: "calibrate-ml", fellBack: false, questions: rows }, 201);
+    return ok({ provider: demoMode ? "calibrate-demo" : "calibrate-ml", fellBack: false, questions: rows }, 201);
   });
 }
 

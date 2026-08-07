@@ -1,0 +1,461 @@
+Proceed in Build mode and implement the Question Bank review-workflow plan you just described.
+
+Do not restart the analysis from scratch. You already inspected the relevant Question Bank, question APIs, structured ML fields, demo generator path, tests, and Study Session eligibility.
+
+Stay within the previously approved scope.
+
+PRIMARY GOAL
+
+Complete this flow:
+
+Subject
+→ Material
+→ Generate structured questions
+→ Question Bank
+→ Review / Edit / Approve / Reject
+→ Approved questions become eligible for Study Session
+
+The real ML path must remain:
+
+Next.js
+→ FastAPI
+→ Hugging Face / Qwen
+
+Do not replace it.
+
+--------------------------------------------------
+DEMO MODE
+--------------------------------------------------
+
+Implement or preserve an explicit server-side demo mode using:
+
+CALIBRATE_DEMO_MODE=true
+
+Requirements:
+
+- demo mode must be opt-in
+- do not silently fall back to demo questions when Hugging Face fails
+- real mode remains the normal production architecture
+- demo-generated questions must use the SAME structured schema as real FastAPI questions
+- demo questions must go through the SAME Next.js persistence path
+- demo questions must receive real subjectId/materialId linkage
+- demo questions must initially use status = "generated"
+
+This exists so the product remains presentation-safe if Hugging Face is temporarily unreliable.
+
+--------------------------------------------------
+QUESTION REVIEW STATES
+--------------------------------------------------
+
+Support the simple MVP review flow:
+
+generated
+→ approved
+
+generated
+→ edited
+→ approved
+
+generated
+→ rejected
+
+Do not build a more complicated moderation system.
+
+Generated questions are not yet eligible for study.
+
+Approved questions are eligible for Study Session.
+
+Rejected questions are not eligible.
+
+--------------------------------------------------
+QUESTION BANK UI
+--------------------------------------------------
+
+Refine the existing /questions Question Bank.
+
+Do not create a parallel Question Bank.
+
+Each question should clearly expose:
+
+- student-friendly question type
+- question text
+- review status
+- subject
+- source material
+- answer
+- answer choices for MCQ
+- supporting/source excerpt
+
+Use progressive disclosure where useful.
+
+Examples:
+
+Show answer
+View supporting notes
+
+Do not permanently show every detail if that makes the card cluttered.
+
+--------------------------------------------------
+QUESTION TYPE LABELS
+--------------------------------------------------
+
+Map raw types to student-friendly labels:
+
+active_recall
+→ Active Recall
+
+mcq
+→ Multiple Choice
+
+feynman
+→ Feynman / Self-Explanation
+
+fill_in_blank
+→ Fill in the Blank
+
+Do not make raw enum names the primary UI labels.
+
+--------------------------------------------------
+APPROVE
+--------------------------------------------------
+
+Provide an ownership-checked Approve action.
+
+When approved:
+
+- persist status = approved
+- preserve subjectId
+- preserve materialId
+- preserve answer
+- preserve answer choices
+- preserve sourceExcerpt
+- update the UI immediately
+
+Show a clear:
+
+✓ Approved
+
+state.
+
+--------------------------------------------------
+EDIT
+--------------------------------------------------
+
+Allow editing of generated questions.
+
+At minimum allow:
+
+- question text
+- answer
+- answer choices for MCQ
+
+Preserve:
+
+- type
+- subjectId
+- materialId
+- sourceExcerpt
+
+After a manual edit:
+
+status = edited
+
+Then allow the student to Approve it.
+
+Do not automatically regenerate after an edit.
+
+--------------------------------------------------
+MCQ VALIDATION
+--------------------------------------------------
+
+For MCQ edits:
+
+- require exactly 4 non-empty choices
+- require answer to exactly match one of the 4 choices
+
+Reject invalid edits safely.
+
+For non-MCQ questions:
+
+answerChoices should remain empty.
+
+--------------------------------------------------
+REJECT
+--------------------------------------------------
+
+Prefer status = rejected rather than hard deletion.
+
+Rejected questions:
+
+- remain visible when the appropriate status filter is selected
+- do not count as approved
+- are not eligible for Study Session
+
+If the existing schema cannot support this without an unnecessary large refactor, explain the smallest safe alternative before changing behavior.
+
+--------------------------------------------------
+BULK APPROVAL
+--------------------------------------------------
+
+If Approve All Remaining already exists, refine it.
+
+It must only approve eligible generated/edited questions inside the intended current scope.
+
+It must not accidentally approve:
+
+- rejected questions
+- unrelated subjects
+- unrelated materials
+- another user's questions
+
+Preserve ownership protections.
+
+--------------------------------------------------
+SOURCE / GROUNDING
+--------------------------------------------------
+
+Use sourceExcerpt as a trust feature.
+
+Label it something like:
+
+Supporting notes
+
+or:
+
+View source
+
+Do not claim it is guaranteed verbatim unless that is guaranteed by the current ML contract.
+
+--------------------------------------------------
+FILTERS
+--------------------------------------------------
+
+Preserve existing useful filters.
+
+Support filtering where practical by:
+
+- subject
+- material
+- question type
+- review status
+
+Do not build duplicate filtering systems.
+
+--------------------------------------------------
+POST-GENERATION HANDOFF
+--------------------------------------------------
+
+When questions are generated from a material:
+
+send the student to Question Bank.
+
+Where practical, preserve enough context so the student can immediately see the batch they just generated.
+
+For example:
+
+- selected subject
+- selected material
+- filtered or highlighted generated batch
+
+Do not automatically start a Study Session after generation.
+
+--------------------------------------------------
+STUDY SESSION ELIGIBILITY
+--------------------------------------------------
+
+Do NOT redesign Study Session yet.
+
+Make only the smallest backend/query change necessary so Study Session can consume APPROVED questions only.
+
+The intended rule is:
+
+generated → not eligible
+edited → not eligible until approved
+rejected → not eligible
+approved → eligible
+
+Expose a clear Question Bank action such as:
+
+Start study session
+
+only when at least one approved question exists for the relevant context.
+
+Do not redesign the actual Study Session screens in this task.
+
+--------------------------------------------------
+SEEDED / DEMO DATA
+--------------------------------------------------
+
+Preserve useful existing seeded/demo data for:
+
+- Dashboard
+- Study Session
+- Insights
+
+Do not reset the database.
+
+Do not remove presentation-friendly demo content unless it directly conflicts with correctness.
+
+It is acceptable for the project to temporarily contain:
+
+A. real/generated workflow data
+
+and
+
+B. seeded presentation data
+
+The important requirement is that the NEW workflow is structurally correct.
+
+--------------------------------------------------
+DESIGN
+--------------------------------------------------
+
+Bring Question Bank closer to the established Calibrate/Figma visual language:
+
+- cream/off-white canvas
+- charcoal typography
+- white cards
+- sage/turquoise accents
+- thin borders
+- clear status badges
+- generous spacing
+- simple, readable hierarchy
+
+Avoid:
+
+- purple StudyCoach styling
+- generic SaaS appearance
+- unnecessary gradients
+- excessive controls
+
+Do not redesign the full sidebar/application shell yet.
+
+--------------------------------------------------
+SECURITY / OWNERSHIP
+--------------------------------------------------
+
+Preserve and verify ownership for:
+
+- approve
+- edit
+- reject
+- bulk approval
+
+A user must not mutate a question outside their own subject/material ownership.
+
+Do not weaken any existing data-isolation behavior.
+
+--------------------------------------------------
+TESTS
+--------------------------------------------------
+
+Add/update automated tests for at least:
+
+1. new generated question begins with generated status
+2. approve generated question
+3. edit generated question
+4. edited question can be approved
+5. rejected question behavior
+6. rejected questions are not study-eligible
+7. ownership rejection for mutations
+8. bulk approval stays properly scoped
+9. MCQ choices persist
+10. sourceExcerpt persists
+11. invalid MCQ edit is rejected
+12. approved-only Study Session eligibility
+13. demo mode uses the same schema/persistence path
+14. real FastAPI path remains intact
+
+Do not call Hugging Face in automated tests.
+
+--------------------------------------------------
+DO NOT CHANGE
+--------------------------------------------------
+
+Do NOT perform the full redesign of:
+
+- Study Session
+- Post-session Feedback
+- Insights
+- Dashboard
+- Start
+- How It Works
+- Onboarding
+
+Do NOT:
+
+- change the Qwen model
+- add OCR
+- add authentication
+- migrate databases
+- add RAG/vector search
+- replace FastAPI
+- remove seeded presentation data
+
+--------------------------------------------------
+VALIDATION
+--------------------------------------------------
+
+Run:
+
+npm test
+npm run typecheck
+npm run build
+
+Run:
+
+PYTHONPATH=ml-service python -m pytest ml-service/tests -q
+
+Verify:
+
+FastAPI GET /health
+
+Manually test:
+
+Material
+→ Generate
+→ Question Bank
+→ generated status
+→ inspect answer/source
+→ edit one question
+→ approve questions
+→ reject one question
+→ verify rejected question is excluded
+→ verify approved-question Study Session CTA becomes available
+
+If Hugging Face is still returning an upstream error:
+
+do not block this milestone.
+
+Verify the explicit CALIBRATE_DEMO_MODE path instead.
+
+--------------------------------------------------
+COMPLETION REPORT
+--------------------------------------------------
+
+Before finishing, report:
+
+1. Exact files changed.
+2. Status values now supported.
+3. Final Question Bank card structure.
+4. Approve behavior.
+5. Edit behavior.
+6. Reject behavior.
+7. Bulk approval behavior.
+8. MCQ validation.
+9. Source excerpt behavior.
+10. Filters implemented/preserved.
+11. Approved-only Study Session eligibility behavior.
+12. CALIBRATE_DEMO_MODE behavior.
+13. Confirmation demo questions use the same persistence/schema path as real questions.
+14. Confirmation real Next.js → FastAPI → Hugging Face architecture remains intact.
+15. Tests added.
+16. npm test result.
+17. npm run typecheck result.
+18. npm run build result.
+19. FastAPI test result.
+20. /health result.
+21. Confirmation Study Session was not fully redesigned.
+22. Confirmation Dashboard/Insights seeded presentation data remains.
+23. Exact recommended next milestone:
+Study Session rendering using approved structured questions.
