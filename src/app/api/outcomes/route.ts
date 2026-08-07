@@ -1,8 +1,10 @@
 import { z } from "zod";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { outcomes } from "@/lib/db/schema";
-import { handle, ok } from "@/lib/http";
+import { outcomes, sessions } from "@/lib/db/schema";
+import { fail, handle, ok } from "@/lib/http";
 import { newId } from "@/lib/ids";
+import { currentUserId } from "@/lib/user";
 
 const CreateOutcome = z.object({
   sessionId: z.string().min(1),
@@ -15,6 +17,12 @@ const CreateOutcome = z.object({
 export async function POST(req: Request) {
   return handle(async () => {
     const body = CreateOutcome.parse(await req.json());
+    const session = db
+      .select({ id: sessions.id })
+      .from(sessions)
+      .where(and(eq(sessions.id, body.sessionId), eq(sessions.userId, currentUserId())))
+      .get();
+    if (!session) return fail("Study session not found", 404);
     const row = {
       id: newId("out"),
       sessionId: body.sessionId,

@@ -84,6 +84,7 @@ export const sessions = sqliteTable("sessions", {
   plannedMinutes: integer("planned_minutes").notNull().default(25),
   actualMinutes: integer("actual_minutes").notNull().default(0),
   notes: text("notes").notNull().default(""),
+  completionKey: text("completion_key").unique(),
   startedAt: text("started_at").notNull().$defaultFn(now),
   endedAt: text("ended_at"),
 });

@@ -1,7 +1,7 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { questions } from "@/lib/db/schema";
+import { materials, questions, subjects } from "@/lib/db/schema";
 import { fail, handle, ok } from "@/lib/http";
 import { newId } from "@/lib/ids";
 import { currentUserId } from "@/lib/user";
@@ -9,15 +9,28 @@ import { currentUserId } from "@/lib/user";
 export async function GET(req: Request) {
   return handle(async () => {
     const userId = currentUserId();
-    const subjectId = new URL(req.url).searchParams.get("subjectId");
+    const searchParams = new URL(req.url).searchParams;
+    const subjectId = searchParams.get("subjectId");
+    const materialId = searchParams.get("materialId");
+    const approvedOnly = searchParams.get("status") === "approved";
+    if (subjectId) {
+      const subject = db.select().from(subjects).where(and(eq(subjects.id, subjectId), eq(subjects.userId, userId))).get();
+      if (!subject) return fail("Subject not found", 404);
+    }
+    if (materialId) {
+      const material = db.select().from(materials).where(and(eq(materials.id, materialId), eq(materials.userId, userId))).get();
+      if (!material || (subjectId && material.subjectId !== subjectId)) return fail("Material not found", 404);
+    }
+    const where = and(
+      eq(questions.userId, userId),
+      ...(subjectId ? [eq(questions.subjectId, subjectId)] : []),
+      ...(materialId ? [eq(questions.materialId, materialId)] : []),
+      ...(approvedOnly ? [eq(questions.status, "approved")] : []),
+    );
     const rows = db
       .select()
       .from(questions)
-      .where(
-        subjectId
-          ? and(eq(questions.userId, userId), eq(questions.subjectId, subjectId))
-          : eq(questions.userId, userId),
-      )
+      .where(where)
       .orderBy(desc(questions.createdAt))
       .all();
     return ok(rows);
