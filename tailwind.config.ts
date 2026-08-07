@@ -10,16 +10,21 @@ const config: Config = {
         ink: "#171814",
         muted: "#5F665E",
         line: "#D8E4D5",
-        // Primary accent — calm turquoise and green, used with restraint.
+        // Primary — muted turquoise; sage stays for success/supporting accents.
         brand: {
-          DEFAULT: "#27834F",
+          DEFAULT: "#3F817D",
+          soft: "#E2F1ED",
+          ink: "#2A5F5C",
+        },
+        sage: {
+          DEFAULT: "#91A88D",
           soft: "#E1F0DD",
-          ink: "#1E613B",
+          ink: "#4D6E52",
         },
         // Semantic confidence colors — these ENCODE data, not decoration.
-        clear: "#208B8B", // technique is clearly winning
-        emerging: "#A16B2B", // still close, keep testing
-        insufficient: "#91A88D", // not enough data yet
+        clear: "#208B8B",
+        emerging: "#A16B2B",
+        insufficient: "#91A88D",
       },
       fontFamily: {
         sans: [
@@ -27,11 +32,11 @@ const config: Config = {
           "system-ui",
           "-apple-system",
           "Segoe UI",
-          "Roboto",
           "Helvetica Neue",
           "Arial",
           "sans-serif",
         ],
+        serif: ["Georgia", "Cambria", "Times New Roman", "Times", "serif"],
         mono: [
           "ui-monospace",
           "SFMono-Regular",

@@ -34,14 +34,21 @@ interface Material {
 
 const TYPE_LABEL: Record<string, string> = {
   // FastAPI-generated types
-  active_recall: "Active Recall",
-  mcq: "Multiple Choice",
-  feynman: "Feynman / Self-Explanation",
-  fill_in_blank: "Fill in the Blank",
+  active_recall: "Active recall",
+  mcq: "Multiple choice",
+  feynman: "Feynman / Self-explanation",
+  fill_in_blank: "Fill in the blank",
   // Legacy mock-provider types (kept for existing rows)
   recall: "Active recall",
   practice: "Practice",
-  cloze: "Fill-in",
+  cloze: "Fill in the blank",
+};
+
+const STATUS_LABEL: Record<"generated" | "edited" | "approved" | "rejected", string> = {
+  generated: "Generated",
+  edited: "Edited",
+  approved: "Approved",
+  rejected: "Rejected",
 };
 
 const FILTERS = ["all", "active_recall", "mcq", "feynman", "fill_in_blank", "recall", "cloze"];
@@ -224,7 +231,7 @@ function QuestionsPageContent() {
           <p className="calibrate-empty-state__title">Add a subject first</p>
           <p>Question sets stay organized by the subject you&apos;re working on.</p>
           <Link href="/subjects" className="calibrate-question-bank__button">
-            Create a subject
+            Add a subject
           </Link>
         </div>
       ) : (
@@ -455,7 +462,7 @@ function QuestionsPageContent() {
               >
                 {STATUS_FILTERS.map((status) => (
                   <option key={status} value={status}>
-                    {status === "all" ? "All review states" : status[0].toUpperCase() + status.slice(1)}
+                    {status === "all" ? "All review states" : STATUS_LABEL[status]}
                   </option>
                 ))}
               </select>
@@ -482,8 +489,28 @@ function QuestionsPageContent() {
           </div>
 
         {visibleQuestions.length === 0 ? (
-          <Empty title={questions.length ? "No questions match this filter" : "No questions yet"}>
-            Paste some material above and generate your first set.
+          <Empty
+            title={
+              questions.length
+                ? "No questions match this filter"
+                : statusFilter === "approved"
+                  ? "No approved questions yet"
+                  : statusFilter === "generated" || statusFilter === "edited"
+                    ? "No questions waiting for review"
+                    : "No questions yet"
+            }
+          >
+            {questions.length ? (
+              "Try another status, type, or material filter."
+            ) : (
+              <>
+                Paste material above and choose <strong>Generate questions</strong>, or{" "}
+                <Link href="/subjects" className="font-medium text-brand hover:underline">
+                  Add material
+                </Link>{" "}
+                from a subject.
+              </>
+            )}
           </Empty>
         ) : (
           <div className="calibrate-question-list">
@@ -584,12 +611,14 @@ function QuestionCard({
       <div className="calibrate-question-card__meta">
         <span>{TYPE_LABEL[question.type] ?? question.type}</span>
         <span className={`calibrate-question-status is-${question.status ?? "approved"}`}>
-          {question.status === "approved" ? "✓ Approved" : question.status ?? "approved"}
+          {question.status === "approved"
+            ? "✓ Approved"
+            : STATUS_LABEL[question.status ?? "generated"]}
         </span>
-        <span>{subjectName ?? "Unknown subject"}</span>
+        <span className="calibrate-question-card__context">{subjectName ?? "Unknown subject"}</span>
         {materialTitle && (
-          <span className="calibrate-question-card__material-tag" title="Source material">
-            📄 {materialTitle}
+          <span className="calibrate-question-card__context calibrate-question-card__material-tag" title="Source material">
+            {materialTitle}
           </span>
         )}
       </div>

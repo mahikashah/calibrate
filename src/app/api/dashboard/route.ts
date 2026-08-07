@@ -235,7 +235,7 @@ export async function GET() {
             totals.questionsAwaitingReview > 0
               ? `${totals.questionsAwaitingReview} question${totals.questionsAwaitingReview === 1 ? "" : "s"} are waiting for your approval.`
               : "Approve some questions so a study session has something to test you on.",
-          ctaLabel: "Review Question Bank",
+          ctaLabel: "Review questions",
           href: "/questions",
         };
       }
@@ -254,7 +254,7 @@ export async function GET() {
           title: "Try another study technique",
           description:
             "There isn't enough comparison yet. Running a different technique makes the next read meaningful.",
-          ctaLabel: "Start a comparison session",
+          ctaLabel: "Try another technique",
           href: "/study",
         };
       }

@@ -38,7 +38,7 @@ export default function StartPage() {
         </div>
 
         <Link href="/dashboard" className="calibrate-start__return">
-          Continue to dashboard <span aria-hidden="true">→</span>
+          View Dashboard <span aria-hidden="true">→</span>
         </Link>
       </div>
     </section>

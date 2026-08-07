@@ -186,7 +186,7 @@ export default function OnboardingPage() {
               <Link href="/subjects" className="calibrate-button calibrate-button-teal">
                 Set up my first subject <span aria-hidden="true">→</span>
               </Link>
-              <Link href="/dashboard" className="calibrate-button calibrate-button-outline">Go to dashboard</Link>
+              <Link href="/dashboard" className="calibrate-button calibrate-button-outline">View Dashboard</Link>
             </div>
             <button className="calibrate-back" onClick={retakeOnboarding}>Retake onboarding</button>
           </div>

@@ -11,7 +11,7 @@ interface Subject {
   color: string;
 }
 
-const SWATCHES = ["#27834F", "#208B8B", "#70B8B8", "#91A88D", "#A16B2B", "#536A55"];
+const SWATCHES = ["#3F817D", "#70B8B8", "#91A88D", "#27834F", "#A16B2B", "#536A55"];
 
 export default function SubjectsPage() {
   const router = useRouter();
@@ -112,8 +112,8 @@ export default function SubjectsPage() {
               </div>
             </div>
             {createError && <p id="subject-create-error" className="calibrate-form-error">{createError}</p>}
-            <button onClick={create} disabled={saving || !name.trim()} className="calibrate-button calibrate-button-teal">
-              {saving ? "Creating subject…" : "Create subject"}
+            <button type="button" onClick={create} disabled={saving || !name.trim()} className="calibrate-button calibrate-button-teal">
+              {saving ? "Creating subject…" : "Continue"}
             </button>
           </div>
         </section>
@@ -121,15 +121,19 @@ export default function SubjectsPage() {
         <>
           <header>
             <p className="label mb-1">Subjects</p>
-            <h1 className="text-2xl font-semibold tracking-tight">What are you studying?</h1>
+            <h1 className="text-3xl font-semibold tracking-tight">What are you studying?</h1>
+            <p className="mt-2 max-w-xl text-sm text-muted">
+              Organize materials and study sessions by class or topic.
+            </p>
           </header>
 
           <section className="card p-6">
             <h2 className="mb-4 text-base font-semibold tracking-tight">Add a subject</h2>
             <div className="flex flex-wrap items-end gap-3">
           <div className="min-w-[200px] flex-1">
-            <label className="label mb-1 block">Name</label>
+            <label className="label mb-1 block" htmlFor="subject-name-existing">Name</label>
             <input
+              id="subject-name-existing"
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && create()}
@@ -143,31 +147,33 @@ export default function SubjectsPage() {
               {SWATCHES.map((c) => (
                 <button
                   key={c}
+                  type="button"
                   onClick={() => setColor(c)}
-                  className={`h-8 w-8 rounded-lg border-2 transition-transform ${
+                  className={`h-9 w-9 rounded-lg border-2 transition-transform focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
                     color === c ? "scale-110 border-ink" : "border-transparent"
                   }`}
                   style={{ background: c }}
-                  aria-label={`color ${c}`}
+                  aria-label={`Use color ${c}`}
+                  aria-pressed={color === c}
                 />
               ))}
             </div>
           </div>
-          <button onClick={create} disabled={saving || !name.trim()} className="btn-primary">
-            {saving ? "Adding…" : "Add subject"}
+          <button type="button" onClick={create} disabled={saving || !name.trim()} className="btn-primary min-h-11">
+            {saving ? "Adding…" : "Continue"}
           </button>
             </div>
-            {createError && <p className="calibrate-form-error mt-3">{createError}</p>}
+            {createError && <p className="calibrate-form-error mt-3" role="alert">{createError}</p>}
           </section>
 
           {deleteError && (
-            <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-950 dark:text-red-300">
+            <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
               {deleteError}
             </div>
           )}
 
           <section>
-            <h2 className="mb-4 text-lg font-semibold tracking-tight">
+            <h2 className="mb-4 font-serif text-lg font-semibold tracking-tight">
               Your subjects
               <span className="ml-2 stat text-sm font-normal text-muted">{subjects.length}</span>
             </h2>
@@ -184,13 +190,14 @@ export default function SubjectsPage() {
                     {counts[s.id]?.sessions ?? 0} sessions · {counts[s.id]?.questions ?? 0} questions
                   </p>
                   <Link href={`/subjects/${s.id}/materials/new`} className="mt-2 inline-block text-xs font-semibold text-brand-ink underline underline-offset-2">
-                    Add study material
+                    Add material
                   </Link>
                 </div>
                 <button
+                  type="button"
                   onClick={() => deleteSubject(s.id, s.name)}
                   aria-label={`Delete ${s.name}`}
-                  className="ml-auto shrink-0 rounded p-1.5 text-muted opacity-0 transition-opacity hover:text-red-600 focus:opacity-100 group-hover:opacity-100 [.card:hover_&]:opacity-100"
+                  className="ml-auto shrink-0 rounded p-2 text-muted opacity-100 transition-colors hover:text-red-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand sm:opacity-0 sm:[.card:hover_&]:opacity-100 sm:focus:opacity-100"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="3 6 5 6 21 6" />

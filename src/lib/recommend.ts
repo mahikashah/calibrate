@@ -142,7 +142,7 @@ export function currentRecommendation(
       body: subject
         ? `You have ${subject.totalSessions} checked session${subject.totalSessions === 1 ? "" : "s"} in ${subject.subjectName}. Try another technique or repeat this one before drawing a conclusion.`
         : "Complete a checked study session to begin your first comparison.",
-      action: subject ? "Try another technique" : "Start a session",
+      action: subject ? "Try another technique" : "Start study session",
     };
   }
   if (subject.confidence === "clear") {

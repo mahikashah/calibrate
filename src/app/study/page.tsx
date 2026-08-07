@@ -141,23 +141,27 @@ function StudyPageContent() {
 
   if (loading) return <div className="animate-rise mx-auto max-w-2xl">Loading your study session…</div>;
   if (error && !started) return <Message title="We couldn’t open this study session." detail={error} />;
-  if (!subjects.length) return <Message title="Add a subject first" detail="You need at least one subject before you can start a study session." href="/subjects" action="Create a subject" />;
+  if (!subjects.length) return <Message title="Add a subject first" detail="You need at least one subject before you can start a study session." href="/subjects" action="Add a subject" />;
   if (isRealContext && !questions.length) {
-    return <Message title="No approved questions are ready for this session." detail="Review and approve questions in Question Bank before starting this material." href={`/questions?subjectId=${encodeURIComponent(requestedSubject ?? "")}${requestedMaterial ? `&materialId=${encodeURIComponent(requestedMaterial)}` : ""}`} action="Back to Question Bank" />;
+    return <Message title="No approved questions yet" detail="Review and approve questions in Question Bank before starting this material." href={`/questions?subjectId=${encodeURIComponent(requestedSubject ?? "")}${requestedMaterial ? `&materialId=${encodeURIComponent(requestedMaterial)}` : ""}`} action="Review questions" />;
   }
   if (!isRealContext) return <PresentationSession subjects={subjects} subjectId={subjectId} setSubjectId={setSubjectId} technique={technique} setTechnique={setTechnique} recommended={recommended} />;
   if (sessionResult) return <Completion result={sessionResult} technique={technique} />;
   if (!started) {
     return <div className="animate-rise mx-auto max-w-2xl space-y-6">
-      <header><p className="label mb-1">Study session</p><h1 className="text-3xl font-semibold tracking-tight">Ready to focus?</h1></header>
+      <header>
+        <p className="label mb-1">Study</p>
+        <h1 className="text-3xl font-semibold tracking-tight">Ready to focus?</h1>
+        <p className="mt-2 text-sm text-muted">One technique, approved questions only, then a quick check-in.</p>
+      </header>
       <section className="card space-y-4 p-6">
-        <div><p className="label">Subject</p><p className="text-xl font-semibold">{subject?.name}</p></div>
+        <div><p className="label">Subject</p><p className="font-serif text-xl font-semibold">{subject?.name}</p></div>
         {material && <div><p className="label">Material</p><p className="text-sm text-muted">{material.title}</p></div>}
         <p className="text-sm text-muted">{questions.length} approved question{questions.length === 1 ? "" : "s"} available. You’ll see one at a time.</p>
-        {recommended && <button className="w-full rounded-lg border border-brand/25 bg-brand-soft px-3 py-2 text-left text-sm text-brand-ink" onClick={() => setTechnique(recommended.id as TechniqueId)}><strong>Suggested: {recommended.label}</strong> — {recommended.why}</button>}
+        {recommended && <button type="button" className="w-full rounded-lg border border-brand/25 bg-brand-soft px-3 py-3 text-left text-sm text-brand-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand" onClick={() => setTechnique(recommended.id as TechniqueId)}><strong>Suggested: {recommended.label}</strong> — {recommended.why}</button>}
       </section>
       <TechniquePicker technique={technique} setTechnique={setTechnique} />
-      {technique === "rereading" && material ? <section className="card p-6"><p className="label">Re-reading control</p><p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-ink">{material.content}</p><button className="btn-primary mt-5" onClick={begin}>Done reading</button></section> : <button className="btn-primary w-full py-3" onClick={begin}>Start study session</button>}
+      {technique === "rereading" && material ? <section className="card p-6"><p className="label">Re-reading control</p><p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-ink">{material.content}</p><button type="button" className="btn-primary mt-5 min-h-11" onClick={begin}>Done reading</button></section> : <button type="button" className="btn-primary w-full min-h-12 py-3" onClick={begin}>Start study session</button>}
     </div>;
   }
   if (technique === "rereading") {
@@ -167,34 +171,202 @@ function StudyPageContent() {
   const choices = parseAnswerChoices(current.answerChoices);
   const invalidMcq = current.type === "mcq" && !isValidMcq(current.answer, choices);
   const automatic = current.type === "mcq" || current.type === "fill_in_blank";
-  return <main className="animate-rise mx-auto max-w-2xl space-y-5 py-4">
-    <header className="flex items-center justify-between gap-3"><div><p className="label">Study session · {techniqueLabel(technique)}</p><p className="text-sm text-muted">Question {index + 1} of {questions.length}</p></div><div className="stat rounded-full border border-line bg-surface px-3 py-1 text-lg">{displayTime}</div></header>
-    <div className="h-1 overflow-hidden rounded bg-line" role="progressbar" aria-label="Study progress" aria-valuenow={index + 1} aria-valuemin={1} aria-valuemax={questions.length}><div className="h-full bg-brand" style={{ width: `${((index + 1) / questions.length) * 100}%` }} /></div>
-    <section className="card p-6 sm:p-8"><p className="label">{questionTypeLabel(current.type)}</p><h1 className="mt-3 text-2xl font-semibold leading-tight">{current.prompt}</h1>
-      {!revealed && current.type === "mcq" && !invalidMcq && <fieldset className="mt-6 space-y-3"><legend className="sr-only">Choose one answer</legend>{choices.map((choice) => <label key={choice} className={`flex cursor-pointer gap-3 rounded-lg border p-4 ${selectedChoice === choice ? "border-brand bg-brand-soft" : "border-line"}`}><input type="radio" name="answer" value={choice} checked={selectedChoice === choice} onChange={() => setSelectedChoice(choice)} />{choice}</label>)}</fieldset>}
-      {!revealed && invalidMcq && <div className="mt-6 rounded-lg border border-line bg-paper p-4 text-sm"><p className="font-medium">This question needs review.</p><p className="mt-1 text-muted">Its answer choices are incomplete, so it can’t be graded here.</p><div className="mt-3 flex gap-3"><button className="btn-primary" onClick={() => advance(false)}>Skip question</button><Link className="text-brand hover:underline self-center" href="/questions">Back to Question Bank</Link></div></div>}
-      {!revealed && current.type === "feynman" && <><label className="label mt-6 block" htmlFor="study-answer">Explain it in your own words</label><textarea id="study-answer" value={answer} onChange={(event) => setAnswer(event.target.value)} rows={7} className="field resize-y" placeholder="Explain it in your own words…" /></>}
-      {!revealed && current.type !== "mcq" && current.type !== "feynman" && <><label className="label mt-6 block" htmlFor="study-answer">Your answer</label><input id="study-answer" value={answer} onChange={(event) => setAnswer(event.target.value)} className="field" /></>}
-      {!revealed && !invalidMcq ? <button className="btn-primary mt-6" disabled={current.type === "mcq" ? !selectedChoice : !answer.trim()} onClick={reveal}>Submit and reveal</button> : null}
-      {revealed && <Reveal question={current} response={current.type === "mcq" ? selectedChoice : answer} automatic={automatic} assessment={selfAssessment} setAssessment={setSelfAssessment} onNext={advance} saving={saving || completionPending} />}
-    </section>
-    {error && <p className="text-sm text-red-700" role="alert">{error}</p>}
-  </main>;
+  return (
+    <main className="animate-rise mx-auto max-w-2xl space-y-5 py-4">
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="label">Study · {techniqueLabel(technique)}</p>
+          <p className="mt-1 font-serif text-2xl font-semibold tracking-tight">
+            Question {index + 1} of {questions.length}
+          </p>
+        </div>
+        <div className="stat rounded-full border border-line bg-surface px-4 py-1.5 text-lg" aria-label={`Elapsed time ${displayTime}`}>
+          {displayTime}
+        </div>
+      </header>
+      <div
+        className="h-1.5 overflow-hidden rounded bg-line"
+        role="progressbar"
+        aria-label="Study progress"
+        aria-valuenow={index + 1}
+        aria-valuemin={1}
+        aria-valuemax={questions.length}
+      >
+        <div className="h-full bg-brand" style={{ width: `${((index + 1) / questions.length) * 100}%` }} />
+      </div>
+      <section className="card p-6 sm:p-8">
+        <p className="label">{questionTypeLabel(current.type)}</p>
+        <h1 className="mt-3 text-2xl font-semibold leading-tight break-words">{current.prompt}</h1>
+        {!revealed && current.type === "mcq" && !invalidMcq && (
+          <fieldset className="mt-6 space-y-3">
+            <legend className="sr-only">Choose one answer</legend>
+            {choices.map((choice) => (
+              <label
+                key={choice}
+                className={`flex min-h-14 cursor-pointer items-start gap-3 rounded-lg border p-4 text-sm focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-brand ${
+                  selectedChoice === choice ? "border-brand bg-brand-soft" : "border-line"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="answer"
+                  value={choice}
+                  checked={selectedChoice === choice}
+                  onChange={() => setSelectedChoice(choice)}
+                  className="mt-1"
+                />
+                <span className="break-words">{choice}{selectedChoice === choice ? " · selected" : ""}</span>
+              </label>
+            ))}
+          </fieldset>
+        )}
+        {!revealed && invalidMcq && (
+          <div className="mt-6 rounded-lg border border-line bg-paper p-4 text-sm">
+            <p className="font-medium">This question needs review.</p>
+            <p className="mt-1 text-muted">Its answer choices are incomplete, so it can’t be graded here.</p>
+            <div className="mt-3 flex flex-wrap gap-3">
+              <button type="button" className="btn-primary min-h-11" onClick={() => advance(false)}>Skip question</button>
+              <Link className="self-center text-sm font-medium text-brand hover:underline" href="/questions">Review questions</Link>
+            </div>
+          </div>
+        )}
+        {!revealed && current.type === "feynman" && (
+          <>
+            <label className="label mt-6 block" htmlFor="study-answer">Explain it in your own words</label>
+            <textarea id="study-answer" value={answer} onChange={(event) => setAnswer(event.target.value)} rows={7} className="field mt-2 min-h-40 resize-y" placeholder="Explain it in your own words…" />
+          </>
+        )}
+        {!revealed && current.type !== "mcq" && current.type !== "feynman" && (
+          <>
+            <label className="label mt-6 block" htmlFor="study-answer">Your answer</label>
+            <input id="study-answer" value={answer} onChange={(event) => setAnswer(event.target.value)} className="field mt-2 min-h-12" />
+          </>
+        )}
+        {!revealed && !invalidMcq ? (
+          <button
+            type="button"
+            className="btn-primary mt-6 min-h-12 w-full sm:w-auto"
+            disabled={current.type === "mcq" ? !selectedChoice : !answer.trim()}
+            onClick={reveal}
+          >
+            Submit and reveal
+          </button>
+        ) : null}
+        {revealed && (
+          <Reveal
+            question={current}
+            response={current.type === "mcq" ? selectedChoice : answer}
+            automatic={automatic}
+            assessment={selfAssessment}
+            setAssessment={setSelfAssessment}
+            onNext={advance}
+            saving={saving || completionPending}
+          />
+        )}
+      </section>
+      {error && <p className="text-sm text-red-700" role="alert">{error}</p>}
+    </main>
+  );
 }
 
 function Reveal({ question, response, automatic, assessment, setAssessment, onNext, saving }: { question: StudyQuestion; response: string; automatic: boolean; assessment: boolean | null; setAssessment: (value: boolean) => void; onNext: (value: boolean) => void; saving: boolean }) {
   const correct = assessment === true;
-  return <div className="mt-6 space-y-4 border-t border-line pt-5" aria-live="polite"><p className={`font-semibold ${correct ? "text-clear" : "text-ink"}`}>{automatic ? (correct ? "Correct" : "Not quite") : "Check your response"}</p><div><p className="label">Your answer</p><p className="whitespace-pre-wrap text-sm">{response}</p></div><div className="rounded-lg bg-paper p-4"><p className="label">Suggested answer</p><p className="mt-1 whitespace-pre-wrap text-sm">{question.answer}</p></div>{question.sourceExcerpt && <details><summary className="cursor-pointer text-sm text-brand">View supporting notes</summary><p className="mt-2 whitespace-pre-wrap rounded-lg border border-line p-3 text-sm text-muted">{question.sourceExcerpt}</p></details>}{!automatic && <div><p className="mb-2 text-sm font-medium">How did that feel?</p><div className="flex gap-3"><button className={assessment === true ? "btn-primary" : "btn-ghost"} onClick={() => setAssessment(true)}>{question.type === "feynman" ? "Good" : "Got it"}</button><button className={assessment === false ? "btn-primary" : "btn-ghost"} onClick={() => setAssessment(false)}>{question.type === "feynman" ? "Needs work" : "Missed it"}</button></div></div>}<button className="btn-primary" disabled={assessment === null || saving} onClick={() => assessment !== null && onNext(assessment)}>{saving ? "Saving session…" : "Next question"}</button></div>;
+  return (
+    <div className="mt-6 space-y-4 border-t border-line pt-5" aria-live="polite">
+      <p className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm font-semibold ${
+        automatic
+          ? correct
+            ? "border-sage/50 bg-sage-soft text-sage-ink"
+            : "border-emerging/40 bg-[#FFF3E7] text-[#9A5B19]"
+          : "border-line bg-paper text-ink"
+      }`}>
+        {automatic ? (correct ? "Correct" : "Needs Work") : "Check your response"}
+      </p>
+      <div>
+        <p className="label">Your answer</p>
+        <p className="whitespace-pre-wrap break-words text-sm">{response}</p>
+      </div>
+      <div className="rounded-lg bg-paper p-4">
+        <p className="label">Suggested answer</p>
+        <p className="mt-1 whitespace-pre-wrap break-words text-sm">{question.answer}</p>
+      </div>
+      {question.sourceExcerpt && (
+        <details>
+          <summary className="cursor-pointer text-sm font-medium text-brand">View supporting notes</summary>
+          <p className="mt-2 whitespace-pre-wrap break-words rounded-lg border border-line p-3 text-sm text-muted">{question.sourceExcerpt}</p>
+        </details>
+      )}
+      {!automatic && (
+        <div>
+          <p className="mb-2 text-sm font-medium">How did that feel?</p>
+          <div className="flex flex-wrap gap-3">
+            <button type="button" className={`min-h-11 ${assessment === true ? "btn-primary" : "btn-ghost"}`} onClick={() => setAssessment(true)}>
+              Correct
+            </button>
+            <button type="button" className={`min-h-11 ${assessment === false ? "btn-primary" : "btn-ghost"}`} onClick={() => setAssessment(false)}>
+              Needs Work
+            </button>
+          </div>
+        </div>
+      )}
+      <button
+        type="button"
+        className="btn-primary min-h-12 w-full sm:w-auto"
+        disabled={assessment === null || saving}
+        onClick={() => assessment !== null && onNext(assessment)}
+      >
+        {saving ? "Saving session…" : "Next question"}
+      </button>
+    </div>
+  );
 }
 
 function TechniquePicker({ technique, setTechnique }: { technique: TechniqueId; setTechnique: (value: TechniqueId) => void }) {
-  return <section><p className="label mb-2">Technique</p><div className="grid gap-2 sm:grid-cols-2">{TECHNIQUES.map((item) => <button key={item.id} onClick={() => setTechnique(item.id)} className={`index-card p-4 text-left ${technique === item.id ? "ring-2 ring-brand" : ""}`}><strong className="text-sm">{item.label}</strong><p className="mt-1 text-xs text-muted">{item.blurb}</p></button>)}</div></section>;
+  return (
+    <section>
+      <p className="label mb-2">Technique</p>
+      <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Study technique">
+        {TECHNIQUES.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            role="radio"
+            aria-checked={technique === item.id}
+            onClick={() => setTechnique(item.id)}
+            className={`index-card min-h-[5.5rem] p-4 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
+              technique === item.id ? "ring-2 ring-brand" : ""
+            }`}
+          >
+            <strong className="text-sm">{item.label}{technique === item.id ? " · selected" : ""}</strong>
+            <p className="mt-1 text-xs text-muted">{item.blurb}</p>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
 }
 
 function Completion({ result, technique }: { result: SessionResult; technique: TechniqueId }) {
   const minutes = Math.max(1, Math.round(result.elapsed / 60));
   const continueHref = result.sessionId ? `/feedback?sessionId=${encodeURIComponent(result.sessionId)}` : "/study";
-  return <div className="animate-rise mx-auto max-w-lg text-center"><div className="card graph-paper p-8"><p className="label">Session complete</p><h1 className="mt-2 text-3xl font-semibold">Nice focused work.</h1><dl className="mt-6 grid grid-cols-2 gap-4 text-left text-sm"><div><dt className="label">Questions reviewed</dt><dd className="stat text-xl">{result.attempted}</dd></div><div><dt className="label">Got it / correct</dt><dd className="stat text-xl">{result.correct}</dd></div><div><dt className="label">Needs work</dt><dd className="stat text-xl">{result.attempted - result.correct}</dd></div><div><dt className="label">Focused time</dt><dd className="stat text-xl">{minutes}m</dd></div></dl><p className="mt-5 text-sm text-muted">Technique: {techniqueLabel(technique)}</p><Link href={continueHref} className="btn-primary mt-6 inline-block">Continue</Link></div></div>;
+  return (
+    <div className="animate-rise mx-auto max-w-lg text-center">
+      <div className="card graph-paper p-8">
+        <p className="label">Session complete</p>
+        <h1 className="mt-2 text-3xl font-semibold">Nice focused work.</h1>
+        <dl className="mt-6 grid grid-cols-2 gap-4 text-left text-sm">
+          <div><dt className="label">Questions reviewed</dt><dd className="stat text-xl">{result.attempted}</dd></div>
+          <div><dt className="label">Correct</dt><dd className="stat text-xl">{result.correct}</dd></div>
+          <div><dt className="label">Needs Work</dt><dd className="stat text-xl">{result.attempted - result.correct}</dd></div>
+          <div><dt className="label">Focused time</dt><dd className="stat text-xl">{minutes}m</dd></div>
+        </dl>
+        <p className="mt-5 text-sm text-muted">Technique: {techniqueLabel(technique)}</p>
+        <Link href={continueHref} className="btn-primary mt-6 inline-flex min-h-12 items-center px-6">
+          Continue
+        </Link>
+      </div>
+    </div>
+  );
 }
 
 function Message({ title, detail, href = "/questions", action = "Back to Question Bank" }: { title: string; detail: string; href?: string; action?: string }) {

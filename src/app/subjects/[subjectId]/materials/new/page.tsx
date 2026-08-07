@@ -190,7 +190,7 @@ export default function AddMaterialPage() {
           /* ── Generating state ───────────────────────────────────────── */
           <div className="calibrate-material-success" role="status" aria-live="polite">
             <p className="label">Working…</p>
-            <h2>Generating questions from your material…</h2>
+            <h2>Generating questions…</h2>
             <p>This may take a few moments.</p>
           </div>
         ) : (
@@ -255,7 +255,7 @@ export default function AddMaterialPage() {
                     onClick={() => void generateFromPdf()}
                     disabled={generating}
                   >
-                    Upload &amp; generate questions
+                    Generate questions
                   </button>
                 )}
               </div>
@@ -302,15 +302,23 @@ export default function AddMaterialPage() {
                   onClick={() => void generateFromNotes()}
                   disabled={generating || !title.trim() || !content.trim()}
                 >
-                  Save &amp; generate questions
+                  Generate questions
                 </button>
               </div>
             )}
 
             {error && (
-              <p className="calibrate-form-error mt-4" role="alert">
-                {error}
-              </p>
+              <div className="mt-4 space-y-3" role="alert">
+                <p className="calibrate-form-error">{error}</p>
+                <button
+                  type="button"
+                  className="calibrate-button calibrate-button-outline"
+                  onClick={() => void (source === "pdf" ? generateFromPdf() : generateFromNotes())}
+                  disabled={generating || (source === "pdf" ? !file : !title.trim() || !content.trim())}
+                >
+                  Try again
+                </button>
+              </div>
             )}
           </>
         )}

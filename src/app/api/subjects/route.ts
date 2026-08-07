@@ -32,7 +32,7 @@ export async function POST(req: Request) {
       id: newId("sub"),
       userId,
       name: body.name.trim(),
-      color: body.color ?? "#6366f1",
+      color: body.color ?? "#3F817D",
       createdAt: new Date().toISOString(),
     };
     db.insert(subjects).values(row).run();

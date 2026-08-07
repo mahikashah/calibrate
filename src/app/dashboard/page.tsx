@@ -86,7 +86,9 @@ export default function Dashboard() {
     <div className="animate-rise space-y-7">
       <header className="max-w-2xl">
         <p className="label mb-2">Dashboard</p>
-        <h1 className="text-3xl font-semibold tracking-tight">Find what actually works for you</h1>
+        <h1 className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+          Find what actually works for you
+        </h1>
         <p className="mt-3 text-sm leading-relaxed text-muted">
           One next step at a time, backed by your own study results — never a fixed label.
         </p>
@@ -95,20 +97,22 @@ export default function Dashboard() {
       {/* 1 — Primary next action: the most prominent thing on the page. */}
       <section className="graph-paper card overflow-hidden">
         <div className="p-6 sm:p-8">
-          <p className="label mb-2">Next step</p>
-          <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">{nextAction.title}</h2>
+          <p className="label mb-2">What should I do next?</p>
+          <h2 className="font-serif text-2xl font-semibold tracking-tight sm:text-3xl">
+            {nextAction.title}
+          </h2>
           <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted">{nextAction.description}</p>
-          <Link href={nextAction.href} className="btn-primary mt-6">
-            {nextAction.ctaLabel} →
+          <Link href={nextAction.href} className="btn-primary mt-6 min-h-11 px-5">
+            {nextAction.ctaLabel}
           </Link>
         </div>
       </section>
 
       <div className="grid gap-4 lg:grid-cols-[1.35fr_1fr]">
         {/* 2 — Current recommendation (reused from the Insights engine). */}
-        <section className="rounded-xl border border-[#B9CCB5] bg-[#F3F8F0] p-6">
-          <p className="label text-[#4D6E52]">Current recommendation</p>
-          <h2 className="mt-2 text-xl font-semibold tracking-tight">{recommendation.title}</h2>
+        <section className="card border-sage/40 bg-sage-soft/60 p-6">
+          <p className="label text-sage-ink">Current recommendation</p>
+          <h2 className="mt-2 font-serif text-xl font-semibold tracking-tight">{recommendation.title}</h2>
           <p className="mt-3 max-w-xl text-sm leading-relaxed text-ink">{recommendation.body}</p>
           {data.focusSubject && (
             <p className="mt-3 text-xs text-muted">
@@ -117,19 +121,19 @@ export default function Dashboard() {
           )}
           <div className="mt-5 flex flex-wrap items-center gap-4">
             <Link href="/insights" className="text-sm font-medium text-brand hover:underline">
-              View why →
+              View Insights
             </Link>
             {!onboarding.completed && (
-              <Link href="/onboarding" className="text-sm font-medium text-brand hover:underline">
-                Set a starting hypothesis →
+              <Link href="/onboarding" className="text-sm font-medium text-muted hover:text-brand-ink hover:underline">
+                Set a starting hypothesis
               </Link>
             )}
           </div>
         </section>
 
         {/* 3 — Evidence progress, real evidence only. */}
-        <section className="rounded-xl border border-line bg-white p-6">
-          <p className="label">Evidence collected</p>
+        <section className="card p-6">
+          <p className="label">Evidence progress</p>
           <div className="mt-4 space-y-3">
             <ProgressRow
               value={evidenceProgress.completedSessions}
@@ -145,25 +149,25 @@ export default function Dashboard() {
             />
           </div>
           <p className="mt-4 border-t border-line pt-3 text-xs leading-relaxed text-muted">
-            Counts your own sessions only. Example presentation data never appears here.
+            Your own completed sessions only. Example presentation data stays separate.
           </p>
         </section>
       </div>
 
       {/* 4 — Latest real session. */}
-      <section className="rounded-xl border border-line bg-white p-6">
+      <section className="card p-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <p className="label">Latest session</p>
-            <h2 className="mt-1 text-xl font-semibold tracking-tight">What happened last time</h2>
+            <p className="label">Recent session</p>
+            <h2 className="mt-1 font-serif text-xl font-semibold tracking-tight">What happened last time</h2>
           </div>
           <Link href="/insights" className="text-sm font-medium text-brand hover:underline">
-            Full insights →
+            View Insights
           </Link>
         </div>
 
         {recentSession ? (
-          <article className="mt-5 rounded-lg border border-line p-4">
+          <article className="mt-5 rounded-lg border border-line bg-paper/50 p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="font-semibold text-ink">{recentSession.techniqueLabel}</p>
@@ -174,7 +178,7 @@ export default function Dashboard() {
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-[#EEF6F5] px-2.5 py-1 text-xs font-semibold text-[#167978]">
+                <span className="rounded-full bg-brand-soft px-2.5 py-1 text-xs font-semibold text-brand-ink">
                   {recentSession.performance === null
                     ? "No outcome check"
                     : `${recentSession.performance}/100`}
@@ -183,7 +187,7 @@ export default function Dashboard() {
                   <span
                     className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
                       recentSession.feedbackOverall === "good"
-                        ? "bg-[#F0F7EC] text-[#4D6E52]"
+                        ? "bg-sage-soft text-sage-ink"
                         : "bg-[#FFF3E7] text-[#9A5B19]"
                     }`}
                   >
@@ -214,33 +218,32 @@ export default function Dashboard() {
                 href="/questions"
                 className="mt-3 inline-flex text-sm font-medium text-brand hover:underline"
               >
-                Review Question Bank quality →
+                Review questions
               </Link>
             )}
           </article>
         ) : (
           <p className="mt-4 text-sm text-muted">
-            No completed sessions yet. Your first one shows up here with its result and any context
-            you add.
+            No completed sessions yet. Start a study session to begin collecting evidence.
           </p>
         )}
       </section>
 
       {/* 5 — Subjects, compact. */}
-      <section className="rounded-xl border border-line bg-white p-6">
+      <section className="card p-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <p className="label">Subjects</p>
-            <h2 className="mt-1 text-xl font-semibold tracking-tight">What you're studying</h2>
+            <h2 className="mt-1 font-serif text-xl font-semibold tracking-tight">What you&apos;re studying</h2>
           </div>
           <Link href="/subjects" className="text-sm font-medium text-brand hover:underline">
-            View all subjects →
+            View subjects
           </Link>
         </div>
         {subjects.length > 0 ? (
           <ul className="mt-5 grid gap-3 sm:grid-cols-2">
             {subjects.slice(0, 4).map((subject) => (
-              <li key={subject.id} className="rounded-lg border border-line p-4">
+              <li key={subject.id} className="rounded-lg border border-line bg-paper/40 p-4">
                 <div className="flex items-center gap-2">
                   <span
                     className="h-2.5 w-2.5 shrink-0 rounded-full"
@@ -255,8 +258,8 @@ export default function Dashboard() {
                   {plural(subject.completedSessions, "session")}
                 </p>
                 {subject.questionsAwaitingReview > 0 && (
-                  <p className="mt-1 text-xs text-[#9A5B19]">
-                    {plural(subject.questionsAwaitingReview, "question")} awaiting review
+                  <p className="mt-1 text-xs text-emerging">
+                    {plural(subject.questionsAwaitingReview, "question")} waiting for review
                   </p>
                 )}
               </li>
@@ -264,16 +267,16 @@ export default function Dashboard() {
           </ul>
         ) : (
           <p className="mt-4 text-sm text-muted">
-            No subjects yet — creating one is your next step above.
+            No subjects yet — create one from the next step above.
           </p>
         )}
       </section>
 
       {/* 6 — Shortcuts. */}
       <section className="grid gap-3 sm:grid-cols-3">
-        <Shortcut href="/questions" title="Question Bank" hint="Review and approve questions" />
-        <Shortcut href="/study" title="Study" hint="Run a session with a technique" />
-        <Shortcut href="/insights" title="Full insights" hint="See the evidence behind it" />
+        <Shortcut href="/questions" title="Review questions" hint="Approve questions for study" />
+        <Shortcut href="/study" title="Start study session" hint="Run a focused technique test" />
+        <Shortcut href="/insights" title="View Insights" hint="See the evidence behind it" />
       </section>
     </div>
   );

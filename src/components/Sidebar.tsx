@@ -4,53 +4,69 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const NAV = [
-  { href: "/dashboard", label: "Dashboard", hint: "01" },
-  { href: "/onboarding", label: "Onboarding", hint: "02" },
-  { href: "/study", label: "Study session", hint: "03" },
-  { href: "/questions", label: "Question bank", hint: "04" },
-  { href: "/insights", label: "Insights", hint: "05" },
-  { href: "/subjects", label: "Subjects", hint: "06" },
-];
+  { href: "/dashboard", label: "Dashboard" },
+  { href: "/subjects", label: "Subjects" },
+  { href: "/questions", label: "Question Bank" },
+  { href: "/study", label: "Study" },
+  { href: "/insights", label: "Insights" },
+] as const;
+
+function CalibrateMark({ size = "md" }: { size?: "sm" | "md" }) {
+  return (
+    <span aria-hidden="true" className={`calibrate-bar-mark${size === "sm" ? " calibrate-bar-mark--sm" : ""}`}>
+      <span />
+      <span />
+      <span />
+    </span>
+  );
+}
+
+function isActive(path: string, href: string) {
+  if (href === "/dashboard") return path === "/dashboard";
+  return path === href || path.startsWith(`${href}/`);
+}
 
 export function Sidebar() {
   const path = usePathname();
   return (
-    <aside className="flex h-full w-full flex-col gap-1 md:w-64">
-      <Link href="/dashboard" className="mb-6 flex items-center gap-2.5 px-2">
-        <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand text-white shadow-card">
-          <span className="font-mono text-sm font-bold">C</span>
-        </span>
-        <span className="text-[15px] font-semibold tracking-tight">
+    <aside className="flex h-full w-full flex-col gap-1 md:w-60">
+      <Link href="/dashboard" className="mb-7 flex items-center gap-2.5 px-2">
+        <CalibrateMark />
+        <span className="font-serif text-[1.05rem] font-semibold tracking-tight text-ink">
           Calibrate
         </span>
       </Link>
 
-      <nav className="flex flex-col gap-0.5">
+      <nav className="flex flex-col gap-0.5" aria-label="Main">
         {NAV.map((item) => {
-          const active = path === item.href || (item.href !== "/dashboard" && path.startsWith(item.href));
+          const active = isActive(path, item.href);
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
-                active ? "bg-brand-soft text-brand-ink" : "text-muted hover:bg-brand-soft/60 hover:text-ink"
+              aria-current={active ? "page" : undefined}
+              className={`rounded-lg border-l-[3px] px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
+                active
+                  ? "border-brand bg-brand-soft text-brand-ink"
+                  : "border-transparent text-muted hover:bg-brand-soft/50 hover:text-ink"
               }`}
             >
-              <span className={`font-mono text-[11px] ${active ? "text-brand" : "text-muted/60"}`}>
-                {item.hint}
-              </span>
-              <span className="font-medium">{item.label}</span>
+              {item.label}
             </Link>
           );
         })}
       </nav>
 
-      <div className="mt-auto hidden px-3 pt-6 md:block">
-        <p className="label mb-1">Method</p>
+      <div className="mt-auto space-y-4 px-3 pt-8">
         <p className="text-xs leading-relaxed text-muted">
-          No learning-style labels. Calibrate runs techniques as experiments and lets your own
-          data pick the winner.
+          Test techniques as experiments. Let your own results decide what works.
         </p>
+        <Link
+          href="/onboarding"
+          className="block text-xs font-medium text-muted underline decoration-line underline-offset-4 transition-colors hover:text-brand-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+        >
+          Retake onboarding
+        </Link>
       </div>
     </aside>
   );
@@ -59,21 +75,28 @@ export function Sidebar() {
 export function MobileNav() {
   const path = usePathname();
   return (
-    <div className="mb-4 flex items-center gap-3 md:hidden">
-      <Link href="/dashboard" className="flex items-center gap-2">
-        <span className="grid h-7 w-7 place-items-center rounded-lg bg-brand text-white">
-          <span className="font-mono text-xs font-bold">C</span>
-        </span>
-        <span className="text-sm font-semibold tracking-tight">Calibrate</span>
-      </Link>
-      <nav className="-mx-1 flex flex-1 gap-1 overflow-x-auto px-1">
+    <div className="mb-5 space-y-3 md:hidden">
+      <div className="flex items-center justify-between gap-3">
+        <Link href="/dashboard" className="flex items-center gap-2">
+          <CalibrateMark size="sm" />
+          <span className="font-serif text-sm font-semibold tracking-tight">Calibrate</span>
+        </Link>
+        <Link
+          href="/onboarding"
+          className="text-xs font-medium text-muted underline decoration-line underline-offset-4"
+        >
+          Retake onboarding
+        </Link>
+      </div>
+      <nav className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1" aria-label="Main">
         {NAV.map((item) => {
-          const active = path === item.href || (item.href !== "/dashboard" && path.startsWith(item.href));
+          const active = isActive(path, item.href);
           return (
             <Link
               key={item.href}
               href={item.href}
-                className={`whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium ${
+              aria-current={active ? "page" : undefined}
+              className={`min-h-10 shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
                 active ? "bg-brand-soft text-brand-ink" : "text-muted"
               }`}
             >
