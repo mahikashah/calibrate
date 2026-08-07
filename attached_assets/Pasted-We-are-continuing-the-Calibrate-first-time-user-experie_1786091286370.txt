@@ -1,0 +1,645 @@
+We are continuing the Calibrate first-time user experience milestone.
+
+IMPORTANT CONTEXT
+
+Before making changes, read:
+
+- replit.md
+- docs/CALIBRATE_MASTER_CONTEXT.md
+
+The following work has ALREADY been completed:
+
+1. The approved Calibrate /start page exists.
+2. The new screenshot-based /how-it-works page exists.
+3. /how-it-works already contains the full:
+
+01 → 02 → 03 → 04 → 05
+
+visual walkthrough using:
+
+/how-it-works/step1.png
+/how-it-works/step2.png
+/how-it-works/step3.png
+/how-it-works/step4_1.png
+/how-it-works/step4_2.png
+/how-it-works/step5.png
+
+DO NOT redesign or replace the new /how-it-works page.
+
+Preserve its:
+
+- five-step structure
+- screenshots
+- copy
+- layout
+- styling
+- responsive behavior
+- screenshot asset paths
+
+Only change its navigation behavior if needed for the routing requirements below.
+
+--------------------------------------------------
+GOAL
+--------------------------------------------------
+
+Clean up the Calibrate first-time user journey so it becomes:
+
+/
+↓
+/start
+↓
+Start Calibrating
+↓
+/how-it-works
+↓
+Start onboarding
+↓
+/onboarding
+↓
+Question 1
+↓
+Question 2
+↓
+Question 3...
+↓
+Starting Hypothesis
+↓
+first subject / first session setup
+
+There must be only ONE How It Works experience.
+
+The new screenshot-based /how-it-works page is now the canonical How It Works experience.
+
+The old onboarding explainer / old How It Works screens should no longer appear in the normal user journey.
+
+--------------------------------------------------
+1. BASE URL SHOULD OPEN START
+--------------------------------------------------
+
+For the current development milestone:
+
+Visiting:
+
+/
+
+must immediately redirect to:
+
+/start
+
+The base Replit URL should therefore open the Calibrate Start screen automatically.
+
+Example:
+
+https://...replit.dev/
+
+→ /start
+
+Do not show the Dashboard at / anymore.
+
+IMPORTANT:
+
+Do NOT delete the existing Dashboard.
+
+The Dashboard must remain available at a separate route.
+
+--------------------------------------------------
+2. CREATE / PRESERVE A REAL DASHBOARD ROUTE
+--------------------------------------------------
+
+Because / will now redirect to /start, make the existing Dashboard accessible at:
+
+/dashboard
+
+IMPORTANT:
+
+Do NOT redesign the Dashboard.
+
+Do NOT rebuild its functionality.
+
+Do NOT change its data.
+
+Reuse the existing Dashboard implementation as much as possible.
+
+If the current Dashboard UI is implemented directly in the root / page, refactor only as much as necessary so the same Dashboard can be rendered at:
+
+/dashboard
+
+Avoid duplicating large amounts of Dashboard code.
+
+The goal is simply:
+
+/ → Start flow
+
+/dashboard → existing Dashboard
+
+--------------------------------------------------
+3. START PAGE PRIMARY FLOW
+--------------------------------------------------
+
+The approved /start page should remain visually unchanged except for the navigation changes below.
+
+The main CTA:
+
+“Start Calibrating”
+
+must route to:
+
+/how-it-works
+
+It must NOT route directly to /onboarding anymore.
+
+The meaning of Start Calibrating is now:
+
+“Begin the guided Calibrate setup experience.”
+
+--------------------------------------------------
+4. REMOVE REDUNDANT HOW IT WORKS BUTTON
+--------------------------------------------------
+
+If /start currently contains a separate:
+
+“How It Works”
+
+button or CTA, remove it.
+
+There should not be two buttons on the Start page that both lead to the same walkthrough.
+
+The main flow should be obvious:
+
+Start Calibrating
+→ /how-it-works
+
+Keep the visual design of /start otherwise unchanged.
+
+--------------------------------------------------
+5. CONTINUE TO DASHBOARD
+--------------------------------------------------
+
+If the approved Start page currently contains a subtle:
+
+“Continue to dashboard”
+
+action, preserve it.
+
+Update its destination to:
+
+/dashboard
+
+It must NOT point to / anymore because / now redirects to /start.
+
+This action can remain visually secondary.
+
+--------------------------------------------------
+6. HOW IT WORKS FLOW
+--------------------------------------------------
+
+Preserve the completed screenshot-based /how-it-works page.
+
+Its bottom primary CTA should be:
+
+“Start onboarding”
+
+→ /onboarding
+
+Its Back action should be:
+
+“Back”
+
+→ /start
+
+Do not alter the five screenshot sections except if a tiny routing-related change is required.
+
+--------------------------------------------------
+7. REMOVE / BYPASS OLD ONBOARDING INTRO
+--------------------------------------------------
+
+Inspect the current /onboarding flow.
+
+There may currently be older pre-question states such as:
+
+- welcome screen
+- intro screen
+- How It Works button
+- old How It Works explanation
+- tutorial/explainer slides
+- Get Started screen
+- another pre-onboarding explanation
+
+These are now redundant.
+
+The screenshot-based /how-it-works page has replaced them.
+
+When the user enters:
+
+/onboarding
+
+they should immediately see the FIRST REAL BEHAVIORAL ONBOARDING QUESTION.
+
+There should be no second tutorial or How It Works experience.
+
+Do NOT delete or rewrite the real onboarding questions.
+
+Preserve:
+
+- all real onboarding question content
+- answer choices
+- answer-selection state
+- Back/Next logic
+- saved selections
+- onboarding API calls
+- recommendation logic
+- Starting Hypothesis calculation
+
+Only remove or bypass the obsolete explanatory layer before Question 1.
+
+--------------------------------------------------
+8. REMOVE OLD HOW IT WORKS BUTTON FROM ONBOARDING
+--------------------------------------------------
+
+Once the student is inside the real onboarding questions, do not show another:
+
+“How It Works”
+
+button.
+
+The student already completed that step.
+
+The sequence should feel linear:
+
+How It Works
+→ Questions
+→ Hypothesis
+
+not:
+
+How It Works
+→ Questions
+→ another How It Works
+→ Questions
+
+--------------------------------------------------
+9. ONBOARDING BACK BEHAVIOR
+--------------------------------------------------
+
+For the FIRST real onboarding question:
+
+Back
+→ /how-it-works
+
+For Question 2 and later:
+
+Back
+→ previous onboarding question
+
+Previous selections must remain preserved.
+
+Back must never return the user to the removed legacy explainer/tutorial state.
+
+--------------------------------------------------
+10. STARTING HYPOTHESIS ROUTES
+--------------------------------------------------
+
+Do not redesign the Starting Hypothesis screen in this task.
+
+Preserve its current recommendation logic and visual behavior.
+
+If it currently contains:
+
+“Go to dashboard”
+
+update that action to:
+
+/dashboard
+
+because / is now reserved for the Start entry experience.
+
+If it contains a first-session / first-subject CTA, preserve that behavior unless a route must be adjusted to avoid /.
+
+Do not redesign the hypothesis screen yet.
+
+That will be handled in a separate milestone.
+
+--------------------------------------------------
+11. REQUIRED FINAL USER JOURNEY
+--------------------------------------------------
+
+After this change the exact first-time journey should be:
+
+Open base URL
+
+/
+
+↓ redirect
+
+/start
+
+↓ click
+
+Start Calibrating
+
+↓ navigate
+
+/how-it-works
+
+↓ scroll through
+
+01 — Answer a few quick questions
+02 — Get your starting hypothesis
+03 — Bring your real class material
+04 — Review your questions, then study
+05 — See what actually worked
+
+↓ click
+
+Start onboarding
+
+↓ navigate
+
+/onboarding
+
+↓ immediately display
+
+Question 1
+
+↓ Next
+
+Question 2
+
+↓ continue
+
+remaining onboarding questions
+
+↓ completion
+
+Starting Hypothesis
+
+There must NOT be another explanation/tutorial/How It Works screen between:
+
+/how-it-works
+
+and:
+
+Question 1
+
+--------------------------------------------------
+12. DIRECT ROUTE BEHAVIOR
+--------------------------------------------------
+
+Verify these direct routes:
+
+/
+
+→ redirects to /start
+
+/start
+
+→ displays Start screen
+
+/how-it-works
+
+→ displays the existing screenshot walkthrough
+
+/onboarding
+
+→ displays Question 1 immediately
+
+/dashboard
+
+→ displays the existing Dashboard
+
+Do not create redirect loops.
+
+--------------------------------------------------
+13. FOCUSED VS APP SHELL
+--------------------------------------------------
+
+Continue using the current focused layout behavior.
+
+These routes should NOT show the application sidebar:
+
+/start
+/how-it-works
+/onboarding
+Starting Hypothesis state/screen
+
+/dashboard and the normal application pages SHOULD retain the existing Calibrate application shell/sidebar.
+
+Do not redesign the sidebar in this task.
+
+--------------------------------------------------
+14. DO NOT CHANGE
+--------------------------------------------------
+
+Do NOT modify:
+
+- the screenshot-based How It Works content
+- screenshot asset files
+- screenshot filenames
+- /start styling beyond the requested CTA cleanup
+- real onboarding question text
+- real onboarding answer choices
+- onboarding recommendation logic
+- Starting Hypothesis algorithm
+- database schema
+- Materials APIs
+- Questions APIs
+- question generation
+- Question Bank functionality
+- Study Session functionality
+- Insights/recommendation calculations
+- Subjects functionality
+- Shreya's Python ML pipeline
+- FastAPI integration
+- authentication
+- current user/data ownership protections
+
+This is a ROUTING + FIRST-TIME FLOW CLEANUP task.
+
+--------------------------------------------------
+15. CODE QUALITY
+--------------------------------------------------
+
+Prefer reusing existing components rather than duplicating the Dashboard or onboarding implementation.
+
+If the root page currently contains the Dashboard directly, extract/reuse only what is necessary to support:
+
+/dashboard
+
+Do not perform a broad architecture refactor.
+
+Keep the implementation small and understandable.
+
+--------------------------------------------------
+16. VALIDATION
+--------------------------------------------------
+
+After implementation run:
+
+npm test
+npm run typecheck
+npm run build
+
+Then manually verify the complete flow.
+
+TEST A — Base URL
+
+Visit:
+
+/
+
+Expected:
+
+redirect to /start
+
+--------------------------------------------------
+
+TEST B — Start
+
+/start
+
+Expected:
+
+approved Start page
+
+Click:
+
+Start Calibrating
+
+Expected:
+
+/how-it-works
+
+--------------------------------------------------
+
+TEST C — Start screen cleanup
+
+Verify:
+
+- no redundant How It Works button remains
+- Continue to dashboard, if present, routes to /dashboard
+
+--------------------------------------------------
+
+TEST D — How It Works
+
+Verify the existing screenshot walkthrough remains intact:
+
+01
+02
+03
+04
+05
+
+Verify all six screenshot assets still render.
+
+Click:
+
+Start onboarding
+
+Expected:
+
+/onboarding
+
+--------------------------------------------------
+
+TEST E — Onboarding entry
+
+/onboarding
+
+Expected:
+
+FIRST REAL ONBOARDING QUESTION immediately
+
+There must be:
+
+- no old intro screen
+- no old How It Works screen
+- no old tutorial
+- no duplicate explainer
+
+--------------------------------------------------
+
+TEST F — Onboarding navigation
+
+Question 1 Back:
+
+→ /how-it-works
+
+Question 2+ Back:
+
+→ previous question
+
+Selections remain preserved.
+
+--------------------------------------------------
+
+TEST G — Hypothesis
+
+Complete onboarding.
+
+Verify:
+
+- existing hypothesis is still generated
+- recommendation logic still works
+- Go to dashboard → /dashboard
+
+--------------------------------------------------
+
+TEST H — Dashboard
+
+Visit:
+
+/dashboard
+
+Verify:
+
+- existing Dashboard renders
+- existing application sidebar renders
+- Dashboard functionality was not redesigned or removed
+
+--------------------------------------------------
+
+TEST I — Regression
+
+Verify these existing areas still load normally:
+
+- Question Bank
+- Study Session
+- Insights
+- Subjects
+
+No backend behavior should have changed.
+
+--------------------------------------------------
+COMPLETION REPORT
+--------------------------------------------------
+
+Before finishing, report:
+
+1. Exact files changed.
+
+2. How / now redirects to /start.
+
+3. How the existing Dashboard was preserved at /dashboard.
+
+4. Confirmation that Start Calibrating now routes to /how-it-works.
+
+5. Confirmation that the redundant Start-page How It Works CTA was removed.
+
+6. Confirmation that the completed screenshot-based /how-it-works page was preserved.
+
+7. Which legacy onboarding intro/explainer state was removed or bypassed.
+
+8. Confirmation that /onboarding now begins directly on Question 1.
+
+9. Confirmation that real onboarding questions and recommendation logic were preserved.
+
+10. Confirmation that Dashboard actions were updated from / to /dashboard where necessary.
+
+11. npm test result.
+
+12. npm run typecheck result.
+
+13. npm run build result.
+
+14. Confirmation that APIs, database schema, ML functionality, Question Bank, Study Session, Insights logic, and Subjects functionality were not altered.

@@ -31,16 +31,13 @@ export default function StartPage() {
           </p>
 
           <div className="calibrate-start__actions">
-            <Link href="/onboarding" className="calibrate-button calibrate-button-dark">
+            <Link href="/how-it-works" className="calibrate-button calibrate-button-dark">
               Start Calibrating <span aria-hidden="true">→</span>
-            </Link>
-            <Link href="/how-it-works" className="calibrate-button calibrate-button-outline">
-              How It Works
             </Link>
           </div>
         </div>
 
-        <Link href="/" className="calibrate-start__return">
+        <Link href="/dashboard" className="calibrate-start__return">
           Continue to dashboard <span aria-hidden="true">→</span>
         </Link>
       </div>

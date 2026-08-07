@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const NAV = [
-  { href: "/", label: "Dashboard", hint: "01" },
+  { href: "/dashboard", label: "Dashboard", hint: "01" },
   { href: "/onboarding", label: "Onboarding", hint: "02" },
   { href: "/study", label: "Study session", hint: "03" },
   { href: "/questions", label: "Question bank", hint: "04" },
@@ -16,7 +16,7 @@ export function Sidebar() {
   const path = usePathname();
   return (
     <aside className="flex h-full w-full flex-col gap-1 md:w-64">
-      <Link href="/" className="mb-6 flex items-center gap-2.5 px-2">
+      <Link href="/dashboard" className="mb-6 flex items-center gap-2.5 px-2">
         <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand text-white shadow-card">
           <span className="font-mono text-sm font-bold">C</span>
         </span>
@@ -27,7 +27,7 @@ export function Sidebar() {
 
       <nav className="flex flex-col gap-0.5">
         {NAV.map((item) => {
-          const active = item.href === "/" ? path === "/" : path.startsWith(item.href);
+          const active = path === item.href || (item.href !== "/dashboard" && path.startsWith(item.href));
           return (
             <Link
               key={item.href}
@@ -60,7 +60,7 @@ export function MobileNav() {
   const path = usePathname();
   return (
     <div className="mb-4 flex items-center gap-3 md:hidden">
-      <Link href="/" className="flex items-center gap-2">
+      <Link href="/dashboard" className="flex items-center gap-2">
         <span className="grid h-7 w-7 place-items-center rounded-lg bg-brand text-white">
           <span className="font-mono text-xs font-bold">C</span>
         </span>
@@ -68,7 +68,7 @@ export function MobileNav() {
       </Link>
       <nav className="-mx-1 flex flex-1 gap-1 overflow-x-auto px-1">
         {NAV.map((item) => {
-          const active = item.href === "/" ? path === "/" : path.startsWith(item.href);
+          const active = path === item.href || (item.href !== "/dashboard" && path.startsWith(item.href));
           return (
             <Link
               key={item.href}

@@ -1,45 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { postJSON } from "@/lib/client";
 import { ONBOARDING_QUESTIONS, type Hypothesis } from "@/lib/hypothesis";
 
-type Screen = "welcome" | "intro" | "how-it-works" | "ready" | "questions" | "result";
-
-const INTRO_DOTS: Record<"intro" | "how-it-works" | "ready", number> = {
-  intro: 0,
-  "how-it-works": 1,
-  ready: 2,
-};
-
-function CalibrateMark() {
-  return (
-    <span aria-hidden="true" className="flex items-end gap-1">
-      <span className="h-7 w-3.5 rounded-sm bg-[#51c39d]" />
-      <span className="h-11 w-3.5 rounded-sm bg-[#078a70]" />
-      <span className="h-8 w-3.5 rounded-sm bg-[#1ca77f]" />
-    </span>
-  );
-}
-
-function ProgressDots({ active }: { active: number }) {
-  return (
-    <div className="mb-12 flex justify-center gap-3" aria-label={`Step ${active + 1} of 3`}>
-      {[0, 1, 2].map((index) => (
-        <span
-          key={index}
-          className={`h-4 w-4 rounded-full ${
-            index <= active ? "bg-[#42a4aa]" : "bg-[#11110f]"
-          }`}
-        />
-      ))}
-    </div>
-  );
-}
+type Screen = "questions" | "result";
 
 export default function OnboardingPage() {
-  const [screen, setScreen] = useState<Screen>("welcome");
+  const router = useRouter();
+  const [screen, setScreen] = useState<Screen>("questions");
   const [questionStep, setQuestionStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [result, setResult] = useState<Hypothesis | null>(null);
@@ -70,14 +41,14 @@ export default function OnboardingPage() {
       setResult(response.hypothesis);
       setScreen("result");
     } catch {
-      setError("We couldn’t save your answers. Please try again.");
+      setError("We couldn't save your answers. Please try again.");
     } finally {
       setSaving(false);
     }
   }
 
   function retakeOnboarding() {
-    setScreen("welcome");
+    setScreen("questions");
     setQuestionStep(0);
     setAnswers({});
     setResult(null);
@@ -86,18 +57,13 @@ export default function OnboardingPage() {
   }
 
   function goBack() {
-    if (screen === "questions" && questionStep > 0) {
+    if (questionStep > 0) {
       setQuestionStep((current) => current - 1);
-      return;
+    } else {
+      // First question — return to How It Works
+      router.push("/how-it-works");
     }
-    if (screen === "questions") setScreen("ready");
-    if (screen === "intro") setScreen("welcome");
-    if (screen === "how-it-works") setScreen("intro");
-    if (screen === "ready") setScreen("how-it-works");
   }
-
-  const introScreen = screen === "intro" || screen === "how-it-works" || screen === "ready";
-  const introDot = introScreen ? INTRO_DOTS[screen] : null;
 
   return (
     <section className="calibrate-onboarding animate-rise">
@@ -105,73 +71,6 @@ export default function OnboardingPage() {
       <div className="calibrate-orb calibrate-orb-bottom" aria-hidden="true" />
 
       <div className="calibrate-content">
-        {screen === "welcome" && (
-          <div className="calibrate-screen">
-            <div className="mb-8 flex items-center justify-center gap-5">
-              <CalibrateMark />
-              <span className="font-serif text-5xl leading-none tracking-tight text-[#25251f] sm:text-6xl">
-                Calibrate
-              </span>
-            </div>
-            <p className="mb-10 text-center text-xl font-semibold text-[#454641] sm:text-2xl">
-              Here for all your study needs.
-            </p>
-            <div className="flex w-full flex-col justify-center gap-3 sm:flex-row">
-              <button className="calibrate-button calibrate-button-dark" onClick={() => setScreen("ready")}>
-                Get Started <span aria-hidden="true">→</span>
-              </button>
-              <button className="calibrate-button calibrate-button-outline" onClick={() => setScreen("intro")}>
-                See how it works
-              </button>
-            </div>
-            <p className="mt-10 text-center text-sm text-[#23231f]">
-              Already have an account? <Link className="font-semibold underline underline-offset-2" href="/">Log in</Link>
-            </p>
-          </div>
-        )}
-
-        {introScreen && introDot !== null && (
-          <div className="calibrate-screen">
-            <ProgressDots active={introDot} />
-            {screen === "intro" && (
-              <>
-                <h1 className="calibrate-heading">
-                  Calibrate is a dedicated AI study coach to help you figure out what study method works best for you.
-                </h1>
-                <p className="calibrate-lede">We test, measure, and adapt.</p>
-                <button className="calibrate-button calibrate-button-teal" onClick={() => setScreen("how-it-works")}>
-                  Next <span aria-hidden="true">→</span>
-                </button>
-              </>
-            )}
-            {screen === "how-it-works" && (
-              <>
-                <h1 className="calibrate-title">How it Works</h1>
-                <ol className="mx-auto mb-12 max-w-md list-decimal space-y-1 pl-8 text-left text-xl leading-tight text-[#171814] sm:text-2xl">
-                  <li>Paste your notes</li>
-                  <li>Study with the assigned technique</li>
-                  <li>We measure what actually helps</li>
-                </ol>
-                <button className="calibrate-button calibrate-button-teal" onClick={() => setScreen("ready")}>
-                  Next <span aria-hidden="true">→</span>
-                </button>
-              </>
-            )}
-            {screen === "ready" && (
-              <>
-                <h1 className="calibrate-heading">
-                  First, a couple of quick questions. How you study, what’s worked before, what hasn’t.
-                </h1>
-                <p className="calibrate-lede">Takes under a minute.</p>
-                <button className="calibrate-button calibrate-button-teal" onClick={() => setScreen("questions")}>
-                  Start <span aria-hidden="true">→</span>
-                </button>
-              </>
-            )}
-            <button className="calibrate-back" onClick={goBack}>← Back</button>
-          </div>
-        )}
-
         {screen === "questions" && (
           <div className="calibrate-screen calibrate-question-screen">
             <div className="mb-12 flex justify-center gap-3" aria-label={`Question ${questionStep + 1} of ${total}`}>
@@ -223,7 +122,7 @@ export default function OnboardingPage() {
             <p className="mb-3 text-sm font-semibold uppercase tracking-[0.16em] text-[#278783]">Onboarding complete</p>
             <h1 className="calibrate-title mb-5">Your starting hypothesis</h1>
             <p className="mx-auto mb-8 max-w-xl text-center text-base leading-relaxed text-[#3e403a]">
-              This is a starting hypothesis based on your answers. It is not a learning-style label. We’ll adjust it based on your actual results.
+              This is a starting hypothesis based on your answers. It is not a learning-style label. We'll adjust it based on your actual results.
             </p>
             <div className="mx-auto mb-7 w-full max-w-xl rounded-2xl border border-[#c8c8b8] bg-[#fdfcf6]/90 p-6 text-left shadow-sm">
               <p className="mb-4 text-xs font-bold uppercase tracking-[0.14em] text-[#59605a]">Techniques to test first</p>
@@ -240,7 +139,7 @@ export default function OnboardingPage() {
             </div>
             <div className="flex flex-col justify-center gap-3 sm:flex-row">
               <Link href="/study" className="calibrate-button calibrate-button-dark">Start first session</Link>
-              <Link href="/" className="calibrate-button calibrate-button-outline">Go to dashboard</Link>
+              <Link href="/dashboard" className="calibrate-button calibrate-button-outline">Go to dashboard</Link>
             </div>
             <button className="calibrate-back" onClick={retakeOnboarding}>Retake onboarding</button>
           </div>

@@ -3,7 +3,8 @@
 import { usePathname } from "next/navigation";
 import { MobileNav, Sidebar } from "@/components/Sidebar";
 
-const STANDALONE_ROUTES = new Set(["/start", "/how-it-works"]);
+// Routes that render without the application sidebar/nav shell.
+const STANDALONE_ROUTES = new Set(["/start", "/how-it-works", "/onboarding"]);
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
