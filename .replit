@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "python-base-3.13"]
+modules = ["nodejs-20", "python-3.11"]
 
 [[ports]]
 localPort = 3000
@@ -12,6 +12,10 @@ externalPort = 3001
 localPort = 5000
 externalPort = 5000
 
+[[ports]]
+localPort = 8000
+externalPort = 8000
+
 [workflows]
 runButton = "Project"
 
@@ -23,6 +27,10 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "workflow.run"
 args = "Start application"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "ML service"
 
 [[workflows.workflow]]
 name = "Start application"
@@ -36,9 +44,22 @@ waitForPort = 5000
 [workflows.workflow.metadata]
 outputType = "webview"
 
+[[workflows.workflow]]
+name = "ML service"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "PYTHONPATH=ml-service python -m uvicorn app.main:app --host 0.0.0.0 --port 8000"
+waitForPort = 8000
+
+[workflows.workflow.metadata]
+outputType = "console"
+
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 180000
 
 [nix]
 packages = ["sqlite"]
+channel = "stable-25_05"
