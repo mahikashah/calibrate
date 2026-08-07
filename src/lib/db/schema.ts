@@ -108,6 +108,32 @@ export const outcomes = sqliteTable("outcomes", {
   createdAt: text("created_at").notNull().$defaultFn(now),
 });
 
+/**
+ * Post-session contextual feedback — separate from objective session/outcome data.
+ * One record per completed session (sessionId is UNIQUE).
+ * Submitting feedback again upserts rather than duplicating evidence.
+ *
+ * overall   : "rough" | "good"     — student's overall experience
+ * calmWired : 0..100               — 0 = Calm, 100 = Wired (anxiety/focus slider)
+ * reasons   : JSON string[]        — structured cause values when session felt rough
+ *             possible values: technique_wrong | questions_wrong | material_hard |
+ *                              distracted_low_energy | not_sure
+ *
+ * Does NOT duplicate: score, correctness, elapsed time, technique, subject.
+ * Those live in sessions / outcomes and remain objective.
+ */
+export const sessionFeedback = sqliteTable("session_feedback", {
+  id: text("id").primaryKey(),
+  sessionId: text("session_id")
+    .notNull()
+    .unique()
+    .references(() => sessions.id),
+  overall: text("overall").notNull(), // "rough" | "good"
+  calmWired: integer("calm_wired").notNull().default(50),
+  reasons: text("reasons").notNull().default("[]"), // JSON-encoded string[]
+  createdAt: text("created_at").notNull().$defaultFn(now),
+});
+
 /** One row per completed onboarding. `answers` and `hypothesis` are JSON blobs. */
 export const onboarding = sqliteTable("onboarding", {
   id: text("id").primaryKey(),
