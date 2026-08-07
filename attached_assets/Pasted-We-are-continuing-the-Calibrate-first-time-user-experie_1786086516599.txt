@@ -1,0 +1,710 @@
+We are continuing the Calibrate first-time user experience milestone.
+
+IMPORTANT CONTEXT
+
+Before making changes, read:
+
+- replit.md
+- docs/CALIBRATE_MASTER_CONTEXT.md
+
+The /start page has already been approved and should remain unchanged.
+
+This task is specifically to rebuild /how-it-works into a polished visual walkthrough of the actual Calibrate process using the screenshot assets already provided in the project.
+
+DO NOT redesign /start.
+
+DO NOT modify the actual onboarding question logic, recommendation logic, Question Bank functionality, Study Session functionality, ML pipeline, database schema, or unrelated application pages.
+
+--------------------------------------------------
+SCREENSHOT ASSETS
+--------------------------------------------------
+
+Use the following screenshot assets exactly as the primary product visuals:
+
+/how-it-works/step1.png
+/how-it-works/step2.png
+/how-it-works/step3.png
+/how-it-works/step4_1.png
+/how-it-works/step4_2.png
+/how-it-works/step5.png
+
+These files live under:
+
+public/how-it-works/
+
+IMPORTANT:
+
+Some screenshots represent current implemented Calibrate screens.
+Some are Figma/product-direction placeholders for screens that will be refined later.
+
+Treat all six as the current visual product reference for this walkthrough.
+
+Do NOT redraw these screens from scratch.
+
+Do NOT recreate their content using generic mock cards if the provided screenshot can be used.
+
+Display the screenshot assets themselves.
+
+The filenames are intentionally stable so the images can be replaced later without changing the How It Works page code.
+
+Build the page so replacing any screenshot with a newer image using the same filename automatically updates the walkthrough.
+
+--------------------------------------------------
+GOAL
+--------------------------------------------------
+
+A completely new student should understand Calibrate in approximately 15–30 seconds.
+
+The page should visually explain:
+
+1 → 2 → 3 → 4 → 5
+
+The user should understand:
+
+“I answer a few questions,
+Calibrate gives me a starting technique,
+I add my real study material,
+I review AI-generated questions and study,
+then Calibrate uses my results to learn what works.”
+
+This should feel like a short guided product tour, not a generic marketing features page.
+
+--------------------------------------------------
+ROUTE / APP SHELL
+--------------------------------------------------
+
+Route:
+
+/how-it-works
+
+This route must remain outside the normal Calibrate application shell.
+
+Do NOT show:
+
+- desktop sidebar
+- mobile dashboard navigation
+- dashboard header
+
+Keep the focused first-time experience used by /start.
+
+--------------------------------------------------
+PAGE INTRO
+--------------------------------------------------
+
+At the top, include a small Calibrate brand mark consistent with /start.
+
+Heading:
+
+“How Calibrate works”
+
+Supporting copy:
+
+“Run small study experiments and learn what actually works for you.”
+
+Optional smaller line:
+
+“Here’s what your first experiment will look like.”
+
+Keep this intro concise.
+
+The screenshots and progression should be the main focus.
+
+--------------------------------------------------
+STEP 01
+--------------------------------------------------
+
+NUMBER:
+
+01
+
+TITLE:
+
+“Answer a few quick questions”
+
+IMAGE:
+
+Use:
+
+/how-it-works/step1.png
+
+The provided screenshot already shows:
+
+- onboarding progress
+- a realistic study-behavior question
+- multiple options
+- a selected answer
+- Calibrate's selected-state styling
+- Back / Next navigation
+
+Do not recreate this screenshot.
+
+Present it inside a polished product-preview frame.
+
+SHORT EXPLANATION:
+
+“Tell us a little about how you currently study.”
+
+WHY THIS MATTERS:
+
+“This helps Calibrate choose a useful first technique to test.”
+
+The why-this-matters line should be smaller, quieter, and visually secondary.
+
+--------------------------------------------------
+STEP 02
+--------------------------------------------------
+
+NUMBER:
+
+02
+
+TITLE:
+
+“Get your starting hypothesis”
+
+IMAGE:
+
+Use:
+
+/how-it-works/step2.png
+
+This screenshot represents the Starting Hypothesis reveal.
+
+SHORT EXPLANATION:
+
+“Calibrate suggests a study technique to begin testing based on your onboarding answers.”
+
+WHY THIS MATTERS:
+
+“It’s only a starting hypothesis — your real study results can confirm or change it.”
+
+IMPORTANT:
+
+Do not use language implying Calibrate discovers a fixed learning style.
+
+Do not describe the result as permanent.
+
+--------------------------------------------------
+STEP 03
+--------------------------------------------------
+
+NUMBER:
+
+03
+
+TITLE:
+
+“Bring your real class material”
+
+IMAGE:
+
+Use:
+
+/how-it-works/step3.png
+
+This screenshot represents the material input step with:
+
+- Paste
+- Upload
+- note/material area
+- Generate questions
+
+SHORT EXPLANATION:
+
+“Upload a PDF or paste the notes you’re actually studying.”
+
+WHY THIS MATTERS:
+
+“Your practice questions are created from your own course material.”
+
+IMPORTANT:
+
+This screenshot may represent a future/placeholder version of the material flow.
+
+Do NOT implement PDF processing in this task.
+
+Do NOT connect Shreya's ML pipeline yet.
+
+This is only the visual walkthrough.
+
+--------------------------------------------------
+STEP 04
+--------------------------------------------------
+
+NUMBER:
+
+04
+
+TITLE:
+
+“Review your questions, then study”
+
+This step should use TWO connected screenshots because it represents two closely related parts of the same stage.
+
+FIRST IMAGE:
+
+/how-it-works/step4_1.png
+
+This represents Question Bank review.
+
+It shows ideas such as:
+
+- Approved
+- Needs Edit
+- Generated
+- Edit
+- Regenerate
+
+SECOND IMAGE:
+
+/how-it-works/step4_2.png
+
+This represents choosing/running a study technique.
+
+It shows ideas such as:
+
+- subject selection
+- suggested technique
+- Active Recall
+- Spaced Repetition
+- Feynman / self-explanation
+- Practice Questions
+- Re-reading control
+
+LAYOUT:
+
+Display these two images as a connected pair.
+
+Desktop:
+- side-by-side if the available width makes them readable
+OR
+- slightly staggered/overlapping product-preview frames if this looks more polished
+
+Mobile:
+- stack them vertically
+
+Do not shrink either screenshot so much that the text becomes unreadable.
+
+SHORT EXPLANATION:
+
+“Review the AI-generated practice, then run a focused session using the technique you’re testing.”
+
+WHY THIS MATTERS:
+
+“You stay in control of the questions before they affect your study experiment.”
+
+This human-review concept is important.
+
+Do not change Question Bank or Study Session functionality in this task.
+
+--------------------------------------------------
+STEP 05
+--------------------------------------------------
+
+NUMBER:
+
+05
+
+TITLE:
+
+“See what actually worked”
+
+IMAGE:
+
+Use:
+
+/how-it-works/step5.png
+
+This screenshot represents Calibrate's Insights / evidence view.
+
+SHORT EXPLANATION:
+
+“After enough study sessions, Calibrate compares your results across techniques.”
+
+WHY THIS MATTERS:
+
+“Your actual session data — not a learning-style label — helps decide what is worth using again.”
+
+IMPORTANT:
+
+The numbers visible in this screenshot are illustrative/example product data.
+
+Do not connect this walkthrough to real analytics logic in this task.
+
+Do not modify recommendation logic.
+
+--------------------------------------------------
+VISUAL PROGRESSION
+--------------------------------------------------
+
+The five steps must feel like one connected journey.
+
+Do NOT create five unrelated feature cards.
+
+Use a clear visual progression such as:
+
+01
+↓
+02
+↓
+03
+↓
+04
+↓
+05
+
+or a subtle connected timeline / pathway.
+
+Desktop should feel editorial and polished.
+
+A preferred desktop treatment is an alternating layout:
+
+01:
+text left / screenshot right
+
+02:
+screenshot left / text right
+
+03:
+text left / screenshot right
+
+04:
+two screenshot preview group left / text right
+or another layout that gives the two images enough room
+
+05:
+text left / screenshot right
+
+The precise alternating layout can be adjusted if needed for visual balance.
+
+The numbering should remain large and obvious.
+
+Consider a subtle connecting line or arrow between steps.
+
+Avoid excessive animations.
+
+Subtle entrance/fade effects are acceptable only if they do not distract or reduce accessibility.
+
+--------------------------------------------------
+SCREENSHOT PRESENTATION
+--------------------------------------------------
+
+Treat each screenshot as a real Calibrate product preview.
+
+Use consistent framing:
+
+- soft rounded corners
+- thin dark or muted border
+- subtle shadow
+- clean cream/white outer frame
+- consistent spacing
+- preserve original aspect ratio
+- never stretch or distort
+
+Use Next.js Image where appropriate.
+
+Do not heavily crop screenshots if that removes important context.
+
+The screenshots should remain readable.
+
+For very tall screenshots such as onboarding/hypothesis, size them so they feel intentional rather than dominating the entire page.
+
+For screenshots with different aspect ratios, use a consistent preview container while preserving the actual image proportions.
+
+Do NOT replace the screenshots with generic icons.
+
+--------------------------------------------------
+PLACEHOLDER / FUTURE SCREEN HANDLING
+--------------------------------------------------
+
+Some screenshots are intentionally current Figma/product placeholders.
+
+That is acceptable.
+
+The page architecture must NOT depend on the internal screenshot content.
+
+It should reference stable asset paths only.
+
+For example:
+
+/how-it-works/step1.png
+
+This way, when the actual product screens are updated later, replacing:
+
+public/how-it-works/step1.png
+
+with a newer file of the same name will update the walkthrough without requiring page code changes.
+
+Do not hardcode screenshot dimensions in a way that makes future replacements unnecessarily difficult.
+
+--------------------------------------------------
+VISUAL DESIGN SYSTEM
+--------------------------------------------------
+
+Match the approved /start page and Calibrate Figma direction.
+
+Use:
+
+- warm cream/off-white background
+- sage accents
+- turquoise/green primary actions
+- charcoal / near-black typography
+- white product-preview frames
+- thin borders
+- generous whitespace
+- restrained decorative circles/shapes
+- large simple headings
+- clear visual hierarchy
+- calm academic feeling
+- slightly game-like progression
+
+Avoid:
+
+- purple StudyCoach styling
+- blue-heavy UI
+- generic SaaS feature-section styling
+- large gradients
+- clutter
+- excessive copy
+- random new colors
+- unrelated illustration styles
+
+The page should clearly feel like the same product as /start and /onboarding.
+
+--------------------------------------------------
+COPY STYLE
+--------------------------------------------------
+
+Keep all text short and understandable to a student.
+
+The structure for every step should generally be:
+
+STEP NUMBER
+
+Title
+
+Screenshot
+
+1 short explanation
+
+1 smaller “why this matters” sentence
+
+Do not add long paragraphs.
+
+Do not introduce technical concepts such as:
+
+- LLM
+- FastAPI
+- model provider
+- embeddings
+- tokens
+- JSON
+
+This page is student-facing.
+
+--------------------------------------------------
+BOTTOM COMPLETION SECTION
+--------------------------------------------------
+
+After Step 05, add a clear conclusion.
+
+Small heading/copy:
+
+“Ready to run your first experiment?”
+
+Supporting line:
+
+“Start with a few quick questions. We’ll take it from there.”
+
+Primary CTA:
+
+“Start onboarding”
+
+Route:
+
+/onboarding
+
+Secondary action:
+
+“Back”
+
+Route:
+
+/start
+
+Do not send the user to the Dashboard from this page.
+
+The intended journey is:
+
+/start
+→ /how-it-works
+→ /onboarding
+
+--------------------------------------------------
+TRANSITION INTO ONBOARDING
+--------------------------------------------------
+
+The How It Works page now serves as the product explanation.
+
+Therefore:
+
+Clicking “Start onboarding” should take the student directly to the first meaningful onboarding question.
+
+Do not add another explanation/tutorial sequence between /how-it-works and the questions.
+
+Do NOT redesign the actual onboarding questions in this task.
+
+That is the next frontend milestone.
+
+--------------------------------------------------
+RESPONSIVE DESIGN
+--------------------------------------------------
+
+Desktop:
+
+- editorial alternating layout
+- screenshots large enough to read
+- obvious 01 → 05 progression
+- strong whitespace
+- balanced image/text sections
+
+Tablet:
+
+- preserve image readability
+- adjust alternating layout where necessary
+
+Mobile:
+
+- stack each step vertically
+- number → title → screenshot → explanation → why-it-matters
+- Step 04 should show step4_1 then step4_2
+- no horizontal scrolling
+- screenshots remain proportional
+- CTAs are easy to tap
+
+--------------------------------------------------
+ACCESSIBILITY
+--------------------------------------------------
+
+Ensure:
+
+- semantic headings
+- appropriate alt text for every screenshot
+- keyboard-accessible buttons
+- strong focus states
+- adequate text contrast
+- meaningful sequence does not depend on color
+- screenshots do not replace required explanatory text
+
+Suggested alt text:
+
+step1:
+“Calibrate onboarding question with the Active Recall answer selected”
+
+step2:
+“Calibrate Starting Hypothesis screen ranking study techniques”
+
+step3:
+“Calibrate material screen for pasting notes or uploading a file”
+
+step4_1:
+“Calibrate Question Bank showing generated, approved, and needs-edit questions”
+
+step4_2:
+“Calibrate Study Session screen showing available study techniques”
+
+step5:
+“Calibrate Insights screen summarizing study-session evidence”
+
+--------------------------------------------------
+DO NOT CHANGE
+--------------------------------------------------
+
+Do NOT modify:
+
+- /start design
+- onboarding question content
+- onboarding selection behavior
+- onboarding recommendation logic
+- Starting Hypothesis calculation
+- database schema
+- materials APIs
+- question-generation APIs
+- Question Bank behavior
+- Study Session behavior
+- Insights/recommendation logic
+- Subjects behavior
+- authentication
+- Shreya's Python pipeline
+- FastAPI integration
+
+This task is ONLY the /how-it-works frontend walkthrough.
+
+--------------------------------------------------
+VALIDATION
+--------------------------------------------------
+
+After implementation run:
+
+npm test
+npm run typecheck
+npm run build
+
+Then manually verify:
+
+1. /start remains visually unchanged.
+
+2. /how-it-works has no application sidebar or dashboard navigation.
+
+3. All screenshot assets load correctly from:
+
+/how-it-works/step1.png
+/how-it-works/step2.png
+/how-it-works/step3.png
+/how-it-works/step4_1.png
+/how-it-works/step4_2.png
+/how-it-works/step5.png
+
+4. Steps appear in this exact order:
+
+01 — Answer a few quick questions
+02 — Get your starting hypothesis
+03 — Bring your real class material
+04 — Review your questions, then study
+05 — See what actually worked
+
+5. Each step contains:
+
+- visible number
+- title
+- provided screenshot
+- short explanation
+- short why-this-matters note
+
+6. Step 04 displays BOTH provided screenshots.
+
+7. Images preserve their aspect ratios and remain readable.
+
+8. Mobile layout has no horizontal overflow.
+
+9. Start onboarding → /onboarding.
+
+10. Back → /start.
+
+11. No backend, API, DB, ML, Question Bank, Study Session, or recommendation logic was modified.
+
+--------------------------------------------------
+COMPLETION REPORT
+--------------------------------------------------
+
+Before finishing, provide:
+
+- exact files changed
+- confirmation that all six provided screenshot assets are being used
+- exact asset paths referenced
+- desktop layout description
+- mobile layout description
+- npm test result
+- npm run typecheck result
+- npm run build result
+- confirmation that unrelated application functionality was preserved

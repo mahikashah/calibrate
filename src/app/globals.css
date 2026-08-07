@@ -310,6 +310,216 @@ body {
   align-self: center;
 }
 
+/* Screenshot-led product tour. The image sources are stable so newer product captures can replace them in place. */
+.calibrate-tour {
+  display: block;
+  overflow: clip;
+}
+.calibrate-tour__shell {
+  position: relative;
+  z-index: 1;
+  width: min(100% - 3rem, 1180px);
+  margin: 0 auto;
+  padding: 2.25rem 0 5rem;
+}
+.calibrate-tour__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.calibrate-tour__intro {
+  max-width: 680px;
+  margin: 6rem auto 7rem;
+  text-align: center;
+}
+.calibrate-tour__intro h1,
+.calibrate-tour__completion h2 {
+  margin: 0;
+  font-family: Georgia, Cambria, "Times New Roman", serif;
+  font-weight: 400;
+  letter-spacing: -0.055em;
+  line-height: 1;
+}
+.calibrate-tour__intro h1 { font-size: clamp(3rem, 7vw, 5.6rem); }
+.calibrate-tour__intro > p:not(.calibrate-start__eyebrow) {
+  margin: 1.4rem auto 0;
+  color: #4f534b;
+  font-size: clamp(1.1rem, 2.25vw, 1.35rem);
+  line-height: 1.55;
+}
+.calibrate-tour__intro > span {
+  display: block;
+  margin-top: 0.7rem;
+  color: #73766d;
+  font-size: 0.9rem;
+}
+
+.calibrate-tour__steps {
+  position: relative;
+  display: grid;
+  gap: 7.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.calibrate-tour__steps::before {
+  position: absolute;
+  top: 3rem;
+  bottom: 3rem;
+  left: 50%;
+  width: 1px;
+  background: linear-gradient(to bottom, transparent, #b9cdbb 6%, #b9cdbb 94%, transparent);
+  content: "";
+}
+.calibrate-tour__step {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(235px, 0.7fr) minmax(0, 1.3fr);
+  align-items: center;
+  gap: clamp(2.5rem, 8vw, 8rem);
+}
+.calibrate-tour__step--reverse { grid-template-columns: minmax(0, 1.3fr) minmax(235px, 0.7fr); }
+.calibrate-tour__step--reverse .calibrate-tour__step-copy { grid-column: 2; grid-row: 1; }
+.calibrate-tour__step--reverse .calibrate-tour__previews { grid-column: 1; grid-row: 1; }
+.calibrate-tour__step-copy {
+  position: relative;
+  z-index: 1;
+  padding: 1.2rem;
+  border: 1px solid rgba(209, 216, 203, 0.8);
+  border-radius: 1rem;
+  background: rgba(247, 245, 236, 0.84);
+  box-shadow: 0 12px 38px rgba(50, 60, 46, 0.04);
+}
+.calibrate-tour__number {
+  margin: 0 0 1rem;
+  color: #27834f;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+.calibrate-tour__number::after {
+  display: inline-block;
+  width: 3rem;
+  height: 1px;
+  margin: 0 0 0.25rem 0.7rem;
+  background: #88aaa1;
+  content: "";
+}
+.calibrate-tour__step-copy h2 {
+  margin: 0;
+  font-family: Georgia, Cambria, "Times New Roman", serif;
+  font-size: clamp(1.75rem, 3.3vw, 2.75rem);
+  font-weight: 400;
+  letter-spacing: -0.045em;
+  line-height: 1.04;
+}
+.calibrate-tour__explanation {
+  margin: 1.1rem 0 0;
+  color: #464a43;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+.calibrate-tour__why {
+  margin: 1.25rem 0 0;
+  padding-top: 1rem;
+  border-top: 1px solid #d8dfd3;
+  color: #6a6d65;
+  font-size: 0.83rem;
+  line-height: 1.55;
+}
+.calibrate-tour__why span {
+  display: block;
+  margin-bottom: 0.28rem;
+  color: #4e7774;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.calibrate-tour__previews {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+}
+.calibrate-tour__preview {
+  width: min(100%, 650px);
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid #718078;
+  border-radius: 1rem;
+  background: #fffef9;
+  padding: clamp(0.3rem, 0.8vw, 0.55rem);
+  box-shadow: 0 20px 50px rgba(42, 48, 39, 0.13), 0 3px 9px rgba(42, 48, 39, 0.07);
+}
+.calibrate-tour__preview img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: calc(1rem - 0.45rem);
+}
+.calibrate-tour__step:nth-child(1) .calibrate-tour__preview,
+.calibrate-tour__step:nth-child(2) .calibrate-tour__preview {
+  max-width: 385px;
+}
+.calibrate-tour__previews--paired {
+  align-items: center;
+  gap: clamp(0.8rem, 2vw, 1.5rem);
+}
+.calibrate-tour__preview--paired:first-child { width: 59%; }
+.calibrate-tour__preview--paired:last-child {
+  width: 41%;
+  transform: translateY(1.25rem);
+}
+
+.calibrate-tour__completion {
+  position: relative;
+  z-index: 1;
+  max-width: 650px;
+  margin: 8rem auto 0;
+  padding: clamp(2rem, 5vw, 4rem);
+  border: 1px solid #bfcfbd;
+  border-radius: 1.25rem;
+  background: rgba(225, 240, 221, 0.72);
+  text-align: center;
+  box-shadow: 0 16px 44px rgba(48, 76, 54, 0.08);
+}
+.calibrate-tour__completion h2 { font-size: clamp(2rem, 4vw, 3.15rem); }
+.calibrate-tour__completion > p:not(.calibrate-start__eyebrow) {
+  margin: 1rem auto 1.75rem;
+  color: #4e574d;
+  line-height: 1.55;
+}
+.calibrate-tour__completion-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+@media (max-width: 720px) {
+  .calibrate-tour__shell { width: min(100% - 2rem, 1180px); padding-top: 1.5rem; padding-bottom: 3rem; }
+  .calibrate-tour__intro { margin: 4.75rem auto 4.5rem; }
+  .calibrate-tour__steps { gap: 4.5rem; }
+  .calibrate-tour__steps::before { top: 2rem; bottom: 2rem; left: 1rem; }
+  .calibrate-tour__step,
+  .calibrate-tour__step--reverse { display: flex; flex-direction: column; align-items: stretch; gap: 1.5rem; }
+  .calibrate-tour__step--reverse .calibrate-tour__step-copy,
+  .calibrate-tour__step--reverse .calibrate-tour__previews { display: block; }
+  .calibrate-tour__step-copy { padding: 1.1rem 1.15rem; }
+  .calibrate-tour__previews { width: 100%; }
+  .calibrate-tour__preview { width: 100%; max-width: 600px !important; }
+  .calibrate-tour__previews--paired { flex-direction: column; align-items: center; }
+  .calibrate-tour__preview--paired:first-child,
+  .calibrate-tour__preview--paired:last-child { width: 100%; transform: none; }
+  .calibrate-tour__completion { margin-top: 5rem; }
+  .calibrate-tour__completion-actions { flex-direction: column; }
+  .calibrate-tour__completion-actions .calibrate-button { width: 100%; }
+}
+
 .calibrate-heading {
   margin: 0 auto 2.25rem;
   max-width: 660px;
