@@ -29,13 +29,18 @@ interface Material {
 }
 
 const TYPE_LABEL: Record<string, string> = {
+  // FastAPI-generated types
+  active_recall: "Active recall",
+  mcq: "Multiple choice",
+  feynman: "Feynman",
+  fill_in_blank: "Fill-in-blank",
+  // Legacy mock-provider types (kept for existing rows)
   recall: "Active recall",
   practice: "Practice",
-  feynman: "Explain-back",
   cloze: "Fill-in",
 };
 
-const FILTERS = ["all", "recall", "cloze", "feynman", "practice"];
+const FILTERS = ["all", "active_recall", "mcq", "feynman", "fill_in_blank", "recall", "cloze"];
 
 export default function QuestionsPage() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -47,7 +52,7 @@ export default function QuestionsPage() {
   const [highlightedMaterialId, setHighlightedMaterialId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [count, setCount] = useState(5);
+  const [count, setCount] = useState(6);
   const [generating, setGenerating] = useState(false);
   const [provider, setProvider] = useState<string | null>(null);
   const [fellBack, setFellBack] = useState(false);

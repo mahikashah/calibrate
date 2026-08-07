@@ -1,0 +1,1 @@
+- [Drizzle migration ordering](drizzle-migration-ordering.md) — journal timestamps must increase with migration order or an otherwise registered SQLite migration is skipped.

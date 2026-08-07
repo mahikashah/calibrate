@@ -40,7 +40,15 @@ export const materials = sqliteTable("materials", {
   createdAt: text("created_at").notNull().$defaultFn(now),
 });
 
-/** type: recall | practice | feynman | cloze  •  source: ai | user */
+/**
+ * type: active_recall | mcq | feynman | fill_in_blank  (FastAPI types)
+ *       recall | practice | cloze  (legacy mock-provider types — kept for
+ *       backward compatibility with existing rows)
+ * status: generated | approved | edited | rejected (review lifecycle)
+ * answerChoices: JSON-encoded string[] — populated for MCQ, "[]" otherwise
+ * sourceExcerpt: verbatim excerpt from the source material
+ * source: ai | user
+ */
 export const questions = sqliteTable("questions", {
   id: text("id").primaryKey(),
   userId: text("user_id")
@@ -55,6 +63,9 @@ export const questions = sqliteTable("questions", {
   type: text("type").notNull().default("recall"),
   prompt: text("prompt").notNull(),
   answer: text("answer").notNull().default(""),
+  answerChoices: text("answer_choices"),
+  sourceExcerpt: text("source_excerpt"),
+  status: text("status").notNull().default("generated"),
   source: text("source").notNull().default("ai"),
   createdAt: text("created_at").notNull().$defaultFn(now),
 });

@@ -59,6 +59,9 @@ vi.mock("@/lib/db", async () => {
       type TEXT NOT NULL DEFAULT 'recall',
       prompt TEXT NOT NULL,
       answer TEXT NOT NULL DEFAULT '',
+      answer_choices TEXT,
+      source_excerpt TEXT,
+      status TEXT NOT NULL DEFAULT 'generated',
       source TEXT NOT NULL DEFAULT 'ai',
       created_at TEXT NOT NULL
     );

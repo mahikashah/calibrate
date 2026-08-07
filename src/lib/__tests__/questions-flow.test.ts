@@ -1,16 +1,16 @@
 /**
- * These tests guard the two-step persistence flow that the Question Bank
- * depends on:
+ * Guards the question-generation flow:
  *
  *   1. Each notes submission creates a distinct `materials` row first.
  *   2. Generated questions are saved with that material's ID so they stay
  *      linked after a page refresh.
- *   3. The user-selected `count` is forwarded to the generation call, not
- *      silently replaced with a hard-coded default.
+ *   3. The user-selected `count` is forwarded to the ML service.
+ *   4. Ownership checks reject wrong-user subjects and materials.
+ *   5. ML service errors are translated to appropriate HTTP status codes.
+ *   6. Generated questions are stored with status "generated" and the new
+ *      structured fields (answerChoices, sourceExcerpt).
  *
- * The suite uses an in-memory SQLite database (same schema as production) so
- * the route handlers run their real insert/select logic without touching the
- * dev database file.
+ * All tests mock @/lib/ml-service so no real Hugging Face request is made.
  */
 
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
@@ -30,7 +30,7 @@ const SEED_SUBJECT_ID = "test-subject";
 // ---------------------------------------------------------------------------
 
 // Replace the real DB with an in-memory SQLite database that uses the same
-// Drizzle schema.  The factory is async so Vitest can properly await imports.
+// Drizzle schema, including the new ML question fields.
 vi.mock("@/lib/db", async () => {
   const BetterSqlite3 = (await import("better-sqlite3")).default;
   const { drizzle } = await import("drizzle-orm/better-sqlite3");
@@ -66,6 +66,9 @@ vi.mock("@/lib/db", async () => {
       type TEXT NOT NULL DEFAULT 'recall',
       prompt TEXT NOT NULL,
       answer TEXT NOT NULL DEFAULT '',
+      answer_choices TEXT,
+      source_excerpt TEXT,
+      status TEXT NOT NULL DEFAULT 'generated',
       source TEXT NOT NULL DEFAULT 'ai',
       created_at TEXT NOT NULL
     );
@@ -74,7 +77,6 @@ vi.mock("@/lib/db", async () => {
   const db = drizzle(sqlite, { schema });
   sharedDb = db;
 
-  // Seed the one user and one subject every test depends on.
   db.insert(schema.users)
     .values({ id: SEED_USER_ID, name: "Test", createdAt: new Date().toISOString() })
     .run();
@@ -98,8 +100,6 @@ vi.mock("@/lib/user", () => ({
   getCurrentUser: () => ({ id: SEED_USER_ID, name: "Test", createdAt: new Date().toISOString() }),
 }));
 
-// Replace NextResponse with a plain Response so the route handlers work
-// outside the Next.js runtime.
 vi.mock("next/server", () => ({
   NextResponse: {
     json: (data: unknown, init?: ResponseInit) =>
@@ -110,16 +110,27 @@ vi.mock("next/server", () => ({
   },
 }));
 
-// Always use the offline MockProvider — fast, deterministic, no API key.
-vi.mock("@/lib/llm", async () => {
-  const { MockProvider } = await import("../llm/mock");
-  const mock = new MockProvider();
+// Mock the FastAPI ML service client — no real Hugging Face call is made.
+// vi.fn() wrappers let individual tests override with mockRejectedValueOnce.
+vi.mock("@/lib/ml-service", async () => {
+  const { MlServiceError } = await import("../ml-service");
   return {
-    withFallback: async <T>(fn: (p: typeof mock) => Promise<T>) => ({
-      result: await fn(mock),
-      provider: "mock",
-      fellBack: false,
-    }),
+    MlServiceError,
+    generateQuestions: vi.fn(async ({ requestedCount }: { requestedCount: number }) =>
+      Array.from({ length: requestedCount }, (_, i) => ({
+        type: "active_recall" as const,
+        question: `Test question ${i + 1}`,
+        answer: `Test answer ${i + 1}`,
+        answer_choices: [] as string[],
+        source_excerpt: "Supporting excerpt from the notes.",
+      })),
+    ),
+    parsePdf: vi.fn(async () => ({
+      text: "Extracted PDF text",
+      word_count: 100,
+      approx_token_count: 133,
+      file_name: "test.pdf",
+    })),
   };
 });
 
@@ -128,12 +139,14 @@ vi.mock("@/lib/llm", async () => {
 // ---------------------------------------------------------------------------
 const { POST: createMaterial } = await import("@/app/api/materials/route");
 const { POST: generateQuestions } = await import("@/app/api/questions/generate/route");
+const { POST: uploadPdf } = await import("@/app/api/pdf/route");
 const { GET: listQuestions } = await import("@/app/api/questions/route");
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 import * as schema from "../db/schema";
+import * as mlService from "../ml-service";
 
 function clearGeneratedRows() {
   sharedDb.delete(schema.questions).run();
@@ -148,6 +161,14 @@ function postRequest(body: unknown): Request {
   });
 }
 
+function pdfUploadRequest(subjectId: string, count = 2): Request {
+  const form = new FormData();
+  form.set("subjectId", subjectId);
+  form.set("count", String(count));
+  form.set("file", new File(["%PDF-test"], "lecture.pdf", { type: "application/pdf" }));
+  return new Request("http://localhost/api/pdf", { method: "POST", body: form });
+}
+
 async function jsonBody<T>(res: Response): Promise<T> {
   return res.json() as Promise<T>;
 }
@@ -159,7 +180,6 @@ describe("Question-Bank persistence flow", () => {
   beforeEach(clearGeneratedRows);
 
   it("notes submission creates a material row before generation proceeds", async () => {
-    // Step 1 — the UI calls POST /api/materials to persist the notes first.
     const matRes = await createMaterial(
       postRequest({
         subjectId: SEED_SUBJECT_ID,
@@ -170,12 +190,9 @@ describe("Question-Bank persistence flow", () => {
 
     expect(matRes.status).toBe(201);
     const material = await jsonBody<{ id: string; title: string }>(matRes);
-
-    // A real ID must be returned before any generation attempt.
     expect(material.id).toBeTruthy();
     expect(material.title).toBe("Week 1 notes");
 
-    // Verify the row actually landed in the database.
     const saved = sharedDb
       .select()
       .from(schema.materials)
@@ -186,7 +203,6 @@ describe("Question-Bank persistence flow", () => {
   });
 
   it("generated questions retain the material link and are returned by a subsequent list request", async () => {
-    // Step 1 — create the material (mirrors what the UI does first).
     const matRes = await createMaterial(
       postRequest({
         subjectId: SEED_SUBJECT_ID,
@@ -197,11 +213,9 @@ describe("Question-Bank persistence flow", () => {
     );
     const { id: materialId } = await jsonBody<{ id: string }>(matRes);
 
-    // Step 2 — generate questions tied to that material.
     const genRes = await generateQuestions(
       postRequest({
         subjectId: SEED_SUBJECT_ID,
-        subjectName: "Science",
         materialId,
         count: 3,
       }),
@@ -213,25 +227,53 @@ describe("Question-Bank persistence flow", () => {
     }>(genRes);
 
     expect(generated.length).toBeGreaterThan(0);
-
-    // Every generated question must reference the material that was just created.
     for (const q of generated) {
       expect(q.materialId).toBe(materialId);
     }
 
-    // Step 3 — simulate a page refresh: fetch all questions via GET.
     const listRes = await listQuestions(new Request("http://localhost/api/questions"));
     const persisted = await jsonBody<Array<{ id: string; materialId: string | null }>>(listRes);
-
-    // All persisted questions for this generation retain the correct materialId.
     const generatedIds = new Set(generated.map((q) => q.id));
     for (const q of persisted.filter((q) => generatedIds.has(q.id))) {
       expect(q.materialId).toBe(materialId);
     }
   });
 
-  it("passes the user-selected question count to the generation call", async () => {
-    // Helper: create a material and generate questions with the given count.
+  it("generated questions are stored with status 'generated' and structured ML fields", async () => {
+    const matRes = await createMaterial(
+      postRequest({
+        subjectId: SEED_SUBJECT_ID,
+        title: "Physics notes",
+        content: "Newton's first law: an object at rest stays at rest.",
+      }),
+    );
+    const { id: materialId } = await jsonBody<{ id: string }>(matRes);
+
+    const genRes = await generateQuestions(
+      postRequest({ subjectId: SEED_SUBJECT_ID, materialId, count: 2 }),
+    );
+    expect(genRes.status).toBe(201);
+
+    // Verify directly in DB — not just the API response.
+    const rows = sharedDb
+      .select()
+      .from(schema.questions)
+      .where(eq(schema.questions.materialId, materialId))
+      .all();
+
+    expect(rows.length).toBe(2);
+    for (const row of rows) {
+      expect(row.status).toBe("generated");
+      expect(row.subjectId).toBe(SEED_SUBJECT_ID);
+      expect(row.materialId).toBe(materialId);
+      // answerChoices stored as JSON string
+      expect(JSON.parse(row.answerChoices ?? "[]")).toEqual([]);
+      // sourceExcerpt set
+      expect(row.sourceExcerpt).toBeTruthy();
+    }
+  });
+
+  it("passes the user-selected question count to the ML service", async () => {
     async function generateWithCount(content: string, count: number) {
       const matRes = await createMaterial(
         postRequest({ subjectId: SEED_SUBJECT_ID, title: "Notes", content }),
@@ -249,8 +291,7 @@ describe("Question-Bank persistence flow", () => {
       "Newton's first law states that an object at rest stays at rest and an object " +
       "in motion stays in motion unless acted upon by an unbalanced force. " +
       "The second law relates force, mass, and acceleration: F equals ma. " +
-      "The third law states every action has an equal and opposite reaction. " +
-      "These three laws form the foundation of classical mechanics.";
+      "The third law states every action has an equal and opposite reaction.";
 
     const twoQuestions = await generateWithCount(longContent, 2);
     expect(twoQuestions).toHaveLength(2);
@@ -261,72 +302,47 @@ describe("Question-Bank persistence flow", () => {
 
   it("generate route returns 422 when count is 0", async () => {
     const res = await generateQuestions(
-      postRequest({
-        subjectId: SEED_SUBJECT_ID,
-        materialText: "Some content.",
-        count: 0,
-      }),
+      postRequest({ subjectId: SEED_SUBJECT_ID, materialText: "Some content.", count: 0 }),
     );
     expect(res.status).toBe(422);
   });
 
-  it("generate route returns 422 when count exceeds 15", async () => {
+  it("generate route returns 422 when count exceeds 10 (FastAPI limit)", async () => {
     const res = await generateQuestions(
-      postRequest({
-        subjectId: SEED_SUBJECT_ID,
-        materialText: "Some content.",
-        count: 16,
-      }),
+      postRequest({ subjectId: SEED_SUBJECT_ID, materialText: "Some content.", count: 11 }),
     );
     expect(res.status).toBe(422);
   });
 
   it("materials route rejects an empty title", async () => {
     const res = await createMaterial(
-      postRequest({
-        subjectId: SEED_SUBJECT_ID,
-        title: "",
-        content: "Some valid content.",
-      }),
+      postRequest({ subjectId: SEED_SUBJECT_ID, title: "", content: "Some valid content." }),
     );
     expect(res.status).toBe(422);
   });
 
   it("materials route rejects empty content", async () => {
     const res = await createMaterial(
-      postRequest({
-        subjectId: SEED_SUBJECT_ID,
-        title: "Valid title",
-        content: "",
-      }),
+      postRequest({ subjectId: SEED_SUBJECT_ID, title: "Valid title", content: "" }),
     );
     expect(res.status).toBe(422);
   });
 
   it("generate route returns 404 when materialId references a non-existent row", async () => {
     const res = await generateQuestions(
-      postRequest({
-        subjectId: SEED_SUBJECT_ID,
-        materialId: "mat_does_not_exist",
-        count: 3,
-      }),
+      postRequest({ subjectId: SEED_SUBJECT_ID, materialId: "mat_does_not_exist", count: 3 }),
     );
     expect(res.status).toBe(404);
   });
 
   it("generate route returns 404 when subjectId references a non-existent row", async () => {
     const res = await generateQuestions(
-      postRequest({
-        subjectId: "sub_does_not_exist",
-        materialText: "Some content.",
-        count: 3,
-      }),
+      postRequest({ subjectId: "sub_does_not_exist", materialText: "Some content.", count: 3 }),
     );
     expect(res.status).toBe(404);
   });
 
   it("generate route returns 404 when subjectId belongs to a different user", async () => {
-    // Seed a subject owned by a different user.
     const OTHER_USER_ID = "other-user";
     const OTHER_SUBJECT_ID = "other-subject";
     sharedDb
@@ -344,35 +360,91 @@ describe("Question-Bank persistence flow", () => {
       })
       .run();
 
-    // The current user (SEED_USER_ID) tries to generate questions under the
-    // other user's subject — must be rejected with 404.
     const res = await generateQuestions(
-      postRequest({
-        subjectId: OTHER_SUBJECT_ID,
-        materialText: "Some content.",
-        count: 3,
-      }),
+      postRequest({ subjectId: OTHER_SUBJECT_ID, materialText: "Some content.", count: 3 }),
     );
     expect(res.status).toBe(404);
   });
 
+  it("generate route returns 404 when materialId belongs to a different user", async () => {
+    const OTHER_USER_ID = "other-user-materials-route";
+    const OTHER_SUBJECT_ID = "other-subject-materials-route";
+    const OTHER_MAT_ID = "other-mat";
+    sharedDb
+      .insert(schema.users)
+      .values({ id: OTHER_USER_ID, name: "Other", createdAt: new Date().toISOString() })
+      .run();
+    sharedDb
+      .insert(schema.subjects)
+      .values({
+        id: OTHER_SUBJECT_ID,
+        userId: OTHER_USER_ID,
+        name: "Other Science",
+        color: "#6366f1",
+        createdAt: new Date().toISOString(),
+      })
+      .run();
+    sharedDb
+      .insert(schema.materials)
+      .values({
+        id: OTHER_MAT_ID,
+        userId: OTHER_USER_ID,
+        subjectId: OTHER_SUBJECT_ID,
+        title: "Other notes",
+        content: "Other content",
+        createdAt: new Date().toISOString(),
+      })
+      .run();
+
+    // Current user tries to generate under their subject but with another user's material.
+    const res = await generateQuestions(
+      postRequest({ subjectId: SEED_SUBJECT_ID, materialId: OTHER_MAT_ID, count: 3 }),
+    );
+    expect(res.status).toBe(404);
+  });
+
+  it("rejects a current user's material when it belongs to another subject", async () => {
+    const SECOND_SUBJECT_ID = "test-subject-two";
+    const materialId = "wrong-subject-material";
+    sharedDb
+      .insert(schema.subjects)
+      .values({
+        id: SECOND_SUBJECT_ID,
+        userId: SEED_USER_ID,
+        name: "Mathematics",
+        color: "#6366f1",
+        createdAt: new Date().toISOString(),
+      })
+      .run();
+    sharedDb
+      .insert(schema.materials)
+      .values({
+        id: materialId,
+        userId: SEED_USER_ID,
+        subjectId: SECOND_SUBJECT_ID,
+        title: "Other subject notes",
+        content: "Notes linked to another subject.",
+        createdAt: new Date().toISOString(),
+      })
+      .run();
+
+    const res = await generateQuestions(
+      postRequest({ subjectId: SEED_SUBJECT_ID, materialId, count: 3 }),
+    );
+
+    expect(res.status).toBe(422);
+  });
+
   it("generate route returns 422 when subjectId is missing", async () => {
     const res = await generateQuestions(
-      postRequest({
-        materialText: "Some content.",
-        count: 3,
-      }),
+      postRequest({ materialText: "Some content.", count: 3 }),
     );
     expect(res.status).toBe(422);
   });
 
   it("generate route returns 422 when subjectId is blank", async () => {
     const res = await generateQuestions(
-      postRequest({
-        subjectId: "",
-        materialText: "Some content.",
-        count: 3,
-      }),
+      postRequest({ subjectId: "", materialText: "Some content.", count: 3 }),
     );
     expect(res.status).toBe(422);
   });
@@ -389,7 +461,6 @@ describe("Question-Bank persistence flow", () => {
   });
 
   it("materials route returns 404 when subjectId belongs to a different user", async () => {
-    // Seed a subject owned by a different user.
     const OTHER_USER_ID = "other-user-mat";
     const OTHER_SUBJECT_ID = "other-subject-mat";
     sharedDb
@@ -407,8 +478,6 @@ describe("Question-Bank persistence flow", () => {
       })
       .run();
 
-    // The current user (SEED_USER_ID) tries to create a material under the
-    // other user's subject — must be rejected with 404.
     const res = await createMaterial(
       postRequest({
         subjectId: OTHER_SUBJECT_ID,
@@ -417,5 +486,137 @@ describe("Question-Bank persistence flow", () => {
       }),
     );
     expect(res.status).toBe(404);
+  });
+
+  // ---------------------------------------------------------------------------
+  // ML service error mapping
+  // ---------------------------------------------------------------------------
+
+  it("returns 503 when ML service is unavailable", async () => {
+    const { MlServiceError } = await import("../ml-service");
+    vi.mocked(mlService.generateQuestions).mockRejectedValueOnce(
+      new MlServiceError(
+        "ML_SERVICE_UNAVAILABLE",
+        "Connection refused",
+        "Question generation is temporarily unavailable. Please try again.",
+      ),
+    );
+
+    const matRes = await createMaterial(
+      postRequest({ subjectId: SEED_SUBJECT_ID, title: "Notes", content: "Some content." }),
+    );
+    const { id: materialId } = await jsonBody<{ id: string }>(matRes);
+
+    const res = await generateQuestions(
+      postRequest({ subjectId: SEED_SUBJECT_ID, materialId, count: 3 }),
+    );
+    expect(res.status).toBe(503);
+    const body = await jsonBody<{ error: string }>(res);
+    expect(body.error).toContain("unavailable");
+  });
+
+  it("returns 422 when ML service reports NOTES_TOO_LONG", async () => {
+    const { MlServiceError } = await import("../ml-service");
+    vi.mocked(mlService.generateQuestions).mockRejectedValueOnce(
+      new MlServiceError(
+        "NOTES_TOO_LONG",
+        "Input exceeds word limit",
+        "This material is too long. Try one lecture, chapter, or study section at a time.",
+      ),
+    );
+
+    const res = await generateQuestions(
+      postRequest({ subjectId: SEED_SUBJECT_ID, materialText: "A".repeat(100), count: 3 }),
+    );
+    expect(res.status).toBe(422);
+    const body = await jsonBody<{ error: string }>(res);
+    expect(body.error).toContain("too long");
+  });
+
+  it("returns 502 when ML service returns INVALID_MODEL_RESPONSE", async () => {
+    const { MlServiceError } = await import("../ml-service");
+    vi.mocked(mlService.generateQuestions).mockRejectedValueOnce(
+      new MlServiceError(
+        "INVALID_MODEL_RESPONSE",
+        "JSON decode failed",
+        "We couldn't generate valid questions from this material. Please try again.",
+      ),
+    );
+
+    const res = await generateQuestions(
+      postRequest({ subjectId: SEED_SUBJECT_ID, materialText: "Some content.", count: 3 }),
+    );
+    expect(res.status).toBe(502);
+  });
+
+  it("generated questions are linked to the correct subject in the database", async () => {
+    const matRes = await createMaterial(
+      postRequest({
+        subjectId: SEED_SUBJECT_ID,
+        title: "Linked subject test",
+        content: "Some study notes for subject linkage test.",
+      }),
+    );
+    const { id: materialId } = await jsonBody<{ id: string }>(matRes);
+
+    await generateQuestions(
+      postRequest({ subjectId: SEED_SUBJECT_ID, materialId, count: 2 }),
+    );
+
+    const rows = sharedDb
+      .select()
+      .from(schema.questions)
+      .where(eq(schema.questions.materialId, materialId))
+      .all();
+
+    for (const row of rows) {
+      expect(row.subjectId).toBe(SEED_SUBJECT_ID);
+    }
+  });
+
+  it("parses a PDF through the server route and persists linked material and questions", async () => {
+    const res = await uploadPdf(pdfUploadRequest(SEED_SUBJECT_ID, 2));
+
+    expect(res.status).toBe(201);
+    const body = await jsonBody<{ materialId: string; questionCount: number }>(res);
+    expect(body.questionCount).toBe(2);
+
+    const material = sharedDb
+      .select()
+      .from(schema.materials)
+      .where(eq(schema.materials.id, body.materialId))
+      .get();
+    expect(material).toMatchObject({
+      userId: SEED_USER_ID,
+      subjectId: SEED_SUBJECT_ID,
+      title: "test",
+      content: "Extracted PDF text",
+    });
+
+    const linkedQuestions = sharedDb
+      .select()
+      .from(schema.questions)
+      .where(eq(schema.questions.materialId, body.materialId))
+      .all();
+    expect(linkedQuestions).toHaveLength(2);
+    expect(linkedQuestions.every((question) => question.status === "generated")).toBe(true);
+  });
+
+  it("returns a safe validation error when PDF parsing fails", async () => {
+    const { MlServiceError } = await import("../ml-service");
+    vi.mocked(mlService.parsePdf).mockRejectedValueOnce(
+      new MlServiceError(
+        "UNSUPPORTED_PDF",
+        "No extractable text",
+        "This PDF appears to be scanned. Please use a text-based PDF or paste your notes.",
+      ),
+    );
+
+    const res = await uploadPdf(pdfUploadRequest(SEED_SUBJECT_ID));
+
+    expect(res.status).toBe(422);
+    const body = await jsonBody<{ error: string }>(res);
+    expect(body.error).toContain("text-based PDF");
+    expect(sharedDb.select().from(schema.materials).all()).toHaveLength(0);
   });
 });

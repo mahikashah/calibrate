@@ -1,10 +1,29 @@
 from io import BytesIO
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def disable_configured_service_key(monkeypatch):
+    """Keep unit tests isolated from the workspace's service-key configuration."""
+    from app.config import Settings
+
+    monkeypatch.setattr(
+        "app.main.get_settings",
+        lambda: Settings(
+            hf_token=None,
+            hf_model="test",
+            hf_endpoint="https://example.test",
+            generation_timeout_seconds=90,
+            word_limit=4600,
+            service_api_key=None,
+        ),
+    )
 
 VALID_ACTIVE_RECALL = {
     "type": "active_recall",
