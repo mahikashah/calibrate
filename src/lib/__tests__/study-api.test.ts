@@ -16,7 +16,7 @@ vi.mock("@/lib/db", async () => {
     CREATE TABLE subjects (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, name TEXT NOT NULL, color TEXT NOT NULL, created_at TEXT NOT NULL);
     CREATE TABLE materials (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, subject_id TEXT NOT NULL, title TEXT NOT NULL, content TEXT NOT NULL, created_at TEXT NOT NULL);
     CREATE TABLE questions (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, subject_id TEXT NOT NULL, material_id TEXT, type TEXT NOT NULL, prompt TEXT NOT NULL, answer TEXT NOT NULL, answer_choices TEXT, source_excerpt TEXT, status TEXT NOT NULL, source TEXT NOT NULL, created_at TEXT NOT NULL);
-    CREATE TABLE sessions (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, subject_id TEXT NOT NULL, technique TEXT NOT NULL, material_id TEXT, planned_minutes INTEGER NOT NULL, actual_minutes INTEGER NOT NULL, notes TEXT NOT NULL, completion_key TEXT UNIQUE, started_at TEXT NOT NULL, ended_at TEXT);
+    CREATE TABLE sessions (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, subject_id TEXT NOT NULL, technique TEXT NOT NULL, material_id TEXT, planned_minutes INTEGER NOT NULL, actual_minutes INTEGER NOT NULL, notes TEXT NOT NULL, completion_key TEXT UNIQUE, evidence_origin TEXT NOT NULL DEFAULT 'real', started_at TEXT NOT NULL, ended_at TEXT);
     CREATE TABLE outcomes (id TEXT PRIMARY KEY, session_id TEXT NOT NULL, quiz_score REAL NOT NULL, confidence INTEGER NOT NULL, recall REAL NOT NULL, notes TEXT NOT NULL, created_at TEXT NOT NULL);
     CREATE TABLE session_feedback (id TEXT PRIMARY KEY, session_id TEXT NOT NULL UNIQUE, overall TEXT NOT NULL, calm_wired INTEGER NOT NULL, reasons TEXT NOT NULL, created_at TEXT NOT NULL);
   `);
@@ -30,6 +30,7 @@ const { GET: listQuestions } = await import("@/app/api/questions/route");
 const { POST: createSession } = await import("@/app/api/sessions/route");
 const { POST: createOutcome } = await import("@/app/api/outcomes/route");
 const { GET: getSessionFeedback, POST: saveSessionFeedback } = await import("@/app/api/session-feedback/route");
+const { GET: getInsights } = await import("@/app/api/insights/route");
 
 function request(url: string, body?: unknown) {
   return new Request(url, body === undefined ? undefined : { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
@@ -63,6 +64,7 @@ describe("approved study-session API contracts", () => {
     const response = await createSession(request("http://localhost/api/sessions", { subjectId: "study-subject", materialId: "study-material", technique: "practice_questions", plannedMinutes: 25, actualMinutes: 3 }));
     expect(response.status).toBe(201);
     expect(sharedDb.select().from(schema.sessions).all()).toHaveLength(1);
+    expect(sharedDb.select().from(schema.sessions).get()?.evidenceOrigin).toBe("real");
     expect((await createSession(request("http://localhost/api/sessions", { subjectId: "other-subject", technique: "practice_questions" }))).status).toBe(404);
   });
 
@@ -116,5 +118,101 @@ describe("approved study-session API contracts", () => {
     sharedDb.insert(schema.sessions).values({ id: "incomplete-session", userId: "study-user", subjectId: "study-subject", technique: "active_recall", materialId: null, plannedMinutes: 25, actualMinutes: 2, notes: "", completionKey: null, startedAt: now, endedAt: null }).run();
     expect((await saveSessionFeedback(request("http://localhost/api/session-feedback", { sessionId: "incomplete-session", overall: "good", calmWired: 50, reasons: [] }))).status).toBe(409);
     expect(sharedDb.select().from(schema.sessionFeedback).all()).toHaveLength(0);
+  });
+});
+
+describe("transparent Insights evidence", () => {
+  const now = new Date("2026-08-07T12:00:00.000Z").toISOString();
+
+  function addEvidence(values: {
+    id: string;
+    userId?: string;
+    subjectId?: string;
+    technique: string;
+    origin?: "real" | "demo";
+    quizScore?: number;
+    confidence?: number;
+    recall?: number;
+    minutes?: number;
+    feedback?: { overall: "rough" | "good"; calmWired: number; reasons: string[] };
+  }) {
+    const userId = values.userId ?? "study-user";
+    const subjectId = values.subjectId ?? "study-subject";
+    sharedDb.insert(schema.sessions).values({
+      id: values.id,
+      userId,
+      subjectId,
+      technique: values.technique,
+      materialId: null,
+      plannedMinutes: 25,
+      actualMinutes: values.minutes ?? 25,
+      notes: "",
+      completionKey: null,
+      evidenceOrigin: values.origin ?? "real",
+      startedAt: now,
+      endedAt: now,
+    }).run();
+    sharedDb.insert(schema.outcomes).values({
+      id: `out-${values.id}`,
+      sessionId: values.id,
+      quizScore: values.quizScore ?? 80,
+      confidence: values.confidence ?? 4,
+      recall: values.recall ?? 80,
+      notes: "",
+      createdAt: now,
+    }).run();
+    if (values.feedback) {
+      sharedDb.insert(schema.sessionFeedback).values({
+        id: `feedback-${values.id}`,
+        sessionId: values.id,
+        ...values.feedback,
+        reasons: JSON.stringify(values.feedback.reasons),
+        createdAt: now,
+      }).run();
+    }
+  }
+
+  it("returns only the current user's real completed evidence with calculated technique totals", async () => {
+    addEvidence({ id: "real-1", technique: "active_recall", quizScore: 80, recall: 80, confidence: 4, minutes: 30 });
+    addEvidence({ id: "demo-1", technique: "rereading", origin: "demo", quizScore: 100, recall: 100, confidence: 5 });
+    addEvidence({ id: "other-1", userId: "other-user", subjectId: "other-subject", technique: "rereading", quizScore: 100, recall: 100, confidence: 5 });
+
+    const response = await getInsights(new Request("http://localhost/api/insights"));
+    const body = await response.json();
+    expect(response.status).toBe(200);
+    expect(body.source).toBe("real");
+    expect(body.report.overall).toMatchObject({ totalSessions: 1, totalMinutes: 30 });
+    expect(body.report.subjects[0].techniques[0]).toMatchObject({ technique: "active_recall", n: 1, avgScore: 79 });
+    expect(body.recentEvidence).toHaveLength(1);
+  });
+
+  it("keeps demo evidence available separately and never mixes it into real recommendations", async () => {
+    addEvidence({ id: "real-1", technique: "active_recall", quizScore: 60, recall: 60 });
+    addEvidence({ id: "demo-1", technique: "rereading", origin: "demo", quizScore: 100, recall: 100, confidence: 5 });
+    const real = await (await getInsights(new Request("http://localhost/api/insights?source=real"))).json();
+    const demo = await (await getInsights(new Request("http://localhost/api/insights?source=demo"))).json();
+    expect(real.report.subjects[0].best.technique).toBe("active_recall");
+    expect(demo.sourceLabel).toMatch(/presentation/i);
+    expect(demo.report.subjects[0].best.technique).toBe("rereading");
+  });
+
+  it("filters only owned subject evidence and attaches feedback context to the right session", async () => {
+    addEvidence({ id: "real-flagged", technique: "practice_questions", feedback: { overall: "rough", calmWired: 77, reasons: ["questions_wrong", "technique_wrong"] } });
+    addEvidence({ id: "other-1", userId: "other-user", subjectId: "other-subject", technique: "active_recall" });
+    const response = await getInsights(new Request("http://localhost/api/insights?subjectId=study-subject"));
+    const body = await response.json();
+    expect(response.status).toBe(200);
+    expect(body.recentEvidence[0]).toMatchObject({ feedbackOverall: "rough", calmWired: 77 });
+    expect(body.recentEvidence[0].feedbackReasons).toEqual(["questions_wrong", "technique_wrong"]);
+    expect(body.recentEvidence[0].context.map((item: { message: string }) => item.message)).toContain("Question quality may have affected this session.");
+    expect(body.report.subjects[0].best.technique).toBe("practice_questions");
+    expect((await getInsights(new Request("http://localhost/api/insights?subjectId=other-subject"))).status).toBe(404);
+  });
+
+  it("supports historical sessions without feedback and reports insufficient evidence", async () => {
+    addEvidence({ id: "real-history", technique: "feynman" });
+    const body = await (await getInsights(new Request("http://localhost/api/insights"))).json();
+    expect(body.recentEvidence[0]).toMatchObject({ feedbackOverall: null, calmWired: null, feedbackReasons: [] });
+    expect(body.report.subjects[0].confidence).toBe("insufficient");
   });
 });

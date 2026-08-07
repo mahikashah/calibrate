@@ -85,6 +85,8 @@ export const sessions = sqliteTable("sessions", {
   actualMinutes: integer("actual_minutes").notNull().default(0),
   notes: text("notes").notNull().default(""),
   completionKey: text("completion_key").unique(),
+  /** `real` is user-completed workflow evidence; `demo` is seeded presentation data. */
+  evidenceOrigin: text("evidence_origin").notNull().default("real"),
   startedAt: text("started_at").notNull().$defaultFn(now),
   endedAt: text("ended_at"),
 });

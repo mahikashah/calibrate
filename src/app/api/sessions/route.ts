@@ -60,6 +60,7 @@ export async function POST(req: Request) {
       actualMinutes: body.actualMinutes,
       notes: body.notes,
       completionKey: body.completionKey ?? null,
+      evidenceOrigin: "real",
       startedAt: nowIso,
       endedAt: nowIso,
     };

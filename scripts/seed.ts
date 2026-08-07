@@ -8,6 +8,7 @@ import {
   onboarding,
   outcomes,
   questions,
+  sessionFeedback,
   sessions,
   subjects,
   users,
@@ -54,7 +55,7 @@ function daysAgo(d: number) {
 console.log("Seeding Calibrate demo data...");
 
 // Wipe existing rows (idempotent reseed).
-for (const t of [outcomes, sessions, questions, materials, onboarding, subjects, users]) {
+for (const t of [sessionFeedback, outcomes, sessions, questions, materials, onboarding, subjects, users]) {
   db.delete(t).run();
 }
 
@@ -136,6 +137,7 @@ for (const [key, plan] of Object.entries(PLAN)) {
           plannedMinutes: 25,
           actualMinutes: minutes,
           notes: "",
+          evidenceOrigin: "demo",
           startedAt: when,
           endedAt: when,
         })

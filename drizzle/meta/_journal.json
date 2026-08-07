@@ -36,6 +36,13 @@
       "when": 1786200000000,
       "tag": "0004_session_feedback",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1786300000000,
+      "tag": "0005_session_evidence_origin",
+      "breakpoints": true
     }
   ]
 }
