@@ -104,6 +104,65 @@ function headlineFor(
   } — keep testing to be sure.`;
 }
 
+/**
+ * The single, deterministic "what should I do next" read on the evidence.
+ *
+ * Insights and the Dashboard both render this — there is exactly one
+ * recommendation in the product, and it is computed from `computeInsights`
+ * output only. `hypothesisTechnique` is used solely when there is no evidence
+ * at all, to surface the onboarding starting guess as a guess.
+ */
+export type RecommendationState = "hypothesis" | "gathering" | "emerging" | "clear";
+
+export interface CurrentRecommendation {
+  state: RecommendationState;
+  title: string;
+  body: string;
+  action: string;
+  technique?: string;
+}
+
+export function currentRecommendation(
+  subject?: SubjectInsight,
+  hypothesisTechnique?: string,
+): CurrentRecommendation {
+  if (!subject?.best || subject.confidence === "insufficient") {
+    if (!subject && hypothesisTechnique) {
+      return {
+        state: "hypothesis",
+        title: "Starting hypothesis",
+        body: `Your onboarding answers suggest starting with ${hypothesisTechnique}. That is a guess to test, not a conclusion — your own sessions decide.`,
+        action: `Try ${hypothesisTechnique}`,
+        technique: hypothesisTechnique,
+      };
+    }
+    return {
+      state: "gathering",
+      title: "Still gathering evidence",
+      body: subject
+        ? `You have ${subject.totalSessions} checked session${subject.totalSessions === 1 ? "" : "s"} in ${subject.subjectName}. Try another technique or repeat this one before drawing a conclusion.`
+        : "Complete a checked study session to begin your first comparison.",
+      action: subject ? "Try another technique" : "Start a session",
+    };
+  }
+  if (subject.confidence === "clear") {
+    return {
+      state: "clear",
+      title: "Strongest result so far",
+      body: `${subject.best.label} averages ${subject.best.avgScore}/100 across ${subject.best.n} sessions${subject.runnerUp ? `, ahead of ${subject.runnerUp.label}` : ""}. Keep testing it in comparable sessions.`,
+      action: `Use ${subject.best.label}`,
+      technique: subject.best.label,
+    };
+  }
+  return {
+    state: "emerging",
+    title: "Current evidence favors…",
+    body: `${subject.best.label} currently averages ${subject.best.avgScore}/100 across ${subject.best.n} sessions. The comparison is still emerging, so another session with a different technique will make it clearer.`,
+    action: "Try another technique",
+    technique: subject.best.label,
+  };
+}
+
 export function computeInsights(records: EvidenceRecord[]): InsightsReport {
   const bySubject = new Map<string, EvidenceRecord[]>();
   for (const r of records) {

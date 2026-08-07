@@ -1,0 +1,224 @@
+Implement the Calibrate Dashboard milestone now.
+
+Do not enter Plan mode.
+Do not create a task plan.
+Do not save this prompt as project documentation.
+Do not add another Pasted-*.txt file.
+Make the actual code changes.
+
+Before editing, quickly inspect:
+- src/app/dashboard/page.tsx
+- /api/insights
+- current subject/session/question APIs
+- existing deterministic recommendation response
+
+Then implement the Dashboard using the architecture that already exists.
+
+GOAL
+
+/dashboard should become the student's real Calibrate home screen.
+
+It should answer:
+
+1. What should I do next?
+2. What technique does current evidence suggest?
+3. How much real evidence have I collected?
+4. What happened in my latest session?
+5. Where should I go next?
+
+IMPORTANT
+
+Use REAL evidence only for real Dashboard state:
+
+evidence_origin = "real"
+
+Do not mix seeded/demo sessions into:
+- session counts
+- recent session
+- evidence progress
+- recommendation
+
+Do not create another recommendation engine.
+
+Reuse the existing deterministic Insights/recommendation data.
+
+Do not use an LLM to choose a technique.
+
+DASHBOARD SECTIONS
+
+1. PRIMARY NEXT ACTION
+
+Choose the CTA from actual state:
+
+No subject
+→ Set up your first subject
+
+Subject but no material
+→ Add study material
+
+Material but questions need review / no approved questions
+→ Review Question Bank
+
+Approved questions but no completed session
+→ Start study session
+
+Not enough comparison evidence
+→ Try another study technique
+
+Enough evidence
+→ Study with current recommendation
+
+Make this the most visually prominent card.
+
+2. CURRENT RECOMMENDATION
+
+Reuse the existing deterministic recommendation from Insights.
+
+Possible states:
+
+Starting hypothesis
+
+Still gathering evidence
+
+Current evidence favors [Technique]
+
+Use cautious language.
+
+Include:
+
+View why → /insights
+
+Do not compute a separate Dashboard recommendation.
+
+3. EVIDENCE PROGRESS
+
+Show a compact real-data summary such as:
+
+3 completed sessions
+2 techniques tried
+
+Use only real evidence.
+
+4. RECENT SESSION
+
+Show the latest real completed session:
+
+- subject
+- technique
+- performance
+- date
+- Rough / Good if present
+
+If feedback contains:
+
+questions_wrong
+→ Question quality flagged
+
+material_hard
+→ Material felt difficult
+
+distracted_low_energy
+→ Low energy / distraction reported
+
+technique_wrong
+→ Technique fit questioned
+
+Do not overinterpret these.
+
+5. SUBJECTS
+
+Show a compact subject summary and:
+
+View all subjects → /subjects
+
+Do not reproduce the full Subjects page.
+
+6. SHORTCUTS
+
+Where relevant provide:
+
+Question Bank → /questions
+Study → /study
+Full Insights → /insights
+
+DESIGN
+
+Use the existing Calibrate visual system:
+
+- warm cream/off-white background
+- charcoal typography
+- white cards
+- turquoise primary CTA
+- sage evidence accents
+- thin borders
+- generous whitespace
+- clear hierarchy
+
+Avoid:
+- purple StudyCoach styling
+- dense enterprise analytics
+- excessive charts
+- generic SaaS dashboard appearance
+
+Keep mobile responsive.
+
+DO NOT CHANGE
+
+Do not redesign:
+- Insights
+- Study Session
+- Feedback
+- Question Bank
+- Subjects
+- onboarding
+- Start
+- How It Works
+
+Do not modify evidence_origin architecture.
+Do not add ML or LLM dependencies.
+Do not migrate the database.
+
+TESTS
+
+Add focused coverage for:
+
+- brand-new user next action
+- subject/no-material next action
+- questions-awaiting-review next action
+- approved questions/no-session next action
+- real recent session
+- real evidence counts
+- demo evidence excluded
+- deterministic recommendation reused
+- insufficient-evidence state
+- questions_wrong surfaces question-quality context
+- ownership isolation
+
+VALIDATE
+
+Run:
+
+npm test
+npm run typecheck
+npm run build
+
+PYTHONPATH=ml-service python -m pytest ml-service/tests -q
+
+Do not stop after inspecting files.
+
+Do not stop after writing documentation.
+
+Finish the Dashboard code, tests, and validation.
+
+At completion report:
+- exact files changed
+- next-action logic
+- recommendation reuse
+- evidence-progress logic
+- recent-session behavior
+- real/demo separation
+- UI changes
+- tests
+- test/typecheck/build results
+
+Do not start the final polish milestone yet.

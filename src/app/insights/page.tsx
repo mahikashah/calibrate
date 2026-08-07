@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ConfidenceBadge, Empty } from "@/components/ui";
 import { getJSON } from "@/lib/client";
-import type { InsightsReport, SubjectInsight } from "@/lib/recommend";
+import { currentRecommendation, type InsightsReport, type SubjectInsight } from "@/lib/recommend";
 
 type Source = "real" | "demo";
 
@@ -35,30 +35,6 @@ function hours(minutes: number) {
   return `${Math.round((minutes / 60) * 10) / 10}h`;
 }
 
-function recommendation(subject?: SubjectInsight) {
-  if (!subject?.best || subject.confidence === "insufficient") {
-    return {
-      title: "Still gathering evidence",
-      body: subject
-        ? `You have ${subject.totalSessions} checked session${subject.totalSessions === 1 ? "" : "s"} in ${subject.subjectName}. Try another technique or repeat this one before drawing a conclusion.`
-        : "Complete a checked study session to begin your first comparison.",
-      action: subject ? "Try another technique" : "Start a session",
-    };
-  }
-  if (subject.confidence === "clear") {
-    return {
-      title: "Strongest result so far",
-      body: `${subject.best.label} averages ${subject.best.avgScore}/100 across ${subject.best.n} sessions${subject.runnerUp ? `, ahead of ${subject.runnerUp.label}` : ""}. Keep testing it in comparable sessions.`,
-      action: `Use ${subject.best.label}`,
-    };
-  }
-  return {
-    title: "Current evidence favors…",
-    body: `${subject.best.label} currently averages ${subject.best.avgScore}/100 across ${subject.best.n} sessions. The comparison is still emerging, so another session with a different technique will make it clearer.`,
-    action: "Try another technique",
-  };
-}
-
 export default function InsightsPage() {
   const [data, setData] = useState<InsightsResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -84,7 +60,7 @@ export default function InsightsPage() {
   const report = data?.report;
   const hasData = Boolean(report?.subjects.length);
   const focusSubject = report?.subjects[0];
-  const currentRecommendation = recommendation(focusSubject);
+  const recommendation = currentRecommendation(focusSubject);
   const questionQualityFlagged = data?.recentEvidence.some((row) =>
     row.feedbackReasons.includes("questions_wrong"),
   );
@@ -154,10 +130,10 @@ export default function InsightsPage() {
           <section className="grid gap-4 lg:grid-cols-[1.35fr_1fr]">
             <div className="rounded-xl border border-[#B9CCB5] bg-[#F3F8F0] p-6">
               <p className="label text-[#4D6E52]">Current recommendation</p>
-              <h2 className="mt-2 text-2xl font-semibold tracking-tight">{currentRecommendation.title}</h2>
-              <p className="mt-3 max-w-xl text-sm leading-relaxed text-ink">{currentRecommendation.body}</p>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight">{recommendation.title}</h2>
+              <p className="mt-3 max-w-xl text-sm leading-relaxed text-ink">{recommendation.body}</p>
               <Link href="/study" className="mt-5 inline-flex rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:opacity-90">
-                {currentRecommendation.action} →
+                {recommendation.action} →
               </Link>
             </div>
             <div className="grid grid-cols-2 gap-3">

@@ -1,28 +1,12 @@
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { outcomes, sessionFeedback, sessions, subjects } from "@/lib/db/schema";
+import { FEEDBACK_MESSAGES, parseReasons } from "@/lib/feedback-context";
 import { fail, handle, ok } from "@/lib/http";
 import { computeInsights, type EvidenceRecord } from "@/lib/recommend";
 import { outcomeScore } from "@/lib/stats";
 import { techniqueLabel } from "@/lib/techniques";
 import { currentUserId } from "@/lib/user";
-
-const feedbackMessages: Record<string, string> = {
-  questions_wrong: "Question quality may have affected this session.",
-  material_hard: "Material difficulty may have influenced this session.",
-  distracted_low_energy: "Session conditions may have influenced this session.",
-  technique_wrong: "You felt the technique may not have fit this session.",
-  not_sure: "You were not sure what affected this session.",
-};
-
-function parseReasons(value: string | null): string[] {
-  try {
-    const parsed: unknown = JSON.parse(value ?? "[]");
-    return Array.isArray(parsed) ? parsed.filter((reason): reason is string => typeof reason === "string") : [];
-  } catch {
-    return [];
-  }
-}
 
 export async function GET(req: Request) {
   return handle(async () => {
@@ -94,7 +78,7 @@ export async function GET(req: Request) {
         feedbackOverall: row.feedbackOverall,
         calmWired: row.calmWired,
         feedbackReasons: reasons,
-        context: reasons.map((reason) => ({ reason, message: feedbackMessages[reason] ?? reason })),
+        context: reasons.map((reason) => ({ reason, message: FEEDBACK_MESSAGES[reason] ?? reason })),
       };
     });
 
