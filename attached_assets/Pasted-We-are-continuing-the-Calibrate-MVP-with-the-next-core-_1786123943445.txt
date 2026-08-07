@@ -1,0 +1,661 @@
+We are continuing the Calibrate MVP with the next core milestone:
+
+REAL SESSION EVIDENCE
+→ INSIGHTS
+→ TRANSPARENT TECHNIQUE COMPARISON
+
+IMPORTANT CONTEXT
+
+Before making changes, read:
+
+- replit.md
+- docs/CALIBRATE_MASTER_CONTEXT.md
+- docs/ML_INTEGRATION_CONTRACT.md
+
+CURRENT VERIFIED STATE
+
+The real Calibrate workflow now supports:
+
+Subject
+→ Material
+→ Structured Questions
+→ Question Bank Review
+→ Approved Questions
+→ Study Session
+→ Session + Outcome persistence
+→ Post-session Feedback
+→ /insights
+
+The Post-session Feedback milestone is complete.
+
+Real evidence now includes:
+
+- completed session
+- subject
+- material where available
+- selected study technique
+- outcome/performance
+- elapsed time
+- Rough / Good feedback
+- Calm ↔ Wired state
+- structured context reasons:
+  - technique_wrong
+  - questions_wrong
+  - material_hard
+  - distracted_low_energy
+  - not_sure
+
+/api/insights already has access to the feedback join.
+
+Existing seeded/demo Insights data must remain available for presentation safety.
+
+--------------------------------------------------
+PRIMARY GOAL
+--------------------------------------------------
+
+Turn Insights into a transparent evidence page that can use REAL completed Calibrate sessions.
+
+The student should be able to understand:
+
+1. What evidence Calibrate has collected.
+2. How different study techniques have performed.
+3. Whether there is enough evidence to make a recommendation.
+4. What context may have affected certain sessions.
+5. What technique Calibrate currently suggests trying next.
+
+Do NOT turn this into an AI black box.
+
+--------------------------------------------------
+1. INSPECT CURRENT INSIGHTS FIRST
+--------------------------------------------------
+
+Before editing, inspect:
+
+- src/app/insights/page.tsx
+- /api/insights
+- current recommendation logic
+- existing seeded/demo Insights presentation
+- current session/outcome/feedback joins
+- current Figma Insights design
+- any subject-specific insight logic
+
+Reuse the existing architecture.
+
+Do not create a second analytics system.
+
+--------------------------------------------------
+2. CORE PRODUCT PRINCIPLE
+--------------------------------------------------
+
+Calibrate is an evidence-based study coach.
+
+Recommendations should come from transparent application logic using recorded study-session data.
+
+The LLM must NOT decide:
+
+- which technique won
+- which technique is best
+- which evidence counts
+- numerical performance values
+
+If any AI-generated wording already exists, it may only phrase an explanation of results that were already computed deterministically.
+
+Do not require an LLM for Insights to function.
+
+--------------------------------------------------
+3. REAL EVIDENCE FIRST
+--------------------------------------------------
+
+When real completed sessions exist:
+
+Insights should use them.
+
+Use data already available from:
+
+session
++ outcome
++ session feedback
+
+Do not fabricate additional sessions.
+
+Do not silently substitute seeded data into a real user's evidence calculation.
+
+Seeded/demo data may remain separately available for presentation.
+
+--------------------------------------------------
+4. TECHNIQUE COMPARISON
+--------------------------------------------------
+
+Provide a clear comparison of study techniques represented in completed sessions.
+
+For each technique where data exists, show useful evidence such as:
+
+- technique name
+- number of completed sessions
+- average performance / score using the existing outcome metric
+- recent performance where useful
+- total or average focused time if reliable
+
+Use the metrics the application actually records.
+
+Do NOT invent metrics that are not supported by the database.
+
+--------------------------------------------------
+5. SUBJECT CONTEXT
+--------------------------------------------------
+
+Where practical, allow the student to understand whether the evidence applies to:
+
+- all subjects
+or
+- a selected subject
+
+Preserve any existing subject filtering architecture.
+
+Do not build a complicated filtering system.
+
+If a subject filter already exists, refine/reuse it.
+
+--------------------------------------------------
+6. FEEDBACK CONTEXT
+--------------------------------------------------
+
+Use post-session feedback as CONTEXT, not as a replacement for objective results.
+
+Important distinctions:
+
+questions_wrong
+must NOT be treated as:
+technique_wrong
+
+If a session was marked:
+
+questions_wrong
+
+surface that as a possible confounding factor.
+
+Example language:
+
+“Question quality may have affected this session.”
+
+Likewise:
+
+material_hard
+→ difficult material may have influenced performance
+
+distracted_low_energy
+→ session conditions may have influenced performance
+
+technique_wrong
+→ student felt the technique itself was not a good fit in that session
+
+Do not automatically delete these sessions from the evidence.
+
+Instead, clearly surface the context.
+
+--------------------------------------------------
+7. DO NOT OVERCLAIM
+--------------------------------------------------
+
+Avoid declaring:
+
+“This technique definitely works best for you.”
+
+especially from limited evidence.
+
+Use language like:
+
+“Current evidence favors…”
+
+“Your strongest result so far…”
+
+“We need more sessions before making a stronger recommendation.”
+
+This is important to Calibrate’s evidence-based identity.
+
+--------------------------------------------------
+8. INSUFFICIENT EVIDENCE STATE
+--------------------------------------------------
+
+If the student does not yet have enough real sessions to meaningfully compare techniques:
+
+show that clearly.
+
+Example:
+
+“Still gathering evidence”
+
+“You’ve completed 1 session with Active Recall. Try another technique to start comparing results.”
+
+Do not invent certainty.
+
+If the existing product/recommendation logic defines a minimum evidence threshold, preserve it.
+
+If no threshold exists, implement the smallest transparent rule and document it clearly in the completion report.
+
+Do not build advanced statistical significance testing in this MVP.
+
+--------------------------------------------------
+9. CURRENT RECOMMENDATION
+--------------------------------------------------
+
+Provide a visible:
+
+“Current recommendation”
+
+or:
+
+“Try next”
+
+card.
+
+The recommendation must come from deterministic application logic.
+
+Prefer existing recommendation logic if it already exists.
+
+Possible states:
+
+A. Not enough evidence:
+recommend collecting another useful comparison session.
+
+B. Some evidence:
+show the technique currently leading based on the existing transparent score/performance rule.
+
+C. Confounded evidence:
+note when recent results were affected by question quality/material difficulty/session conditions.
+
+Do not let an LLM decide this.
+
+--------------------------------------------------
+10. EXPLAIN WHY
+--------------------------------------------------
+
+The student should be able to understand why Calibrate made the recommendation.
+
+Example structure:
+
+“Why this?”
+
+- Active Recall: 3 sessions
+- average score: 82%
+- Practice Questions: 2 sessions
+- average score: 71%
+- one Practice Questions session was marked as having poor question quality
+
+Use actual calculated values.
+
+The explanation must reflect the deterministic evidence.
+
+--------------------------------------------------
+11. HISTORY / EVIDENCE VIEW
+--------------------------------------------------
+
+Preserve or refine the existing session/evidence history.
+
+For recent sessions show useful information such as:
+
+- subject
+- technique
+- score/performance
+- date
+- Rough / Good
+- contextual flags when present
+
+Do not overwhelm the page with raw database details.
+
+Use progressive disclosure where helpful.
+
+--------------------------------------------------
+12. QUESTION-QUALITY CONTEXT
+--------------------------------------------------
+
+Because Calibrate generates AI practice questions, explicitly support the case where:
+
+questions_wrong
+
+was selected.
+
+Where appropriate show a small note/badge such as:
+
+“Question quality flagged”
+
+This should tell the student:
+
+the result may not be a clean measure of the technique.
+
+Do NOT automatically count the technique as a failure.
+
+--------------------------------------------------
+13. CALM / WIRED CONTEXT
+--------------------------------------------------
+
+The Calm/Wired value is contextual evidence.
+
+Do not treat it as a medical or psychological diagnosis.
+
+Use it only as lightweight session context.
+
+For example:
+
+“Higher study tension was reported during this session.”
+
+Do not overinterpret individual slider values.
+
+--------------------------------------------------
+14. REAL VS SEEDED DATA
+--------------------------------------------------
+
+Preserve presentation-safe seeded/demo Insights data.
+
+However:
+
+real completed workflow data must remain logically distinct.
+
+Do not merge seeded demo sessions into real-user technique averages unless the existing demo mode explicitly requires that behavior.
+
+If needed, create a clear internal separation such as:
+
+real evidence
+vs
+demo presentation evidence
+
+Do not expose confusing technical labels to the student.
+
+--------------------------------------------------
+15. DESIGN
+--------------------------------------------------
+
+Bring /insights closer to the established Calibrate Figma direction.
+
+Use:
+
+- warm cream/off-white background
+- charcoal typography
+- turquoise accents
+- sage success/evidence accents
+- white cards
+- thin borders
+- generous whitespace
+- simple charts/bars where useful
+- strong hierarchy
+
+The page should feel like:
+
+“Here’s what your experiments are teaching us.”
+
+Not:
+
+“Enterprise analytics dashboard.”
+
+Avoid:
+
+- purple StudyCoach styling
+- overly dense data tables
+- generic SaaS analytics
+- excessive charts
+
+--------------------------------------------------
+16. VISUAL COMPARISON
+--------------------------------------------------
+
+Where useful, show a simple visual comparison between techniques.
+
+Prefer:
+
+- compact bars
+- progress-style comparisons
+- small evidence cards
+
+Do not add a charting dependency unless one already exists.
+
+Use CSS/simple components if sufficient.
+
+Numerical values must remain visible and understandable without relying solely on visuals.
+
+--------------------------------------------------
+17. EMPTY STATES
+--------------------------------------------------
+
+Handle:
+
+No completed real sessions
+
+One completed session
+
+Only one technique tried
+
+Multiple techniques tried
+
+Sessions with contextual feedback
+
+No feedback for older sessions
+
+Use helpful next actions.
+
+Examples:
+
+“Complete a study session”
+
+“Try another technique”
+
+“Keep gathering evidence”
+
+--------------------------------------------------
+18. ACTIONS FROM INSIGHTS
+--------------------------------------------------
+
+Give the student a clear next action.
+
+Depending on state:
+
+- Start another study session
+- Try the recommended technique
+- Compare another technique
+- Return to Question Bank if question quality was flagged
+
+Reuse existing routes.
+
+Do not create unnecessary new workflows.
+
+--------------------------------------------------
+19. DO NOT REDESIGN DASHBOARD YET
+--------------------------------------------------
+
+Do NOT rebuild Dashboard in this milestone.
+
+Insights should become correct first.
+
+Dashboard will be the NEXT milestone and will summarize:
+
+- current recommendation
+- recent session
+- evidence progress
+- next action
+
+--------------------------------------------------
+20. NO NEW ML DEPENDENCY
+--------------------------------------------------
+
+Insights must work without:
+
+- FastAPI
+- Hugging Face
+- Qwen
+- an LLM judge
+
+If any optional AI-generated prose exists, Insights must still function when it is unavailable.
+
+All calculations must remain deterministic.
+
+--------------------------------------------------
+21. TESTS
+--------------------------------------------------
+
+Add/update automated tests for at least:
+
+1. real completed sessions appear in Insights evidence
+
+2. technique session counts are correct
+
+3. technique performance calculations use recorded outcome data
+
+4. only current-user evidence is included
+
+5. subject filtering remains ownership-safe
+
+6. questions_wrong remains distinct from technique_wrong
+
+7. question-quality context does not automatically mark technique failure
+
+8. contextual feedback is returned with the correct session
+
+9. no-feedback historical sessions still work
+
+10. insufficient-evidence state works
+
+11. deterministic recommendation behavior works
+
+12. seeded/demo evidence remains available separately
+
+13. real evidence calculations do not silently include seeded/demo records
+
+14. no ML provider is required for calculations
+
+--------------------------------------------------
+22. MANUAL VERIFICATION
+--------------------------------------------------
+
+Manually test at least:
+
+A. Real workflow:
+
+Study Session
+→ feedback
+→ Insights
+
+Confirm the new real session appears.
+
+B. Complete another session with a different technique.
+
+Confirm comparison updates.
+
+C. Submit:
+
+questions_wrong
+
+for a Rough session.
+
+Confirm Insights surfaces question-quality context without claiming the technique failed.
+
+D. Verify seeded/demo presentation Insights remains available as intended.
+
+--------------------------------------------------
+23. VALIDATION
+--------------------------------------------------
+
+Run:
+
+npm test
+npm run typecheck
+npm run build
+
+Run:
+
+PYTHONPATH=ml-service python -m pytest ml-service/tests -q
+
+Verify:
+
+FastAPI GET /health
+
+FastAPI should remain unaffected.
+
+--------------------------------------------------
+24. DO NOT CHANGE
+--------------------------------------------------
+
+Do NOT fully redesign:
+
+- Dashboard
+- Question Bank
+- Study Session
+- Feedback
+- onboarding
+- Start
+- How It Works
+
+Do NOT:
+
+- change Qwen
+- add OCR
+- add authentication
+- add RAG/vector search
+- migrate away from SQLite
+- build advanced statistics
+- let an LLM select the winning technique
+
+This milestone is:
+
+REAL EVIDENCE
+→ TRANSPARENT INSIGHTS
+→ CURRENT RECOMMENDATION
+
+--------------------------------------------------
+25. COMPLETION REPORT
+--------------------------------------------------
+
+Before finishing, report:
+
+1. Exact files changed.
+
+2. Existing Insights architecture found.
+
+3. Real evidence query structure.
+
+4. Technique comparison calculation.
+
+5. Subject filtering behavior.
+
+6. Insufficient-evidence behavior.
+
+7. Deterministic recommendation logic.
+
+8. How feedback context affects explanations.
+
+9. How questions_wrong remains distinct from technique_wrong.
+
+10. How Calm/Wired context is presented.
+
+11. Recent-session/history behavior.
+
+12. Real vs seeded/demo evidence separation.
+
+13. Visual/UI changes.
+
+14. Tests added.
+
+15. npm test result.
+
+16. npm run typecheck result.
+
+17. npm run build result.
+
+18. FastAPI tests.
+
+19. /health result.
+
+20. Confirmation no LLM decides technique recommendations.
+
+21. Confirmation Dashboard was NOT redesigned.
+
+22. Exact next milestone:
+
+DASHBOARD
+→ summarize real Calibrate state
+→ current recommendation
+→ recent session
+→ evidence progress
+→ next action
+
+Then:
+
+FINAL NAVIGATION + VISUAL CONSISTENCY PASS.
