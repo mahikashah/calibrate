@@ -1,0 +1,654 @@
+We are beginning the next Calibrate product milestone:
+
+Starting Hypothesis
+→ Set Up First Subject
+→ Add Study Material
+
+IMPORTANT CONTEXT
+
+Before making changes, read:
+
+- replit.md
+- docs/CALIBRATE_MASTER_CONTEXT.md
+
+The first-time experience is already established:
+
+/
+→ /start
+→ /how-it-works
+→ /onboarding
+→ Starting Hypothesis
+→ “Set up my first subject”
+
+The Starting Hypothesis screen now correctly sends the student to /subjects.
+
+This task should build the next clean handoff:
+
+Starting Hypothesis
+→ Subject Setup
+→ Add Material
+
+IMPORTANT:
+
+Do NOT connect Shreya's ML pipeline yet.
+
+Do NOT change question generation yet.
+
+Do NOT redesign Question Bank yet.
+
+This task should prepare the frontend and existing application structure so the ML integration can plug in cleanly in the NEXT milestone.
+
+--------------------------------------------------
+GOAL
+--------------------------------------------------
+
+A new student who finishes onboarding should understand:
+
+1. What class/subject they want to study.
+2. What material they want Calibrate to use.
+3. That Calibrate will eventually turn that material into practice questions.
+
+The intended flow after this task should be:
+
+Starting Hypothesis
+↓
+Set up my first subject
+↓
+/subjects
+↓
+Create or select subject
+↓
+Add study material
+↓
+Choose:
+Upload PDF
+or
+Paste Notes
+↓
+Material is ready
+↓
+NEXT milestone:
+Generate questions with Shreya's ML pipeline
+
+Do NOT prematurely start a Study Session.
+
+--------------------------------------------------
+1. INSPECT EXISTING IMPLEMENTATION FIRST
+--------------------------------------------------
+
+Before changing code, inspect:
+
+- current /subjects page
+- current subjects API
+- current materials API
+- current database schema for subjects/materials
+- current Question Bank material/paste-notes workflow
+- existing subject ownership/data-isolation behavior
+
+Reuse existing architecture.
+
+Do not create duplicate subject or material systems.
+
+Do not change the database schema unless absolutely required.
+
+If the current schema already supports the required flow, use it as-is.
+
+--------------------------------------------------
+2. SUBJECTS PAGE ROLE
+--------------------------------------------------
+
+Refine /subjects so it can serve both:
+
+A. First-time subject setup
+B. Returning-user subject management
+
+Do NOT make two separate subject systems.
+
+The same /subjects page should adapt naturally.
+
+For a first-time user with no subjects:
+
+Show a focused empty/setup state.
+
+Suggested content:
+
+Eyebrow:
+“FIRST SUBJECT”
+
+Heading:
+“What are you studying?”
+
+Supporting text:
+“Create a subject so Calibrate knows which class your materials and study sessions belong to.”
+
+Primary form/action:
+
+Subject name
+
+Example placeholder:
+“Statistics”
+
+Primary CTA:
+“Create subject”
+
+Keep the form simple.
+
+Do not add unnecessary fields that the existing database does not support.
+
+--------------------------------------------------
+3. EXISTING SUBJECTS
+--------------------------------------------------
+
+If subjects already exist:
+
+Preserve the existing list.
+
+A returning student should be able to:
+
+- see existing subjects
+- select/open a subject
+- add another subject
+
+Do not delete existing subject-management functionality.
+
+Do not hardcode the demo subjects.
+
+Continue using actual subject records from the database.
+
+--------------------------------------------------
+4. AFTER SUBJECT CREATION
+--------------------------------------------------
+
+After successfully creating the first subject:
+
+Do NOT send the user directly to:
+
+- Study Session
+- Dashboard
+- Insights
+
+The next action should be:
+
+“Add study material”
+
+The student should understand:
+
+“Now give Calibrate something from this class to study.”
+
+If practical with the existing architecture, automatically continue into the Add Material step while preserving the newly created subject selection.
+
+--------------------------------------------------
+5. MATERIAL INTAKE EXPERIENCE
+--------------------------------------------------
+
+Create or refine a focused material-entry experience associated with the selected subject.
+
+Use the smallest routing change that fits the existing application.
+
+If an existing material-entry route/component already exists, reuse it.
+
+If a new route is required, prefer a clear route such as:
+
+/subjects/[subjectId]/materials/new
+
+or another route consistent with the current Next.js architecture.
+
+Do not introduce a complicated routing system.
+
+--------------------------------------------------
+6. MATERIAL SCREEN CONTENT
+--------------------------------------------------
+
+The material screen should clearly show:
+
+Subject:
+[Selected Subject]
+
+Heading:
+“Add study material”
+
+Supporting copy:
+“Use notes from the class you’re actually studying.”
+
+Provide TWO material-source options:
+
+1. Upload PDF
+2. Paste Notes
+
+PDF should be presented as the primary/first option.
+
+Paste Notes should remain fully visible as a useful alternative.
+
+This matches the intended Calibrate product direction:
+
+PDF = primary structured material source
+
+Paste Notes = secondary flexible source
+
+--------------------------------------------------
+7. UPLOAD PDF UI
+--------------------------------------------------
+
+Create the frontend PDF-selection experience.
+
+The UI may include:
+
+- upload/drop zone
+- Select PDF button
+- selected filename
+- clear/remove selected file action
+- brief file guidance
+
+Accept PDF files only in this interface.
+
+IMPORTANT:
+
+Do NOT implement PDF parsing in this task.
+
+Do NOT call an LLM.
+
+Do NOT connect FastAPI.
+
+Do NOT connect Shreya's Python scripts yet.
+
+Do NOT pretend that PDF processing is complete.
+
+This task only establishes the frontend intake state that the next ML integration milestone will connect.
+
+If the current application cannot meaningfully persist a PDF without the upcoming ML service, keep the selected file in the frontend intake state rather than inventing fake backend behavior.
+
+Do not store meaningless placeholder PDF content in the database.
+
+--------------------------------------------------
+8. PASTE NOTES UI
+--------------------------------------------------
+
+Preserve/reuse the existing paste-notes capability where practical.
+
+The student should be able to:
+
+- enter a material title
+- paste notes
+- see which subject they belong to
+
+Suggested fields:
+
+Material title
+
+Example:
+“Chapter 5 Lecture Notes”
+
+Notes
+
+Large text area
+
+Do not duplicate existing material persistence logic if it already exists.
+
+If the current Materials API already supports text materials safely, continue using it.
+
+--------------------------------------------------
+9. TOKEN / LENGTH UX PREPARATION
+--------------------------------------------------
+
+Shreya's ML pipeline will later enforce material-length/token limits.
+
+Prepare the frontend visually for this concept without building the real ML token counter yet.
+
+For pasted notes, show lightweight helper text such as:
+
+“Keep this to one lecture, chapter, or study section at a time.”
+
+If an existing reliable word-count utility is already available, a simple word count may be displayed.
+
+Do NOT invent an inaccurate token count.
+
+Do NOT hardcode fake token values.
+
+The real token validation will be connected with Shreya's backend later.
+
+--------------------------------------------------
+10. MATERIAL SOURCE MODEL
+--------------------------------------------------
+
+The UI should treat both:
+
+PDF Upload
+and
+Paste Notes
+
+as two ways of creating a Calibrate Material.
+
+Conceptually:
+
+Subject
+↓
+Material
+↓
+Questions
+
+Do not build completely separate downstream workflows for PDF and pasted notes.
+
+Both sources should eventually feed the same question-generation pipeline.
+
+--------------------------------------------------
+11. AFTER MATERIAL ENTRY
+--------------------------------------------------
+
+Do NOT generate questions with the old/demo ML system as part of this milestone unless generation is already inseparably coupled to existing material persistence.
+
+Prefer separating:
+
+Save / prepare material
+
+from:
+
+Generate questions
+
+The next milestone will connect real generation through Shreya's Python/FastAPI service.
+
+After valid material has been entered, show the next-step concept clearly.
+
+Preferred CTA wording:
+
+“Continue to question generation”
+
+OR
+
+“Save material”
+
+followed by:
+
+“Generate questions”
+
+However:
+
+Do NOT wire this button to a fake ML implementation.
+
+If real generation is not yet connected, route only as far as the existing safe material state or clearly leave the generation action for the next milestone.
+
+Do not show misleading fake success.
+
+--------------------------------------------------
+12. FIRST-TIME FLOW CONTEXT
+--------------------------------------------------
+
+When the student arrives from Starting Hypothesis, the experience should feel linear:
+
+Onboarding complete
+↓
+Create subject
+↓
+Add material
+↓
+Generate practice
+
+Avoid dropping the user into a dense management dashboard immediately.
+
+For first-time setup, emphasize one obvious next action.
+
+Returning users can still use the normal Subjects management experience.
+
+--------------------------------------------------
+13. VISUAL DESIGN
+--------------------------------------------------
+
+Keep the established Calibrate design system:
+
+- warm cream/off-white background
+- sage accents
+- turquoise/green primary actions
+- charcoal text
+- white cards
+- thin borders
+- generous whitespace
+- restrained decorative shapes
+- clear headings
+- calm academic feel
+
+The subject/material setup should look visually connected to:
+
+- /start
+- /how-it-works
+- onboarding
+- Starting Hypothesis
+
+When the student enters the main app shell, it should still feel like the same product.
+
+Do not introduce a different visual system.
+
+--------------------------------------------------
+14. APP SHELL
+--------------------------------------------------
+
+/subjects is now part of the actual Calibrate application.
+
+It may use the existing Calibrate app shell/sidebar.
+
+Do not redesign the entire sidebar in this task.
+
+However, the first-time empty state inside /subjects should remain focused and understandable.
+
+Do not expose unnecessary advanced navigation or settings in the setup form itself.
+
+--------------------------------------------------
+15. DO NOT CHANGE
+--------------------------------------------------
+
+Do NOT modify:
+
+- /start
+- /how-it-works
+- onboarding questions
+- Starting Hypothesis logic
+- recommendation algorithm
+- Dashboard metrics
+- Question Bank behavior
+- question-generation API behavior
+- Study Session
+- Insights
+- post-session feedback
+- database schema unless absolutely required
+- Shreya's Python code
+- FastAPI integration
+- LLM provider
+- authentication
+- existing ownership/data-isolation protections
+
+This task is ONLY:
+
+Subject setup
++
+Material intake preparation
+
+--------------------------------------------------
+16. IMPORTANT ML-INTEGRATION BOUNDARY
+--------------------------------------------------
+
+This frontend should be ready for the next architecture:
+
+Student
+↓
+Subject
+↓
+PDF or pasted notes
+↓
+Next.js backend
+↓
+Shreya FastAPI ML service
+↓
+structured generated questions
+↓
+Question Bank
+
+Do not implement that network call yet.
+
+Do not expose model/API keys.
+
+Do not build browser → LLM communication.
+
+The next task will establish the actual Next.js ↔ FastAPI contract.
+
+--------------------------------------------------
+17. RESPONSIVE DESIGN
+--------------------------------------------------
+
+Desktop:
+
+- clear subject setup
+- readable material-entry area
+- PDF / Paste options easy to distinguish
+- content does not become excessively wide
+
+Mobile:
+
+- form fields full width
+- upload area remains usable
+- tabs/source selector remains easy to tap
+- no horizontal scrolling
+- primary CTA remains prominent
+
+--------------------------------------------------
+18. ACCESSIBILITY
+--------------------------------------------------
+
+Ensure:
+
+- form labels are explicit
+- keyboard navigation works
+- upload control is accessible
+- selected material-source state is not communicated only through color
+- error messages are associated with fields
+- buttons have visible focus states
+
+--------------------------------------------------
+19. VALIDATION
+--------------------------------------------------
+
+After implementation run:
+
+npm test
+npm run typecheck
+npm run build
+
+Then manually test:
+
+TEST A — New user handoff
+
+Complete onboarding
+→ Starting Hypothesis
+→ Set up my first subject
+→ /subjects
+
+Verify first-time setup is understandable.
+
+--------------------------------------------------
+
+TEST B — Create subject
+
+Create a new subject.
+
+Verify:
+
+- it uses the existing subject API/database behavior
+- the subject persists
+- no duplicate subject architecture was created
+
+--------------------------------------------------
+
+TEST C — Existing subjects
+
+Reload /subjects.
+
+Verify existing subjects still display normally.
+
+--------------------------------------------------
+
+TEST D — Add material
+
+Choose the newly created subject.
+
+Continue to Add Study Material.
+
+Verify:
+
+- selected subject is clear
+- Upload PDF option exists
+- Paste Notes option exists
+
+--------------------------------------------------
+
+TEST E — PDF
+
+Select a PDF.
+
+Verify:
+
+- only PDF is accepted where practical
+- filename appears
+- file can be removed/replaced
+- no fake question generation occurs
+- no ML call occurs
+
+--------------------------------------------------
+
+TEST F — Paste Notes
+
+Enter:
+
+- material title
+- pasted notes
+
+Verify existing text-material persistence still works if currently supported.
+
+--------------------------------------------------
+
+TEST G — Regression
+
+Verify these areas remain functional:
+
+- /start
+- /how-it-works
+- /onboarding
+- Starting Hypothesis
+- /dashboard
+- Question Bank
+- Study Session
+- Insights
+
+--------------------------------------------------
+20. COMPLETION REPORT
+--------------------------------------------------
+
+Before finishing, provide:
+
+1. Exact files changed.
+
+2. Existing subject architecture discovered.
+
+3. Existing material architecture discovered.
+
+4. Whether a new material route was required and why.
+
+5. Final first-time subject flow.
+
+6. Final PDF intake behavior.
+
+7. Final pasted-notes behavior.
+
+8. Confirmation that PDF parsing was NOT implemented.
+
+9. Confirmation that no ML/LLM calls were added.
+
+10. Confirmation that Shreya's FastAPI integration was NOT implemented yet.
+
+11. Confirmation that Question Bank and Study Session behavior were preserved.
+
+12. Confirmation that database schema was preserved, or clearly explain any unavoidable change before making it.
+
+13. npm test result.
+
+14. npm run typecheck result.
+
+15. npm run build result.
+
+16. Briefly identify the cleanest point in the code where the next milestone should connect the FastAPI ML service.

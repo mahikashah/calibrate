@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Empty } from "@/components/ui";
 import { deleteJSON, getJSON, postJSON } from "@/lib/client";
 
 interface Subject {
@@ -13,6 +14,7 @@ interface Subject {
 const SWATCHES = ["#27834F", "#208B8B", "#70B8B8", "#91A88D", "#A16B2B", "#536A55"];
 
 export default function SubjectsPage() {
+  const router = useRouter();
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [sessions, setSessions] = useState<{ subjectId: string }[]>([]);
   const [questions, setQuestions] = useState<{ subjectId: string }[]>([]);
@@ -20,6 +22,7 @@ export default function SubjectsPage() {
   const [color, setColor] = useState(SWATCHES[0]);
   const [saving, setSaving] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   async function refresh() {
     const [subs, ses, qs] = await Promise.all([
@@ -47,10 +50,13 @@ export default function SubjectsPage() {
   async function create() {
     if (!name.trim()) return;
     setSaving(true);
+    setCreateError(null);
     try {
-      await postJSON("/api/subjects", { name: name.trim(), color });
+      const subject = await postJSON<Subject>("/api/subjects", { name: name.trim(), color });
       setName("");
-      await refresh();
+      router.push(`/subjects/${subject.id}/materials/new`);
+    } catch (err) {
+      setCreateError((err as Error).message);
     } finally {
       setSaving(false);
     }
@@ -68,15 +74,59 @@ export default function SubjectsPage() {
   }
 
   return (
-    <div className="animate-rise space-y-8">
-      <header>
-        <p className="label mb-1">Subjects</p>
-        <h1 className="text-2xl font-semibold tracking-tight">What are you studying?</h1>
-      </header>
+    <div className={`animate-rise ${subjects.length === 0 ? "calibrate-subject-setup" : "space-y-8"}`}>
+      {subjects.length === 0 ? (
+        <section className="calibrate-subject-setup__card">
+          <p className="calibrate-subject-setup__eyebrow">First subject</p>
+          <h1>What are you studying?</h1>
+          <p className="calibrate-subject-setup__intro">
+            Create a subject so Calibrate knows which class your materials and study sessions belong to.
+          </p>
+          <div className="calibrate-subject-setup__form">
+            <label htmlFor="subject-name" className="calibrate-subject-setup__label">Subject name</label>
+            <input
+              id="subject-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && create()}
+              placeholder="Statistics"
+              className="field"
+              aria-describedby={createError ? "subject-create-error" : undefined}
+            />
+            <div className="calibrate-subject-setup__colors">
+              <span className="calibrate-subject-setup__label">Color</span>
+              <div className="flex gap-1.5">
+                {SWATCHES.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setColor(c)}
+                    className={`h-8 w-8 rounded-lg border-2 transition-transform ${
+                      color === c ? "scale-110 border-ink" : "border-transparent"
+                    }`}
+                    style={{ background: c }}
+                    aria-label={`Use ${c} for this subject`}
+                    aria-pressed={color === c}
+                  />
+                ))}
+              </div>
+            </div>
+            {createError && <p id="subject-create-error" className="calibrate-form-error">{createError}</p>}
+            <button onClick={create} disabled={saving || !name.trim()} className="calibrate-button calibrate-button-teal">
+              {saving ? "Creating subject…" : "Create subject"}
+            </button>
+          </div>
+        </section>
+      ) : (
+        <>
+          <header>
+            <p className="label mb-1">Subjects</p>
+            <h1 className="text-2xl font-semibold tracking-tight">What are you studying?</h1>
+          </header>
 
-      <section className="card p-6">
-        <h2 className="mb-4 text-base font-semibold tracking-tight">Add a subject</h2>
-        <div className="flex flex-wrap items-end gap-3">
+          <section className="card p-6">
+            <h2 className="mb-4 text-base font-semibold tracking-tight">Add a subject</h2>
+            <div className="flex flex-wrap items-end gap-3">
           <div className="min-w-[200px] flex-1">
             <label className="label mb-1 block">Name</label>
             <input
@@ -106,23 +156,21 @@ export default function SubjectsPage() {
           <button onClick={create} disabled={saving || !name.trim()} className="btn-primary">
             {saving ? "Adding…" : "Add subject"}
           </button>
-        </div>
-      </section>
+            </div>
+            {createError && <p className="calibrate-form-error mt-3">{createError}</p>}
+          </section>
 
-      {deleteError && (
-        <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-950 dark:text-red-300">
-          {deleteError}
-        </div>
-      )}
+          {deleteError && (
+            <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-950 dark:text-red-300">
+              {deleteError}
+            </div>
+          )}
 
-      <section>
-        <h2 className="mb-4 text-lg font-semibold tracking-tight">
-          Your subjects
-          <span className="ml-2 stat text-sm font-normal text-muted">{subjects.length}</span>
-        </h2>
-        {subjects.length === 0 ? (
-          <Empty title="No subjects yet">Add your first subject above to start tracking.</Empty>
-        ) : (
+          <section>
+            <h2 className="mb-4 text-lg font-semibold tracking-tight">
+              Your subjects
+              <span className="ml-2 stat text-sm font-normal text-muted">{subjects.length}</span>
+            </h2>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {subjects.map((s) => (
               <div key={s.id} className="card flex items-center gap-3 p-5">
@@ -135,6 +183,9 @@ export default function SubjectsPage() {
                   <p className="stat text-xs text-muted">
                     {counts[s.id]?.sessions ?? 0} sessions · {counts[s.id]?.questions ?? 0} questions
                   </p>
+                  <Link href={`/subjects/${s.id}/materials/new`} className="mt-2 inline-block text-xs font-semibold text-brand-ink underline underline-offset-2">
+                    Add study material
+                  </Link>
                 </div>
                 <button
                   onClick={() => deleteSubject(s.id, s.name)}
@@ -151,8 +202,9 @@ export default function SubjectsPage() {
               </div>
             ))}
           </div>
-        )}
-      </section>
+          </section>
+        </>
+      )}
     </div>
   );
 }
