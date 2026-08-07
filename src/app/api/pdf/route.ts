@@ -64,7 +64,24 @@ export async function POST(req: Request) {
       );
     }
 
-    // --- Step 2: persist Material ---
+    // --- Step 2: generate questions via FastAPI ---
+    // Generation runs before the material is saved so a failed generation
+    // cannot leave an empty material behind for the student to clean up.
+    let generated;
+    try {
+      generated = await generateQuestions({
+        subject: subject.name,
+        text: parsed.text,
+        requestedCount: count,
+      });
+    } catch (err) {
+      if (err instanceof MlServiceError) {
+        return fail(err.studentMessage, mlErrorStatus(err.code));
+      }
+      throw err;
+    }
+
+    // --- Step 3: persist Material ---
     const materialId = newId("mat");
     const materialTitle =
       title || parsed.file_name.replace(/\.pdf$/i, "").trim() || "Untitled PDF";
@@ -79,21 +96,6 @@ export async function POST(req: Request) {
         createdAt: new Date().toISOString(),
       })
       .run();
-
-    // --- Step 3: generate questions via FastAPI ---
-    let generated;
-    try {
-      generated = await generateQuestions({
-        subject: subject.name,
-        text: parsed.text,
-        requestedCount: count,
-      });
-    } catch (err) {
-      if (err instanceof MlServiceError) {
-        return fail(err.studentMessage, mlErrorStatus(err.code));
-      }
-      throw err;
-    }
 
     // --- Step 4: persist Questions ---
     const rows = generated.map((q) => ({

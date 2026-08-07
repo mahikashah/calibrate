@@ -549,6 +549,89 @@ describe("Question-Bank persistence flow", () => {
     expect(res.status).toBe(503);
     const body = await jsonBody<{ error: string }>(res);
     expect(body.error).toContain("unavailable");
+
+    // A failed real generation must never quietly substitute demo questions.
+    const persisted = sharedDb
+      .select()
+      .from(schema.questions)
+      .where(eq(schema.questions.materialId, materialId))
+      .all();
+    expect(persisted).toHaveLength(0);
+  });
+
+  it("does not fall back to demo questions when the model fails outside demo mode", async () => {
+    const previousDemoMode = process.env.CALIBRATE_DEMO_MODE;
+    process.env.CALIBRATE_DEMO_MODE = "false";
+    const { MlServiceError } = await import("../ml-service");
+    try {
+      vi.mocked(mlService.generateQuestions).mockRejectedValueOnce(
+        new MlServiceError("MODEL_TIMEOUT", "timed out", "The question generator is taking too long."),
+      );
+      const matRes = await createMaterial(
+        postRequest({ subjectId: SEED_SUBJECT_ID, title: "Timeout notes", content: "Some content." }),
+      );
+      const { id: materialId } = await jsonBody<{ id: string }>(matRes);
+
+      const res = await generateQuestions(
+        postRequest({ subjectId: SEED_SUBJECT_ID, materialId, count: 4 }),
+      );
+      expect(res.status).toBe(504);
+      const body = await jsonBody<{ error: string; provider?: string }>(res);
+      expect(body.provider).toBeUndefined();
+      expect(body.error).not.toMatch(/demo/i);
+      expect(
+        sharedDb
+          .select()
+          .from(schema.questions)
+          .where(eq(schema.questions.materialId, materialId))
+          .all(),
+      ).toHaveLength(0);
+    } finally {
+      if (previousDemoMode === undefined) delete process.env.CALIBRATE_DEMO_MODE;
+      else process.env.CALIBRATE_DEMO_MODE = previousDemoMode;
+    }
+  });
+
+  it("demo mode produces distinct questions when the batch is larger than the pattern set", async () => {
+    const previousDemoMode = process.env.CALIBRATE_DEMO_MODE;
+    process.env.CALIBRATE_DEMO_MODE = "true";
+    try {
+      const res = await generateQuestions(
+        postRequest({
+          subjectId: SEED_SUBJECT_ID,
+          materialText:
+            "Mitochondria produce ATP through oxidative phosphorylation. " +
+            "Glycolysis splits glucose into two pyruvate molecules in the cytoplasm. " +
+            "The Krebs cycle releases carbon dioxide and transfers electrons to NADH. " +
+            "The electron transport chain pumps protons across the inner membrane.",
+          count: 8,
+        }),
+      );
+      expect(res.status).toBe(201);
+      const body = await jsonBody<{ questions: Array<{ prompt: string; sourceExcerpt: string }> }>(res);
+      expect(body.questions).toHaveLength(8);
+      const pairs = body.questions.map((q) => `${q.prompt}::${q.sourceExcerpt}`);
+      expect(new Set(pairs).size).toBe(pairs.length);
+    } finally {
+      if (previousDemoMode === undefined) delete process.env.CALIBRATE_DEMO_MODE;
+      else process.env.CALIBRATE_DEMO_MODE = previousDemoMode;
+    }
+  });
+
+  it("does not leave an empty material behind when PDF generation fails", async () => {
+    const { MlServiceError } = await import("../ml-service");
+    vi.mocked(mlService.generateQuestions).mockRejectedValueOnce(
+      new MlServiceError(
+        "ML_SERVICE_UNAVAILABLE",
+        "Connection refused",
+        "Question generation is temporarily unavailable. Please try again.",
+      ),
+    );
+
+    const materialsBefore = sharedDb.select().from(schema.materials).all().length;
+    const res = await uploadPdf(pdfUploadRequest(SEED_SUBJECT_ID));
+    expect(res.status).toBe(503);
+    expect(sharedDb.select().from(schema.materials).all()).toHaveLength(materialsBefore);
   });
 
   it("returns 422 when ML service reports NOTES_TOO_LONG", async () => {

@@ -28,6 +28,9 @@ export default function AddMaterialPage() {
   const [generatedCount, setGeneratedCount] = useState(0);
   const [generatedMaterialId, setGeneratedMaterialId] = useState("");
   const [error, setError] = useState("");
+  // Material saved for a generation attempt that failed, so trying again
+  // reuses it instead of saving the same notes twice.
+  const [pendingMaterialId, setPendingMaterialId] = useState<string | null>(null);
 
   const isDone = generatedCount > 0;
 
@@ -88,21 +91,27 @@ export default function AddMaterialPage() {
     setGenerating(true);
     setError("");
     try {
-      // Step 1 — save material
-      const material = await postJSON<{ id: string }>("/api/materials", {
-        subjectId,
-        title: title.trim(),
-        content,
-      });
+      // Step 1 — save the material (or reuse the one a failed attempt saved)
+      const materialId =
+        pendingMaterialId ??
+        (
+          await postJSON<{ id: string }>("/api/materials", {
+            subjectId,
+            title: title.trim(),
+            content,
+          })
+        ).id;
+      setPendingMaterialId(materialId);
 
       // Step 2 — generate questions linked to that material
       const result = await postJSON<{ questionCount?: number; questions?: unknown[] }>(
         "/api/questions/generate",
-        { subjectId, materialId: material.id, count: 6 },
+        { subjectId, materialId, count: 6 },
       );
       const count = result.questionCount ?? (result.questions as unknown[])?.length ?? 0;
       setGeneratedCount(count);
-      setGeneratedMaterialId(material.id);
+      setGeneratedMaterialId(materialId);
+      setPendingMaterialId(null);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -160,7 +169,7 @@ export default function AddMaterialPage() {
             </p>
             <div className="calibrate-material-actions">
               <Link href={`/questions?subjectId=${encodeURIComponent(subjectId)}&materialId=${encodeURIComponent(generatedMaterialId)}`} className="calibrate-button calibrate-button-teal">
-                Go to Question Bank
+                Review questions
               </Link>
               <button
                 type="button"
@@ -261,7 +270,10 @@ export default function AddMaterialPage() {
                     id="material-title"
                     className="field"
                     value={title}
-                    onChange={(event) => setTitle(event.target.value)}
+                    onChange={(event) => {
+                      setTitle(event.target.value);
+                      setPendingMaterialId(null);
+                    }}
                     placeholder="Chapter 5 Lecture Notes"
                   />
                 </div>
@@ -273,7 +285,10 @@ export default function AddMaterialPage() {
                     id="material-content"
                     className="field min-h-56 resize-y"
                     value={content}
-                    onChange={(event) => setContent(event.target.value)}
+                    onChange={(event) => {
+                      setContent(event.target.value);
+                      setPendingMaterialId(null);
+                    }}
                     placeholder="Paste notes from one lecture, chapter, or study section…"
                   />
                   <p className="calibrate-material-helper">

@@ -70,8 +70,11 @@ function QuestionsPageContent() {
   const [count, setCount] = useState(6);
   const [generating, setGenerating] = useState(false);
   const [provider, setProvider] = useState<string | null>(null);
-  const [fellBack, setFellBack] = useState(false);
+  const [generatedCount, setGeneratedCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  // Material saved for a generation attempt that failed, so "Try again"
+  // retries against it instead of saving the same notes a second time.
+  const [pendingMaterialId, setPendingMaterialId] = useState<string | null>(null);
 
   async function refresh() {
     const [subs, qs, mats] = await Promise.all([
@@ -109,24 +112,31 @@ function QuestionsPageContent() {
     setGenerating(true);
     setError(null);
     setProvider(null);
-    setFellBack(false);
+    setGeneratedCount(0);
 
     try {
       const subjectName = subjects.find((subject) => subject.id === subjectId)?.name;
-      // Each submit deliberately creates a new material before generating linked questions.
-      const material = await postJSON<{ id: string }>("/api/materials", {
-        subjectId,
-        title: title.trim() || "Untitled material",
-        content,
-      });
-      const result = await postJSON<{ provider: string; fellBack: boolean; questions: Question[] }>(
+      // A new submit saves a new material; a retry reuses the one already saved.
+      const materialId =
+        pendingMaterialId ??
+        (
+          await postJSON<{ id: string }>("/api/materials", {
+            subjectId,
+            title: title.trim() || "Untitled material",
+            content,
+          })
+        ).id;
+      setPendingMaterialId(materialId);
+
+      const result = await postJSON<{ provider: string; questions: Question[] }>(
         "/api/questions/generate",
-        { subjectId, subjectName, materialId: material.id, count },
+        { subjectId, subjectName, materialId, count },
       );
 
       setProvider(result.provider);
-      setFellBack(result.fellBack);
-      setMaterialFilter(material.id);
+      setGeneratedCount(result.questions.length);
+      setMaterialFilter(materialId);
+      setPendingMaterialId(null);
       setTitle("");
       setContent("");
       await refresh();
@@ -139,6 +149,13 @@ function QuestionsPageContent() {
     } finally {
       setGenerating(false);
     }
+  }
+
+  function reviewGeneratedQuestions() {
+    setStatusFilter("generated");
+    document
+      .getElementById("question-review-summary")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   const materialTitleById = useMemo(
@@ -267,7 +284,10 @@ function QuestionsPageContent() {
                 <input
                   id="material-title"
                   value={title}
-                  onChange={(event) => setTitle(event.target.value)}
+                  onChange={(event) => {
+                    setTitle(event.target.value);
+                    setPendingMaterialId(null);
+                  }}
                   placeholder="e.g. Week 3 lecture notes"
                   className="calibrate-question-bank__field"
                 />
@@ -283,7 +303,10 @@ function QuestionsPageContent() {
                 <textarea
                   id="material-content"
                   value={content}
-                  onChange={(event) => setContent(event.target.value)}
+                  onChange={(event) => {
+                    setContent(event.target.value);
+                    setPendingMaterialId(null);
+                  }}
                   rows={8}
                   placeholder="Paste lecture notes, a textbook section, or your own summary. Questions will be generated only from this text."
                   className="calibrate-question-bank__field calibrate-question-bank__textarea"
@@ -304,11 +327,33 @@ function QuestionsPageContent() {
             </button>
           </div>
 
-          {error && <p className="calibrate-generator__error">{error}</p>}
-          {fellBack && (
-            <p className="calibrate-generator__notice">
-              Model unavailable — used the built-in offline generator instead.
-            </p>
+          {error && (
+            <div className="calibrate-generator__error" role="alert">
+              <p>{error}</p>
+              <button
+                type="button"
+                className="calibrate-question-bank__button"
+                onClick={() => void generate()}
+                disabled={generating || !content.trim()}
+              >
+                Try again
+              </button>
+            </div>
+          )}
+          {generatedCount > 0 && !generating && !error && (
+            <div className="calibrate-generator__notice" role="status">
+              <p>
+                <strong>Questions ready</strong> — {generatedCount} question
+                {generatedCount === 1 ? "" : "s"} waiting for your review.
+              </p>
+              <button
+                type="button"
+                className="calibrate-question-bank__button"
+                onClick={reviewGeneratedQuestions}
+              >
+                Review questions
+              </button>
+            </div>
           )}
         </section>
       )}
@@ -417,7 +462,7 @@ function QuestionsPageContent() {
           </div>
         </div>
 
-          <div className="calibrate-question-review-summary">
+          <div className="calibrate-question-review-summary" id="question-review-summary">
             <p>
               Review generated questions before studying. {scopedApproved.length} approved in this view.
             </p>

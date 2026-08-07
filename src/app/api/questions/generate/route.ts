@@ -99,8 +99,9 @@ export async function POST(req: Request) {
 
     if (body.save && rows.length) db.insert(questions).values(rows).run();
 
-    // provider/fellBack kept for Question Bank UI backwards compatibility.
-    return ok({ provider: demoMode ? "calibrate-demo" : "calibrate-ml", fellBack: false, questions: rows }, 201);
+    // There is no fallback provider: a failed real generation surfaces as an
+    // error above, so the provider always reflects the mode that actually ran.
+    return ok({ provider: demoMode ? "calibrate-demo" : "calibrate-ml", questions: rows }, 201);
   });
 }
 

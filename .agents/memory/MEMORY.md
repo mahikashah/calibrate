@@ -1,2 +1,3 @@
 - [Drizzle migration ordering](drizzle-migration-ordering.md) — journal timestamps must increase with migration order or an otherwise registered SQLite migration is skipped.
+- [Question generation modes](generation-modes.md) — real vs explicit demo, never a silent fallback; a failed generation must not leave a material behind.
 - [One recommendation, one engine](single-recommendation-rule.md) — every surface shows the same deterministic advice; evidence records count outcome checks, not sessions.

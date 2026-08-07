@@ -68,6 +68,15 @@ export function SectionTitle({ eyebrow, title }: { eyebrow: string; title: strin
 }
 
 export function AiTag({ provider }: { provider?: string }) {
+  // Demo mode must never be presented as real AI output.
+  if (provider === "calibrate-demo") {
+    return (
+      <span className="chip border-brand/30 bg-brand-soft text-brand-ink">
+        <span className="h-1.5 w-1.5 rounded-full bg-brand" />
+        Demo generator
+      </span>
+    );
+  }
   return (
     <span className="chip border-brand/30 bg-brand-soft text-brand-ink">
       <span className="h-1.5 w-1.5 rounded-full bg-brand" />

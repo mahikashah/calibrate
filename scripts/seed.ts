@@ -225,6 +225,10 @@ function seedQuestionBank() {
           type: "recall",
           prompt: q.prompt,
           answer: q.answer,
+          // Seeded rows are presentation history, already reviewed 20 days ago.
+          // Leaving them "generated" would put them in the student's current
+          // review queue and imply they were just generated.
+          status: "approved",
           source: "ai",
           createdAt: daysAgo(20),
         })
