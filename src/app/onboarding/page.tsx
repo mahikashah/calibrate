@@ -8,6 +8,24 @@ import { ONBOARDING_QUESTIONS, type Hypothesis } from "@/lib/hypothesis";
 
 type Screen = "questions" | "result";
 
+const WHY_WE_ASK: Record<string, string> = {
+  retention: "This helps us understand how well study material stays with you over time.",
+  struggle: "This helps us choose a useful first technique to test.",
+  check: "This helps us understand how you usually check whether studying worked.",
+  consistency: "This gives us context when we compare future study sessions.",
+  subject_type: "This helps Calibrate interpret your results more carefully.",
+};
+
+function CalibrateMark() {
+  return (
+    <span aria-hidden="true" className="calibrate-bar-mark">
+      <span />
+      <span />
+      <span />
+    </span>
+  );
+}
+
 export default function OnboardingPage() {
   const router = useRouter();
   const [screen, setScreen] = useState<Screen>("questions");
@@ -73,46 +91,69 @@ export default function OnboardingPage() {
       <div className="calibrate-content">
         {screen === "questions" && (
           <div className="calibrate-screen calibrate-question-screen">
-            <div className="mb-12 flex justify-center gap-3" aria-label={`Question ${questionStep + 1} of ${total}`}>
-              {Array.from({ length: total }, (_, index) => (
-                <span key={index} className={`h-3.5 w-3.5 rounded-full ${index <= questionStep ? "bg-[#42a4aa]" : "bg-[#171814]"}`} />
-              ))}
+            <header className="calibrate-question-header">
+              <div className="calibrate-question-brand">
+                <CalibrateMark />
+                <span>Calibrate</span>
+              </div>
+              <div className="calibrate-progress">
+                <div className="calibrate-progress__label">
+                  <span>Question {questionStep + 1} of {total}</span>
+                  <span aria-hidden="true">{Math.round(((questionStep + 1) / total) * 100)}%</span>
+                </div>
+                <div
+                  className="calibrate-progress__track"
+                  role="progressbar"
+                  aria-label={`Question ${questionStep + 1} of ${total}`}
+                  aria-valuenow={questionStep + 1}
+                  aria-valuemin={1}
+                  aria-valuemax={total}
+                >
+                  <span style={{ width: `${((questionStep + 1) / total) * 100}%` }} />
+                </div>
+              </div>
+            </header>
+            <div className="calibrate-question-stage" key={question.id}>
+              <p className="calibrate-question-kicker">Your study practice</p>
+              <h1>
+                {question.text}
+              </h1>
+              <p className="calibrate-question-why">
+                <span>Why we ask</span>
+                {WHY_WE_ASK[question.id]}
+              </p>
             </div>
-            <h1 className="mx-auto mb-3 max-w-2xl text-center text-2xl font-medium leading-tight text-[#171814] sm:text-4xl">
-              {question.text}
-            </h1>
-            <p className="mb-7 text-center text-sm text-[#454641]">Select one answer</p>
-            <div className="mx-auto w-full max-w-2xl space-y-4">
+            <div className="calibrate-answer-group" role="radiogroup" aria-label={question.text}>
               {question.options.map((option, index) => {
                 const selected = answers[question.id] === index;
                 return (
                   <button
                     key={option.label}
+                    type="button"
+                    role="radio"
                     onClick={() => selectAnswer(index)}
                     disabled={saving}
-                    aria-pressed={selected}
+                    aria-checked={selected}
                     className={`calibrate-answer ${selected ? "calibrate-answer-selected" : ""}`}
                   >
-                    <span className="calibrate-checkbox">{selected ? "✓" : ""}</span>
+                    <span className="calibrate-checkbox" aria-hidden="true">{selected ? "✓" : ""}</span>
                     <span>{option.label}</span>
+                    {selected && <span className="sr-only">Selected</span>}
                   </button>
                 );
               })}
             </div>
             {error && <p className="mt-5 text-center text-sm font-medium text-red-700">{error}</p>}
-            <div className="mt-7 flex items-center justify-between">
+            <div className="calibrate-question-navigation">
               <button className="calibrate-back static" onClick={goBack}>← Back</button>
-              <div className="flex items-center gap-4">
-                <span className="text-sm text-[#575851]">{questionStep + 1} of {total}</span>
-                <button
-                  className="calibrate-button calibrate-button-teal min-w-0 px-6 py-2 disabled:cursor-not-allowed disabled:opacity-45"
-                  onClick={advanceQuestion}
-                  disabled={answers[question.id] === undefined || saving}
-                >
-                  {saving ? "Saving…" : questionStep + 1 === total ? "Finish" : "Next"}{" "}
-                  <span aria-hidden="true">→</span>
-                </button>
-              </div>
+              <button
+                className="calibrate-button calibrate-button-teal min-w-0 px-6 py-2 disabled:cursor-not-allowed disabled:opacity-45"
+                onClick={advanceQuestion}
+                disabled={answers[question.id] === undefined || saving}
+              >
+                {saving ? "Building your hypothesis…" : questionStep + 1 === total ? "See my starting hypothesis" : "Next"}{" "}
+                <span aria-hidden="true">→</span>
+              </button>
             </div>
           </div>
         )}

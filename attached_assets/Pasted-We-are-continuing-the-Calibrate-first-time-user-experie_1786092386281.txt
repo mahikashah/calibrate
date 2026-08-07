@@ -1,0 +1,535 @@
+We are continuing the Calibrate first-time user experience milestone.
+
+IMPORTANT CONTEXT
+
+Before making changes, read:
+
+- replit.md
+- docs/CALIBRATE_MASTER_CONTEXT.md
+
+The following work is ALREADY complete:
+
+- / redirects to /start
+- /start is the approved Calibrate entry screen
+- Start Calibrating → /how-it-works
+- /how-it-works contains the completed 01 → 02 → 03 → 04 → 05 screenshot walkthrough
+- Start onboarding → /onboarding
+- /onboarding now begins directly on the first real onboarding question
+- the old duplicate How It Works / onboarding explainer has been removed or bypassed
+- /dashboard preserves the existing Dashboard
+
+DO NOT redesign /start or /how-it-works.
+
+This task is specifically to polish and refine the REAL onboarding question experience.
+
+--------------------------------------------------
+GOAL
+--------------------------------------------------
+
+Make the actual onboarding questions feel like the polished Calibrate experience shown in:
+
+public/how-it-works/step1.png
+
+The user should feel like they have moved naturally from:
+
+Start
+→ How It Works
+→ Question 1
+→ Question 2
+→ Question 3...
+→ Starting Hypothesis
+
+The onboarding experience should feel:
+
+- focused
+- quick
+- calm
+- intentional
+- visually consistent with Calibrate
+- slightly game-like in its progression
+
+It should NOT feel like a generic multi-step web form.
+
+--------------------------------------------------
+PRESERVE EXISTING LOGIC
+--------------------------------------------------
+
+IMPORTANT:
+
+Do NOT rewrite the onboarding recommendation algorithm.
+
+Preserve:
+
+- all existing real onboarding questions
+- all existing answer choices
+- existing selected-answer state
+- existing persistence behavior
+- existing /api/onboarding behavior
+- existing Starting Hypothesis calculation
+- existing question order unless a UI-only reason requires otherwise
+
+This task is UI/UX refinement, not recommendation-engine work.
+
+Do NOT introduce learning-style labels.
+
+--------------------------------------------------
+1. PAGE LAYOUT
+--------------------------------------------------
+
+/onboarding must remain outside the normal Calibrate application shell.
+
+Do NOT show:
+
+- desktop sidebar
+- mobile app navigation
+- dashboard header
+
+Use the same focused visual system as /start and /how-it-works.
+
+The page should contain:
+
+Top:
+- small Calibrate logo/brand mark
+- clear progress
+
+Center:
+- one onboarding question
+- short why-we-ask explanation
+- answer cards
+
+Bottom:
+- Back
+- Next
+
+Keep the content centered with generous whitespace.
+
+Avoid overly wide forms.
+
+--------------------------------------------------
+2. VISUAL REFERENCE
+--------------------------------------------------
+
+Use:
+
+public/how-it-works/step1.png
+
+as a visual reference for the actual onboarding UI.
+
+The real onboarding screen should feel recognizably similar to that preview.
+
+Match its general ideas:
+
+- cream/off-white background
+- large question heading
+- muted sage/turquoise selected state
+- white answer cards
+- thin dark borders
+- visible selected checkmark
+- dark charcoal text
+- restrained decorative circles/shapes
+- centered layout
+- clear Back / Next controls
+
+Do not simply embed the screenshot.
+
+The actual onboarding interface must remain interactive.
+
+--------------------------------------------------
+3. PROGRESS
+--------------------------------------------------
+
+At the top of every onboarding question show clear progress.
+
+Example:
+
+QUESTION 1 OF 5
+
+and a subtle progress bar or segmented line underneath it.
+
+The progress indicator should:
+
+- update as the user advances
+- remain visually consistent
+- not dominate the page
+- work on mobile
+
+The user should always understand where they are.
+
+--------------------------------------------------
+4. QUESTION PRESENTATION
+--------------------------------------------------
+
+Show ONE question at a time.
+
+Question hierarchy should generally be:
+
+Small progress label
+
+Large question text
+
+Short “why we ask this” sentence
+
+Answer cards
+
+Navigation
+
+Do not place multiple onboarding questions on one page.
+
+Do not create a long scrolling questionnaire.
+
+--------------------------------------------------
+5. WHY WE ASK THIS
+--------------------------------------------------
+
+Every real onboarding question should have a short plain-language explanation underneath it.
+
+These explanations should help the student understand why Calibrate needs the information.
+
+Keep each explanation to roughly one sentence.
+
+Use wording appropriate to the actual question.
+
+Examples of tone:
+
+“This helps us understand what you currently rely on while studying.”
+
+“This helps us choose a useful first technique to test.”
+
+“This helps us understand how you usually check whether studying worked.”
+
+“This gives us context when we compare future study sessions.”
+
+“This helps Calibrate interpret your results more carefully.”
+
+IMPORTANT:
+
+Do not make unsupported psychological claims.
+
+Do not say:
+
+- “This reveals your learning style.”
+- “This tells us how your brain learns.”
+- “You are a visual/auditory/etc. learner.”
+
+The onboarding creates a STARTING HYPOTHESIS only.
+
+--------------------------------------------------
+6. ANSWER CARDS
+--------------------------------------------------
+
+Turn answer options into polished interactive Calibrate cards.
+
+Default state:
+
+- white or warm off-white card
+- thin charcoal/muted border
+- readable dark text
+- subtle hover state
+
+Selected state:
+
+- sage/turquoise accent
+- stronger border
+- visible check indicator
+- clear contrast
+- selected state must not rely on color alone
+
+The selected state should resemble the answer selection shown in:
+
+public/how-it-works/step1.png
+
+Cards should be easy to scan and click.
+
+On mobile, cards should become full-width and comfortably tappable.
+
+--------------------------------------------------
+7. ANSWER BEHAVIOR
+--------------------------------------------------
+
+Preserve the current intentional-selection behavior:
+
+- clicking an answer selects it
+- the selected card visibly remains selected
+- selecting an answer does NOT automatically move to the next question
+- the user presses Next to advance
+- Back preserves previous answers
+- returning to a previous question shows the previously selected answer
+
+If the question requires an answer:
+
+Next should remain disabled until the student selects one.
+
+Do not silently default-select an answer.
+
+--------------------------------------------------
+8. NAVIGATION
+--------------------------------------------------
+
+BOTTOM NAVIGATION:
+
+Back
+
+and
+
+Next
+
+For the FIRST onboarding question:
+
+Back
+→ /how-it-works
+
+For Question 2 and later:
+
+Back
+→ previous onboarding question
+
+Next:
+
+→ next question
+
+On the FINAL question:
+
+change the primary button text to something such as:
+
+“See my starting hypothesis”
+
+instead of simply “Next”
+
+Only change this label if it does not interfere with existing submission behavior.
+
+--------------------------------------------------
+9. TRANSITIONS
+--------------------------------------------------
+
+Use subtle transitions between questions if appropriate.
+
+Acceptable:
+
+- light fade
+- small slide
+- smooth progress update
+
+Avoid:
+
+- dramatic animations
+- long delays
+- bouncing elements
+- distracting effects
+
+The interaction should feel responsive and fast.
+
+--------------------------------------------------
+10. ERROR / LOADING STATES
+--------------------------------------------------
+
+If onboarding submission already has loading/error behavior, visually align it with Calibrate.
+
+When the final onboarding answer is being submitted:
+
+- disable duplicate submission
+- show a clear loading state
+- preserve current API behavior
+
+If submission fails:
+
+- show a clear student-friendly error
+- do not lose the answers if avoidable
+- allow retry
+
+Do not change the backend contract.
+
+--------------------------------------------------
+11. STARTING HYPOTHESIS TRANSITION
+--------------------------------------------------
+
+After the final onboarding answer successfully submits:
+
+transition directly into the existing Starting Hypothesis experience.
+
+Do NOT send the user to:
+
+- Dashboard
+- How It Works
+- another intro screen
+
+The flow must remain:
+
+final question
+→ Starting Hypothesis
+
+Do not redesign the Starting Hypothesis screen in this task beyond a tiny transition fix if required.
+
+The next task will specifically refine that screen.
+
+--------------------------------------------------
+12. RESPONSIVE DESIGN
+--------------------------------------------------
+
+Desktop:
+
+- centered focused column
+- readable question width
+- generous whitespace
+- answer cards large enough to scan quickly
+
+Tablet:
+
+- preserve spacing and readability
+
+Mobile:
+
+- no horizontal scrolling
+- full-width answer cards where appropriate
+- easily tappable Back / Next buttons
+- progress remains visible
+- question text does not feel cramped
+
+--------------------------------------------------
+13. ACCESSIBILITY
+--------------------------------------------------
+
+Ensure:
+
+- answer cards are keyboard accessible
+- visible keyboard focus states
+- selected answers are communicated semantically, not only visually
+- buttons have appropriate disabled states
+- headings use semantic hierarchy
+- sufficient text contrast
+- screen readers can understand selected/unselected choices
+
+If the current structure can reasonably use radio-group semantics for single-select questions, prefer that approach while preserving the visual card presentation.
+
+--------------------------------------------------
+14. VISUAL SYSTEM
+--------------------------------------------------
+
+Use the established Calibrate design direction:
+
+- cream / warm off-white page
+- turquoise primary actions
+- sage selected states
+- charcoal text
+- white answer cards
+- thin dark borders
+- rounded but not overly pill-shaped cards
+- soft decorative shapes
+- generous whitespace
+- simple typography
+- clear hierarchy
+
+Avoid:
+
+- purple StudyCoach styling
+- blue-heavy controls
+- gradients
+- generic Material UI styling
+- dense forms
+- unnecessary icons
+- excessive explanatory copy
+
+--------------------------------------------------
+15. DO NOT CHANGE
+--------------------------------------------------
+
+Do NOT modify:
+
+- /start
+- screenshot-based /how-it-works page
+- screenshot assets
+- Dashboard
+- Question Bank
+- Subjects
+- Study Session
+- Insights
+- database schema
+- unrelated API routes
+- question generation
+- Shreya's ML pipeline
+- FastAPI integration
+- authentication
+- recommendation algorithm
+- Starting Hypothesis algorithm
+
+This is a focused onboarding UI/UX refinement.
+
+--------------------------------------------------
+16. VALIDATION
+--------------------------------------------------
+
+After implementation run:
+
+npm test
+npm run typecheck
+npm run build
+
+Then manually verify the full journey:
+
+/
+→ /start
+→ Start Calibrating
+→ /how-it-works
+→ Start onboarding
+→ /onboarding
+
+Verify:
+
+1. Question 1 appears immediately.
+
+2. There is no duplicate How It Works / tutorial inside onboarding.
+
+3. Progress is visible.
+
+4. Only one question appears at a time.
+
+5. Every question has a short why-we-ask explanation.
+
+6. Selecting an answer visibly selects it.
+
+7. Selecting an answer does not auto-advance.
+
+8. Next advances only when appropriate.
+
+9. Back preserves previous selections.
+
+10. Question 1 Back → /how-it-works.
+
+11. Question 2+ Back → previous question.
+
+12. Final submission still uses the existing onboarding API.
+
+13. Existing recommendation logic still produces the Starting Hypothesis.
+
+14. Mobile layout has no horizontal overflow.
+
+15. No unrelated pages or backend behavior changed.
+
+--------------------------------------------------
+COMPLETION REPORT
+--------------------------------------------------
+
+Before finishing, provide:
+
+1. Exact files changed.
+
+2. Number of real onboarding questions preserved.
+
+3. How progress is displayed.
+
+4. How the selected answer state works.
+
+5. The short why-we-ask copy added for each question.
+
+6. Confirmation that Question 1 Back routes to /how-it-works.
+
+7. Confirmation that later Back actions preserve answer state.
+
+8. Confirmation that onboarding API/recommendation logic was preserved.
+
+9. npm test result.
+
+10. npm run typecheck result.
+
+11. npm run build result.
+
+12. Confirmation that /start, /how-it-works, Dashboard, Question Bank, Subjects, Study Session, Insights, database schema, and ML functionality were not modified.
