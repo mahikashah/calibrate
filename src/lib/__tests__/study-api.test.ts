@@ -18,6 +18,7 @@ vi.mock("@/lib/db", async () => {
     CREATE TABLE questions (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, subject_id TEXT NOT NULL, material_id TEXT, type TEXT NOT NULL, prompt TEXT NOT NULL, answer TEXT NOT NULL, answer_choices TEXT, source_excerpt TEXT, status TEXT NOT NULL, source TEXT NOT NULL, created_at TEXT NOT NULL);
     CREATE TABLE sessions (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, subject_id TEXT NOT NULL, technique TEXT NOT NULL, material_id TEXT, planned_minutes INTEGER NOT NULL, actual_minutes INTEGER NOT NULL, notes TEXT NOT NULL, completion_key TEXT UNIQUE, started_at TEXT NOT NULL, ended_at TEXT);
     CREATE TABLE outcomes (id TEXT PRIMARY KEY, session_id TEXT NOT NULL, quiz_score REAL NOT NULL, confidence INTEGER NOT NULL, recall REAL NOT NULL, notes TEXT NOT NULL, created_at TEXT NOT NULL);
+    CREATE TABLE session_feedback (id TEXT PRIMARY KEY, session_id TEXT NOT NULL UNIQUE, overall TEXT NOT NULL, calm_wired INTEGER NOT NULL, reasons TEXT NOT NULL, created_at TEXT NOT NULL);
   `);
   sharedDb = drizzle(sqlite, { schema });
   return { db: sharedDb };
@@ -28,6 +29,7 @@ const schema = await import("../db/schema");
 const { GET: listQuestions } = await import("@/app/api/questions/route");
 const { POST: createSession } = await import("@/app/api/sessions/route");
 const { POST: createOutcome } = await import("@/app/api/outcomes/route");
+const { GET: getSessionFeedback, POST: saveSessionFeedback } = await import("@/app/api/session-feedback/route");
 
 function request(url: string, body?: unknown) {
   return new Request(url, body === undefined ? undefined : { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
@@ -35,7 +37,7 @@ function request(url: string, body?: unknown) {
 
 beforeEach(() => {
   activeUserId = "study-user";
-  for (const table of [schema.outcomes, schema.sessions, schema.questions, schema.materials, schema.subjects, schema.users]) sharedDb.delete(table).run();
+  for (const table of [schema.sessionFeedback, schema.outcomes, schema.sessions, schema.questions, schema.materials, schema.subjects, schema.users]) sharedDb.delete(table).run();
   const now = new Date().toISOString();
   sharedDb.insert(schema.users).values([{ id: "study-user", name: "Study", createdAt: now }, { id: "other-user", name: "Other", createdAt: now }]).run();
   sharedDb.insert(schema.subjects).values([{ id: "study-subject", userId: "study-user", name: "Biology", color: "#000", createdAt: now }, { id: "other-subject", userId: "other-user", name: "Private", color: "#000", createdAt: now }]).run();
@@ -77,5 +79,42 @@ describe("approved study-session API contracts", () => {
     const now = new Date().toISOString();
     sharedDb.insert(schema.sessions).values({ id: "other-session", userId: "other-user", subjectId: "other-subject", technique: "active_recall", materialId: null, plannedMinutes: 25, actualMinutes: 2, notes: "", completionKey: null, startedAt: now, endedAt: now }).run();
     expect((await createOutcome(request("http://localhost/api/outcomes", { sessionId: "other-session", quizScore: 50, confidence: 3, recall: 50 }))).status).toBe(404);
+  });
+
+  it("persists Good feedback and its Calm/Wired value for the owned completed session", async () => {
+    const created = await createSession(request("http://localhost/api/sessions", { subjectId: "study-subject", technique: "active_recall", outcome: { quizScore: 80, confidence: 4, recall: 80 } }));
+    const { session } = await created.json();
+    const response = await saveSessionFeedback(request("http://localhost/api/session-feedback", { sessionId: session.id, overall: "good", calmWired: 22, reasons: [] }));
+    expect(response.status).toBe(201);
+    const stored = sharedDb.select().from(schema.sessionFeedback).get();
+    expect(stored).toMatchObject({ sessionId: session.id, overall: "good", calmWired: 22, reasons: "[]" });
+  });
+
+  it("persists Rough feedback with distinct structured reasons and upserts retries", async () => {
+    const created = await createSession(request("http://localhost/api/sessions", { subjectId: "study-subject", technique: "active_recall", outcome: { quizScore: 30, confidence: 2, recall: 30 } }));
+    const { session } = await created.json();
+    const rough = { sessionId: session.id, overall: "rough", calmWired: 88, reasons: ["questions_wrong", "technique_wrong", "material_hard"] };
+    expect((await saveSessionFeedback(request("http://localhost/api/session-feedback", rough))).status).toBe(201);
+    expect((await saveSessionFeedback(request("http://localhost/api/session-feedback", { ...rough, calmWired: 71, reasons: ["questions_wrong", "distracted_low_energy"] }))).status).toBe(200);
+    const all = sharedDb.select().from(schema.sessionFeedback).all();
+    expect(all).toHaveLength(1);
+    expect(all[0]).toMatchObject({ overall: "rough", calmWired: 71, reasons: '["questions_wrong","distracted_low_energy"]' });
+    expect(JSON.parse(all[0].reasons)).not.toContain("technique_wrong");
+  });
+
+  it("does not expose or accept feedback for another user's session", async () => {
+    const now = new Date().toISOString();
+    sharedDb.insert(schema.sessions).values({ id: "other-completed", userId: "other-user", subjectId: "other-subject", technique: "active_recall", materialId: null, plannedMinutes: 25, actualMinutes: 2, notes: "", completionKey: null, startedAt: now, endedAt: now }).run();
+    expect((await getSessionFeedback(new Request("http://localhost/api/session-feedback?sessionId=other-completed"))).status).toBe(404);
+    expect((await saveSessionFeedback(request("http://localhost/api/session-feedback", { sessionId: "other-completed", overall: "good", calmWired: 50, reasons: [] }))).status).toBe(404);
+  });
+
+  it("rejects missing, invalid, and incomplete feedback sessions without creating evidence", async () => {
+    expect((await getSessionFeedback(new Request("http://localhost/api/session-feedback"))).status).toBe(400);
+    expect((await saveSessionFeedback(request("http://localhost/api/session-feedback", { sessionId: "missing", overall: "good", calmWired: 50, reasons: [] }))).status).toBe(404);
+    const now = new Date().toISOString();
+    sharedDb.insert(schema.sessions).values({ id: "incomplete-session", userId: "study-user", subjectId: "study-subject", technique: "active_recall", materialId: null, plannedMinutes: 25, actualMinutes: 2, notes: "", completionKey: null, startedAt: now, endedAt: null }).run();
+    expect((await saveSessionFeedback(request("http://localhost/api/session-feedback", { sessionId: "incomplete-session", overall: "good", calmWired: 50, reasons: [] }))).status).toBe(409);
+    expect(sharedDb.select().from(schema.sessionFeedback).all()).toHaveLength(0);
   });
 });

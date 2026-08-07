@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { outcomes, sessions, subjects } from "@/lib/db/schema";
+import { outcomes, sessionFeedback, sessions, subjects } from "@/lib/db/schema";
 import { handle, ok } from "@/lib/http";
 import { withFallback } from "@/lib/llm";
 import { computeInsights, type EvidenceRecord } from "@/lib/recommend";
@@ -21,10 +21,14 @@ export async function GET() {
         quizScore: outcomes.quizScore,
         confidence: outcomes.confidence,
         recall: outcomes.recall,
+        feedbackOverall: sessionFeedback.overall,
+        calmWired: sessionFeedback.calmWired,
+        feedbackReasons: sessionFeedback.reasons,
       })
       .from(outcomes)
       .innerJoin(sessions, eq(outcomes.sessionId, sessions.id))
       .innerJoin(subjects, eq(sessions.subjectId, subjects.id))
+       .leftJoin(sessionFeedback, eq(sessionFeedback.sessionId, sessions.id))
       .where(eq(sessions.userId, userId))
       .all() as EvidenceRecord[];
 

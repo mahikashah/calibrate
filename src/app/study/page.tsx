@@ -16,7 +16,7 @@ interface StudyQuestion {
   id: string; subjectId: string; materialId: string | null; type: string; prompt: string;
   answer: string; answerChoices: string | null; sourceExcerpt: string | null; status: string;
 }
-interface SessionResult { correct: number; attempted: number; elapsed: number }
+interface SessionResult { correct: number; attempted: number; elapsed: number; sessionId: string | null }
 
 export default function StudyPage() {
   return <Suspense fallback={<div className="animate-rise mx-auto max-w-2xl">Loading study session…</div>}><StudyPageContent /></Suspense>;
@@ -126,13 +126,13 @@ function StudyPageContent() {
     const correct = finalResults.filter(Boolean).length;
     const score = finalResults.length ? Math.round((correct / finalResults.length) * 100) : 0;
     try {
-      await postJSON("/api/sessions", {
+      const saved = await postJSON<{ session: { id: string } }>("/api/sessions", {
         subjectId, materialId: requestedMaterial ?? null, technique, plannedMinutes: 25, actualMinutes,
         completionKey: completionKeyRef.current,
         notes: `Approved-question session: ${finalResults.length} reviewed; ${correct} successful.`,
         outcome: { quizScore: score, recall: score, confidence: score >= 80 ? 5 : score >= 60 ? 3 : 2, notes: "" },
       });
-      setSessionResult({ correct, attempted: finalResults.length, elapsed });
+      setSessionResult({ correct, attempted: finalResults.length, elapsed, sessionId: saved.session.id });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "We couldn’t save this session. Your answers are still here—please try again.");
       setCompletionPending(false);
@@ -193,7 +193,8 @@ function TechniquePicker({ technique, setTechnique }: { technique: TechniqueId; 
 
 function Completion({ result, technique }: { result: SessionResult; technique: TechniqueId }) {
   const minutes = Math.max(1, Math.round(result.elapsed / 60));
-  return <div className="animate-rise mx-auto max-w-lg text-center"><div className="card graph-paper p-8"><p className="label">Session complete</p><h1 className="mt-2 text-3xl font-semibold">Nice focused work.</h1><dl className="mt-6 grid grid-cols-2 gap-4 text-left text-sm"><div><dt className="label">Questions reviewed</dt><dd className="stat text-xl">{result.attempted}</dd></div><div><dt className="label">Got it / correct</dt><dd className="stat text-xl">{result.correct}</dd></div><div><dt className="label">Needs work</dt><dd className="stat text-xl">{result.attempted - result.correct}</dd></div><div><dt className="label">Focused time</dt><dd className="stat text-xl">{minutes}m</dd></div></dl><p className="mt-5 text-sm text-muted">Technique: {techniqueLabel(technique)}</p><Link href="/study" className="btn-primary mt-6 inline-block">Continue</Link></div></div>;
+  const continueHref = result.sessionId ? `/feedback?sessionId=${encodeURIComponent(result.sessionId)}` : "/study";
+  return <div className="animate-rise mx-auto max-w-lg text-center"><div className="card graph-paper p-8"><p className="label">Session complete</p><h1 className="mt-2 text-3xl font-semibold">Nice focused work.</h1><dl className="mt-6 grid grid-cols-2 gap-4 text-left text-sm"><div><dt className="label">Questions reviewed</dt><dd className="stat text-xl">{result.attempted}</dd></div><div><dt className="label">Got it / correct</dt><dd className="stat text-xl">{result.correct}</dd></div><div><dt className="label">Needs work</dt><dd className="stat text-xl">{result.attempted - result.correct}</dd></div><div><dt className="label">Focused time</dt><dd className="stat text-xl">{minutes}m</dd></div></dl><p className="mt-5 text-sm text-muted">Technique: {techniqueLabel(technique)}</p><Link href={continueHref} className="btn-primary mt-6 inline-block">Continue</Link></div></div>;
 }
 
 function Message({ title, detail, href = "/questions", action = "Back to Question Bank" }: { title: string; detail: string; href?: string; action?: string }) {
@@ -203,6 +204,6 @@ function Message({ title, detail, href = "/questions", action = "Back to Questio
 function PresentationSession({ subjects, subjectId, setSubjectId, technique, setTechnique, recommended }: { subjects: Subject[]; subjectId: string; setSubjectId: (value: string) => void; technique: TechniqueId; setTechnique: (value: TechniqueId) => void; recommended: { id: string; label: string; why: string } | null }) {
   const [saved, setSaved] = useState(false); const [minutes, setMinutes] = useState(25); const [saving, setSaving] = useState(false); const [error, setError] = useState<string | null>(null);
   async function save() { if (saving) return; setSaving(true); setError(null); try { await postJSON("/api/sessions", { subjectId, technique, plannedMinutes: minutes, actualMinutes: minutes, notes: "Presentation session", outcome: { quizScore: 70, confidence: 3, recall: 60, notes: "" } }); setSaved(true); } catch (cause) { setError(cause instanceof Error ? cause.message : "We couldn’t save this presentation session. Please try again."); } finally { setSaving(false); } }
-  if (saved) return <Completion result={{ correct: 0, attempted: 0, elapsed: minutes * 60 }} technique={technique} />;
+  if (saved) return <Completion result={{ correct: 0, attempted: 0, elapsed: minutes * 60, sessionId: null }} technique={technique} />;
   return <div className="animate-rise mx-auto max-w-2xl space-y-6"><header><p className="label">Study session</p><h1 className="text-2xl font-semibold">Run a technique, then check the result</h1></header><section className="card p-5"><label className="label mb-2 block">Subject</label><select value={subjectId} onChange={(e) => setSubjectId(e.target.value)} className="field">{subjects.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>{recommended && <button className="mt-3 w-full rounded-lg border border-brand/25 bg-brand-soft px-3 py-2 text-left text-sm text-brand-ink" onClick={() => setTechnique(recommended.id as TechniqueId)}>Suggested: {recommended.label} — {recommended.why}</button>}</section><TechniquePicker technique={technique} setTechnique={setTechnique} /><section className="card p-5"><label className="label">Minutes</label><input type="number" min={1} max={240} value={minutes} onChange={(e) => setMinutes(Number(e.target.value))} className="field mt-2 w-24" /><button className="btn-primary ml-3" disabled={saving} onClick={() => void save()}>{saving ? "Saving…" : "Log presentation session"}</button>{error && <p className="mt-3 text-sm text-red-700" role="alert">{error}</p>}</section></div>;
 }

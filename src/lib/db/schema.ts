@@ -153,4 +153,5 @@ export type Material = typeof materials.$inferSelect;
 export type Question = typeof questions.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
 export type Outcome = typeof outcomes.$inferSelect;
+export type SessionFeedback = typeof sessionFeedback.$inferSelect;
 export type Onboarding = typeof onboarding.$inferSelect;

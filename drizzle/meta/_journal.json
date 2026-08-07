@@ -29,6 +29,13 @@
       "when": 1786120000000,
       "tag": "0003_session_completion_key",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1786200000000,
+      "tag": "0004_session_feedback",
+      "breakpoints": true
     }
   ]
 }
