@@ -1,0 +1,744 @@
+We are continuing the Calibrate MVP with the next core milestone:
+
+STUDY SESSION
+→ POST-SESSION FEEDBACK
+→ REAL CONTEXT FOR INSIGHTS
+
+IMPORTANT CONTEXT
+
+Before making changes, read:
+
+- replit.md
+- docs/CALIBRATE_MASTER_CONTEXT.md
+- docs/ML_INTEGRATION_CONTRACT.md
+- ml-service/README.md
+
+CURRENT VERIFIED STATE
+
+The approved-question Study Session milestone is complete.
+
+The application now supports:
+
+Question Bank
+→ approved questions only
+→ real Study Session
+→ one question at a time
+→ Active Recall
+→ Multiple Choice
+→ Fill in the Blank
+→ Feynman / Self-Explanation
+→ supporting notes revealed only after answer reveal
+→ persisted session
+→ persisted outcome
+
+Additional verified behavior:
+
+- server-side current-user ownership validation
+- subject/material validation
+- approved-only question eligibility
+- retry-safe completion keys
+- SQLite uniqueness protection for duplicate completion
+- malformed MCQs can be skipped safely
+- seeded/presentation /study path remains separate
+- Dashboard remains unchanged
+- Insights remains unchanged
+- onboarding remains unchanged
+- Post-session Feedback has not yet been redesigned
+
+Validation currently passes:
+
+- 85 Node tests
+- TypeScript typecheck
+- production Next.js build
+- 10 FastAPI tests
+- ML service health check
+
+--------------------------------------------------
+PRIMARY GOAL
+--------------------------------------------------
+
+Complete the next part of the Calibrate experiment loop:
+
+Study Session
+↓
+Session Complete
+↓
+“How’d it go?”
+↓
+Post-session feedback
+↓
+Context about WHY the result happened
+↓
+Persist structured feedback
+↓
+Insights can later interpret the result correctly
+
+This milestone should NOT fully redesign Insights yet.
+
+--------------------------------------------------
+1. PRODUCT PRINCIPLE
+--------------------------------------------------
+
+A low or difficult session must NOT automatically mean:
+
+“The study technique failed.”
+
+Possible reasons include:
+
+- the study technique was not effective
+- the generated questions were poor
+- the material was unusually difficult
+- the student was distracted or low energy
+
+Calibrate must capture this context separately.
+
+Do NOT immediately change the student’s recommended technique based on one session.
+
+--------------------------------------------------
+2. INSPECT EXISTING ARCHITECTURE FIRST
+--------------------------------------------------
+
+Before changing code, inspect:
+
+- current Study Session completion state
+- /api/sessions
+- /api/outcomes
+- any existing /api/feedback route
+- session/outcome/feedback database schema
+- current completion redirect behavior
+- current Insights data loading
+- any existing feedback UI/components
+- existing seeded/demo outcome history
+- the Calibrate Figma-inspired post-session screens
+
+Reuse existing architecture.
+
+Do NOT create a parallel feedback or analytics system if one already exists.
+
+--------------------------------------------------
+3. STUDY SESSION COMPLETION HANDOFF
+--------------------------------------------------
+
+After a REAL Study Session successfully saves its session and outcome:
+
+the primary completion action should become:
+
+“Continue”
+
+and lead into the real post-session feedback experience.
+
+Do NOT send the student directly to:
+
+- Dashboard
+- Insights
+- Question Bank
+
+The intended sequence is:
+
+Study Session
+→ Completion Summary
+→ Post-session Feedback
+
+Preserve the existing completion summary.
+
+--------------------------------------------------
+4. POST-SESSION ROUTE
+--------------------------------------------------
+
+Use the smallest route structure consistent with the existing application.
+
+Prefer something clear such as:
+
+/feedback?sessionId=...
+
+or an existing feedback route if one already exists.
+
+The session identifier may come from the browser, but the server MUST verify ownership before reading or writing feedback.
+
+Do not trust sessionId blindly.
+
+--------------------------------------------------
+5. POST-SESSION SCREEN 1
+--------------------------------------------------
+
+Build/refine the first feedback screen using the Calibrate Figma direction.
+
+Heading:
+
+“How’d it go?”
+
+Provide two large selectable options:
+
+Rough
+
+Good
+
+These should feel like large Calibrate choice cards rather than generic radio buttons.
+
+Also capture one lightweight state measure.
+
+Use the existing Figma concept:
+
+“Anxiety while studying”
+
+Calm ←────────→ Wired
+
+If the current implementation already has a better-established focus/energy field, preserve the existing terminology rather than creating duplicate concepts.
+
+Keep this fast.
+
+Do NOT turn this into a long questionnaire.
+
+--------------------------------------------------
+6. GOOD SESSION PATH
+--------------------------------------------------
+
+If the student chooses:
+
+Good
+
+do not force them through negative-cause questions.
+
+Expected flow:
+
+Good
+→ state slider
+→ Submit
+
+The student should be able to complete this path in a few seconds.
+
+--------------------------------------------------
+7. ROUGH / LOW-PERFORMANCE PATH
+--------------------------------------------------
+
+If:
+
+- the student selects Rough
+
+OR
+
+- the saved outcome indicates meaningfully poor performance using an existing simple threshold
+
+show a second context screen.
+
+Heading:
+
+“Score dipped today — what happened?”
+
+Supporting text:
+
+“Select all that apply”
+
+Options:
+
+- Technique wasn’t right
+- Questions weren’t right
+- Material was hard
+- Distracted / low energy
+
+Optionally include:
+
+- Not sure
+
+Allow multiple selections.
+
+Do not require the student to invent an explanation.
+
+--------------------------------------------------
+8. MACHINE-READABLE REASON VALUES
+--------------------------------------------------
+
+Persist structured values rather than only display strings.
+
+Use naming consistent with the existing project.
+
+Conceptually:
+
+technique_wrong
+questions_wrong
+material_hard
+distracted_low_energy
+not_sure
+
+The student-facing labels remain natural language.
+
+--------------------------------------------------
+9. QUESTIONS WRONG VS TECHNIQUE WRONG
+--------------------------------------------------
+
+This distinction is essential.
+
+If:
+
+questions_wrong
+
+is selected:
+
+store it separately from:
+
+technique_wrong
+
+Do NOT interpret question-quality problems as evidence that the study technique itself failed.
+
+This is especially important because Calibrate uses AI-generated practice questions.
+
+Do not automatically delete or reject questions during this feedback flow.
+
+A later experience may link back to Question Bank.
+
+--------------------------------------------------
+10. FEEDBACK DATA
+--------------------------------------------------
+
+Persist the smallest useful structured feedback representation.
+
+We need to know:
+
+- session
+- current user through session ownership
+- overall feeling: Rough / Good
+- slider/state value
+- selected reason values
+- timestamp if supported by current architecture
+
+Prefer existing tables/fields.
+
+If the existing schema is insufficient:
+
+identify exactly what is missing.
+
+Make the smallest safe migration required.
+
+Do NOT redesign unrelated session/outcome tables.
+
+--------------------------------------------------
+11. OWNERSHIP
+--------------------------------------------------
+
+Feedback APIs must verify:
+
+the completed session belongs to the current user.
+
+A user must not:
+
+- read another user’s session feedback
+- submit feedback for another user’s session
+- overwrite another user’s feedback
+
+Preserve the same ownership principles used throughout Calibrate.
+
+--------------------------------------------------
+12. RETRY / PARTIAL-SAVE SAFETY
+--------------------------------------------------
+
+Build on the existing retry-safe session completion architecture.
+
+If:
+
+session + outcome already saved successfully
+
+but:
+
+feedback save fails
+
+then:
+
+- preserve the completed session
+- do NOT create another session
+- show a recoverable feedback error
+- allow the student to retry feedback submission
+
+If feedback is submitted twice due to a retry:
+
+do not create duplicate feedback evidence.
+
+Use idempotent/upsert behavior where appropriate.
+
+--------------------------------------------------
+13. DO NOT MODIFY SESSION RESULTS
+--------------------------------------------------
+
+Post-session feedback provides CONTEXT.
+
+It should not overwrite:
+
+- answer correctness
+- question results
+- elapsed time
+- session technique
+- outcome score
+
+Those remain objective session data.
+
+Feedback is a separate layer explaining possible conditions around that result.
+
+--------------------------------------------------
+14. SUBMIT BEHAVIOR
+--------------------------------------------------
+
+Primary CTA:
+
+“Submit”
+
+or:
+
+“Save feedback”
+
+On successful submission:
+
+route to:
+
+/insights
+
+Do NOT fully redesign /insights in this task.
+
+The goal is simply to complete:
+
+Study
+→ Feedback
+→ Insights
+
+--------------------------------------------------
+15. PREPARE INSIGHTS DATA ACCESS
+--------------------------------------------------
+
+Make the smallest backend/data adjustment needed so the future Insights milestone can access:
+
+- completed real sessions
+- outcomes
+- selected technique
+- subject
+- feedback
+- questions_wrong vs technique_wrong
+- session-state value
+
+Do NOT implement the final comparison/recommendation algorithm here.
+
+Just ensure the data is available cleanly.
+
+--------------------------------------------------
+16. SEEDED / DEMO DATA
+--------------------------------------------------
+
+Preserve the existing seeded/demo history used for:
+
+- Dashboard
+- Insights
+- presentations
+
+Do NOT reset the database.
+
+The application may temporarily contain:
+
+A. real newly completed sessions and feedback
+
+B. seeded presentation/demo history
+
+Do not remove B unless it breaks correctness.
+
+However:
+
+do not silently claim seeded history was produced by the current real student workflow.
+
+Keep presentation safety without corrupting the real path.
+
+--------------------------------------------------
+17. UI / UX
+--------------------------------------------------
+
+Use the established Calibrate visual language:
+
+- warm cream/off-white background
+- charcoal text
+- turquoise primary actions
+- sage selected states
+- thin borders
+- large simple controls
+- generous whitespace
+- focused layouts
+
+Match the Figma direction for:
+
+“How’d it go?”
+
+Rough / Good
+
+and:
+
+“Score dipped today — what happened?”
+
+Use large selectable reason cards.
+
+Avoid generic survey software styling.
+
+--------------------------------------------------
+18. KEEP THE FLOW SHORT
+--------------------------------------------------
+
+The post-session flow should take seconds, not minutes.
+
+Do NOT add:
+
+- free-response essays
+- long reflections
+- many numeric ratings
+- complex mental-health questions
+- another onboarding experience
+
+The purpose is contextual evidence.
+
+--------------------------------------------------
+19. ACCESSIBILITY
+--------------------------------------------------
+
+Ensure:
+
+- Rough / Good choices are keyboard accessible
+- selected states are semantic, not only visual
+- slider has an accessible name/value
+- multi-select reason cards expose checked state
+- focus states are visible
+- buttons have correct disabled/loading states
+- errors are announced/readable
+
+--------------------------------------------------
+20. RESPONSIVE DESIGN
+--------------------------------------------------
+
+Desktop:
+
+- centered focused panel
+- large Rough / Good choices
+- readable slider
+- reason cards in a balanced layout
+
+Mobile:
+
+- cards stack
+- no horizontal scrolling
+- slider remains usable
+- primary CTA stays prominent
+
+--------------------------------------------------
+21. ERROR STATES
+--------------------------------------------------
+
+Handle safely:
+
+- missing session
+- invalid session
+- unauthorized session
+- feedback load failure
+- feedback save failure
+- duplicate submission
+
+Do not expose database errors or stack traces.
+
+Preserve entered feedback during retry where practical.
+
+--------------------------------------------------
+22. DO NOT CALL ML
+--------------------------------------------------
+
+No ML is required for this milestone.
+
+Do NOT call:
+
+- FastAPI generation
+- Hugging Face
+- Qwen
+- LLM-as-judge
+
+Feedback is deterministic application data.
+
+--------------------------------------------------
+23. DO NOT CHANGE RECOMMENDATIONS YET
+--------------------------------------------------
+
+Do NOT immediately switch the user’s recommendation because they selected:
+
+Technique wasn’t right
+
+once.
+
+Do NOT declare winners after one session.
+
+The next Insights milestone will combine multiple session results and context.
+
+--------------------------------------------------
+24. TESTS
+--------------------------------------------------
+
+Add/update tests for at least:
+
+1. feedback can only be submitted for the current user's session
+
+2. Good feedback persists
+
+3. Rough feedback persists
+
+4. multiple reason values persist
+
+5. questions_wrong remains distinct from technique_wrong
+
+6. slider/state value persists
+
+7. duplicate feedback retry does not duplicate evidence
+
+8. failed feedback save does not create another session
+
+9. feedback can be retried safely
+
+10. completed real session + outcome + feedback are available to Insights data loading
+
+11. unauthorized feedback reads/writes fail
+
+12. seeded/demo history remains intact
+
+13. no ML provider is called during feedback
+
+--------------------------------------------------
+25. MANUAL FLOW
+--------------------------------------------------
+
+Verify manually:
+
+Question Bank
+↓
+approve questions
+↓
+Study Session
+↓
+complete session
+↓
+completion summary
+↓
+Continue
+↓
+How’d it go?
+↓
+Good
+
+Verify:
+
+Good
+→ slider
+→ Submit
+→ Insights
+
+Then verify Rough:
+
+Rough
+→ slider
+→ “Score dipped today — what happened?”
+→ select multiple reasons
+→ Submit
+→ Insights
+
+Verify stored feedback is attached to the correct completed session.
+
+--------------------------------------------------
+26. DO NOT REDESIGN YET
+--------------------------------------------------
+
+Do NOT fully redesign:
+
+- Insights
+- Dashboard
+- sidebar/navigation
+- Question Bank
+- Study Session
+- onboarding
+- Start
+- How It Works
+
+Do NOT:
+
+- add auth
+- add RAG
+- change Qwen
+- add OCR
+- migrate away from SQLite
+- build a complex recommender
+
+This milestone is ONLY:
+
+COMPLETED SESSION
+→ CONTEXTUAL FEEDBACK
+→ DATA READY FOR INSIGHTS
+
+--------------------------------------------------
+27. VALIDATION
+--------------------------------------------------
+
+Run:
+
+npm test
+npm run typecheck
+npm run build
+
+Run:
+
+PYTHONPATH=ml-service python -m pytest ml-service/tests -q
+
+Verify:
+
+FastAPI GET /health
+
+FastAPI should remain healthy even though feedback does not use ML.
+
+--------------------------------------------------
+28. COMPLETION REPORT
+--------------------------------------------------
+
+Before finishing, report:
+
+1. Exact files changed.
+
+2. Existing feedback/outcome architecture discovered.
+
+3. Any schema migration added and why.
+
+4. Final post-session flow.
+
+5. Rough / Good persistence.
+
+6. Slider/state persistence.
+
+7. Structured reason values.
+
+8. How questions_wrong is stored separately from technique_wrong.
+
+9. Feedback ownership protections.
+
+10. Retry/idempotency behavior.
+
+11. Final Insights redirect.
+
+12. How completed real sessions/outcomes/feedback are exposed to Insights.
+
+13. How seeded/demo data was preserved.
+
+14. Tests added.
+
+15. npm test result.
+
+16. npm run typecheck result.
+
+17. npm run build result.
+
+18. FastAPI test result.
+
+19. /health result.
+
+20. Confirmation that no ML call occurs during feedback.
+
+21. Confirmation that Insights was not fully redesigned.
+
+22. Exact next recommended milestone:
+
+INSIGHTS
+→ combine real session/outcome/feedback evidence
+→ compare techniques transparently
+→ then update Dashboard summaries
+→ then final navigation/UI consistency pass.
