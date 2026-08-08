@@ -3,7 +3,12 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ChangeEvent, useEffect, useState } from "react";
+import { QuestionCountControl } from "@/components/QuestionCountControl";
 import { getJSON, postJSON } from "@/lib/client";
+import {
+  QUESTION_COUNT_DEFAULT,
+  shortfallCopy,
+} from "@/lib/question-count";
 
 interface Subject {
   id: string;
@@ -21,17 +26,17 @@ export default function AddMaterialPage() {
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [count, setCount] = useState(QUESTION_COUNT_DEFAULT);
   const [loading, setLoading] = useState(true);
-  // unified generating state covers both save+generate (notes) and parse+generate (pdf)
   const [generating, setGenerating] = useState(false);
   const [generatedCount, setGeneratedCount] = useState(0);
+  const [requestedCount, setRequestedCount] = useState(QUESTION_COUNT_DEFAULT);
   const [generatedMaterialId, setGeneratedMaterialId] = useState("");
   const [error, setError] = useState("");
-  // Material saved for a generation attempt that failed, so trying again
-  // reuses it instead of saving the same notes twice.
   const [pendingMaterialId, setPendingMaterialId] = useState<string | null>(null);
 
   const isDone = generatedCount > 0;
+  const shortfall = shortfallCopy(requestedCount, generatedCount);
 
   useEffect(() => {
     async function loadSubject() {
@@ -63,19 +68,20 @@ export default function AddMaterialPage() {
     if (!file) return;
     setGenerating(true);
     setError("");
+    setRequestedCount(count);
     try {
       const form = new FormData();
       form.append("file", file);
       form.append("subjectId", subjectId);
       form.append("title", file.name.replace(/\.pdf$/i, ""));
-      form.append("count", "6");
+      form.append("count", String(count));
 
       const res = await fetch("/api/pdf", { method: "POST", body: form });
       if (!res.ok) {
-        const body = await res.json().catch(() => ({})) as { error?: string };
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(body.error ?? "Something went wrong. Please try again.");
       }
-      const result = await res.json() as { questionCount: number; materialId: string };
+      const result = (await res.json()) as { questionCount: number; materialId: string };
       setGeneratedCount(result.questionCount);
       setGeneratedMaterialId(result.materialId);
     } catch (err) {
@@ -89,8 +95,8 @@ export default function AddMaterialPage() {
     if (!title.trim() || !content.trim()) return;
     setGenerating(true);
     setError("");
+    setRequestedCount(count);
     try {
-      // Step 1 — save the material (or reuse the one a failed attempt saved)
       const materialId =
         pendingMaterialId ??
         (
@@ -102,13 +108,12 @@ export default function AddMaterialPage() {
         ).id;
       setPendingMaterialId(materialId);
 
-      // Step 2 — generate questions linked to that material
       const result = await postJSON<{ questionCount?: number; questions?: unknown[] }>(
         "/api/questions/generate",
-        { subjectId, materialId, count: 6 },
+        { subjectId, materialId, count },
       );
-      const count = result.questionCount ?? (result.questions as unknown[])?.length ?? 0;
-      setGeneratedCount(count);
+      const actual = result.questionCount ?? (result.questions as unknown[])?.length ?? 0;
+      setGeneratedCount(actual);
       setGeneratedMaterialId(materialId);
       setPendingMaterialId(null);
     } catch (err) {
@@ -158,14 +163,16 @@ export default function AddMaterialPage() {
         </p>
 
         {isDone ? (
-          /* ── Success state ──────────────────────────────────────────── */
           <div className="calibrate-material-success" role="status">
             <p className="label">Questions ready</p>
-            <h2>{generatedCount} question{generatedCount === 1 ? "" : "s"} generated</h2>
+            <h2>
+              {generatedCount} question{generatedCount === 1 ? "" : "s"} ready
+            </h2>
             <p>
               Review, approve, or edit them in your Question Bank before using them in a study
               session.
             </p>
+            {shortfall && <p className="calibrate-material-shortfall">{shortfall}</p>}
             <div className="calibrate-material-actions">
               <Link
                 href={`/questions?subjectId=${encodeURIComponent(subjectId)}&materialId=${encodeURIComponent(generatedMaterialId)}&from=generate#review-batch`}
@@ -189,14 +196,12 @@ export default function AddMaterialPage() {
             </div>
           </div>
         ) : generating ? (
-          /* ── Generating state ───────────────────────────────────────── */
           <div className="calibrate-material-success" role="status" aria-live="polite">
             <p className="label">Working…</p>
             <h2>Generating questions…</h2>
             <p>This may take a few moments.</p>
           </div>
         ) : (
-          /* ── Form state ─────────────────────────────────────────────── */
           <>
             <div
               className="calibrate-material-sources"
@@ -223,12 +228,24 @@ export default function AddMaterialPage() {
               </button>
             </div>
 
+            <QuestionCountControl value={count} onChange={setCount} id="material-question-count" />
+
             {source === "pdf" ? (
-              /* ── PDF tab ──────────────────────────────────────────── */
               <div className="calibrate-upload-panel" role="tabpanel">
                 <p className="label">Upload PDF</p>
                 <h2>Choose a class PDF to generate questions from.</h2>
                 <p>Text-based PDFs only. Scanned or image PDFs are not supported.</p>
+                <p className="calibrate-material-context">
+                  Subject: <strong>{subject.name}</strong>
+                  {file ? (
+                    <>
+                      {" "}
+                      · PDF: <strong>{file.name}</strong> · Target: <strong>{count}</strong>
+                    </>
+                  ) : (
+                    <> · Target: <strong>{count}</strong></>
+                  )}
+                </p>
                 <label className="calibrate-upload-dropzone">
                   <input type="file" accept="application/pdf,.pdf" onChange={chooseFile} />
                   <span className="calibrate-upload-icon" aria-hidden="true">
@@ -262,7 +279,6 @@ export default function AddMaterialPage() {
                 )}
               </div>
             ) : (
-              /* ── Notes tab ────────────────────────────────────────── */
               <div className="calibrate-notes-panel" role="tabpanel">
                 <div>
                   <label htmlFor="material-title" className="calibrate-material-field-label">
@@ -295,7 +311,7 @@ export default function AddMaterialPage() {
                   />
                   <p className="calibrate-material-helper">
                     Keep this to one lecture, chapter, or study section at a time (under 4,600
-                    words).
+                    words). Target: {count} grounded questions.
                   </p>
                 </div>
                 <button
@@ -316,7 +332,9 @@ export default function AddMaterialPage() {
                   type="button"
                   className="calibrate-button calibrate-button-outline"
                   onClick={() => void (source === "pdf" ? generateFromPdf() : generateFromNotes())}
-                  disabled={generating || (source === "pdf" ? !file : !title.trim() || !content.trim())}
+                  disabled={
+                    generating || (source === "pdf" ? !file : !title.trim() || !content.trim())
+                  }
                 >
                   Try again
                 </button>

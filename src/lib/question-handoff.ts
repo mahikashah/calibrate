@@ -3,13 +3,9 @@
  * Kept free of React so the filter/reconcile rules can be unit-tested.
  */
 
-export type HandoffQuestion = {
-  id: string;
-  subjectId: string;
-  materialId?: string | null;
-  type: string;
-  status?: string | null;
-};
+import { filterBankQuestions, type BankQuestion } from "./question-bank-list";
+
+export type HandoffQuestion = BankQuestion;
 
 export type HandoffFilterState = {
   subjectId: string;
@@ -39,24 +35,13 @@ export function selectReviewQuestions<T extends HandoffQuestion>(
   questions: T[],
   state: HandoffFilterState,
 ): T[] {
-  const typeOk = (question: T) => state.typeFilter === "all" || question.type === state.typeFilter;
-  const statusOk = (question: T) =>
-    state.statusFilter === "all" || (question.status ?? "approved") === state.statusFilter;
-
-  if (state.handoffMaterialId) {
-    return questions.filter(
-      (question) =>
-        question.materialId === state.handoffMaterialId && typeOk(question) && statusOk(question),
-    );
-  }
-
-  return questions.filter(
-    (question) =>
-      (!state.subjectId || question.subjectId === state.subjectId) &&
-      typeOk(question) &&
-      statusOk(question) &&
-      (state.materialFilter === "all" || question.materialId === state.materialFilter),
-  );
+  return filterBankQuestions(questions, {
+    subjectFilter: state.subjectId || "all",
+    materialFilter: state.materialFilter,
+    typeFilter: state.typeFilter,
+    statusFilter: state.statusFilter,
+    handoffMaterialId: state.handoffMaterialId,
+  });
 }
 
 export function countHandoffBatch<T extends HandoffQuestion>(

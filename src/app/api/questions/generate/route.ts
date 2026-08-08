@@ -19,6 +19,11 @@ import { handle, ok, fail } from "@/lib/http";
 import { newId } from "@/lib/ids";
 import { generateDemoQuestions } from "@/lib/demo-questions";
 import { generateQuestions as mlGenerate, MlServiceError } from "@/lib/ml-service";
+import {
+  QUESTION_COUNT_DEFAULT,
+  QUESTION_COUNT_MAX,
+  QUESTION_COUNT_MIN,
+} from "@/lib/question-count";
 import { currentUserId } from "@/lib/user";
 
 const GenerateReq = z.object({
@@ -28,8 +33,13 @@ const GenerateReq = z.object({
   subjectName: z.string().optional(),
   materialId: z.string().optional(),
   materialText: z.string().optional(),
-  // FastAPI accepts 1-10; cap matches that limit.
-  count: z.number().int().min(1).max(10).default(6),
+  // Target count: generate up to N grounded questions (not a hard quota).
+  count: z
+    .number()
+    .int()
+    .min(QUESTION_COUNT_MIN)
+    .max(QUESTION_COUNT_MAX)
+    .default(QUESTION_COUNT_DEFAULT),
   save: z.boolean().default(true),
 });
 
@@ -97,11 +107,26 @@ export async function POST(req: Request) {
       createdAt: new Date().toISOString(),
     }));
 
-    if (body.save && rows.length) db.insert(questions).values(rows).run();
+    if (!rows.length) {
+      return fail(
+        "We couldn’t generate grounded questions from this material. Try adding more detailed notes or a different text-based PDF.",
+        422,
+      );
+    }
+
+    if (body.save) db.insert(questions).values(rows).run();
 
     // There is no fallback provider: a failed real generation surfaces as an
     // error above, so the provider always reflects the mode that actually ran.
-    return ok({ provider: demoMode ? "calibrate-demo" : "calibrate-ml", questions: rows }, 201);
+    return ok(
+      {
+        provider: demoMode ? "calibrate-demo" : "calibrate-ml",
+        questions: rows,
+        questionCount: rows.length,
+        requestedCount: body.count,
+      },
+      201,
+    );
   });
 }
 

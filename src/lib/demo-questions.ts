@@ -71,9 +71,15 @@ export function generateDemoQuestions(text: string, requestedCount: number): Str
     },
   ];
 
+  // Target count is a ceiling. Distinct source sentences determine how many
+  // grounded questions demo mode can honestly produce — never pad with fillers.
+  const available = sourceSentences.length || (text.trim() ? 1 : 0);
+  if (available === 0) return [];
+  const target = Math.min(requestedCount, available);
+
   // Rotate the excerpt independently of the pattern so a batch larger than the
   // pattern list still produces distinct questions instead of exact repeats.
-  return Array.from({ length: requestedCount }, (_, index) => {
+  return Array.from({ length: target }, (_, index) => {
     const lap = Math.floor(index / patterns.length);
     const excerpt = source[(index + lap) % source.length];
     return patterns[index % patterns.length](excerpt);

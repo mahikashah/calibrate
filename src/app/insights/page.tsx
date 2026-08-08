@@ -121,11 +121,15 @@ export default function InsightsPage() {
       </section>
 
       {!hasData ? (
-        <Empty title={source === "real" ? "Still gathering evidence" : "No example evidence for this filter"}>
+        <Empty title={source === "real" ? "Not enough evidence yet" : "No example evidence for this filter"}>
           {source === "real" ? (
             <>
-              Complete a study session with an outcome check, then come back to compare techniques.{" "}
-              <Link href="/study" className="font-medium text-brand hover:underline">Start study session</Link>
+              Complete outcome-checked study sessions to create evidence. Calibrate needs at least
+              three checked sessions on a leading technique before a recommendation can emerge — and
+              clearer comparisons need a second technique with its own sessions.{" "}
+              <Link href="/study" className="font-medium text-brand hover:underline">
+                Start a study session
+              </Link>
             </>
           ) : (
             "Choose another subject or switch back to My evidence."
@@ -140,6 +144,13 @@ export default function InsightsPage() {
               <div className="mt-4">
                 <p className="label mb-1">Why?</p>
                 <p className="max-w-xl text-sm leading-relaxed text-ink">{recommendation.body}</p>
+                <p className="mt-3 text-xs leading-relaxed text-muted">
+                  Based on completed outcome-checked Study sessions
+                  {focusSubject
+                    ? ` in ${focusSubject.subjectName} (${focusSubject.totalSessions} session${focusSubject.totalSessions === 1 ? "" : "s"}).`
+                    : "."}{" "}
+                  Duration is supporting context — technique comparisons use performance outcomes.
+                </p>
               </div>
               <div className="mt-5 flex flex-wrap gap-3">
                 <Link href="/study" className="btn-primary min-h-11">

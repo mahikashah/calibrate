@@ -86,6 +86,17 @@ describe("generation → Question Bank handoff filters", () => {
     expect(visible.map((question) => question.id)).toEqual(["q4"]);
   });
 
+  it("shows questions across subjects when subject filter is all", () => {
+    const visible = selectReviewQuestions(batch, {
+      subjectId: "all",
+      materialFilter: "all",
+      typeFilter: "all",
+      statusFilter: "all",
+      handoffMaterialId: null,
+    });
+    expect(visible).toHaveLength(4);
+  });
+
   it("does not hide Generated questions during handoff when status filter is All", () => {
     const visible = selectReviewQuestions(batch, handoffFilterReset("sub-bio-ii", "mat-oxygen"));
     expect(visible.every((question) => question.status === "generated")).toBe(true);

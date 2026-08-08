@@ -170,10 +170,10 @@ function patchRequest(body: unknown): Request {
   });
 }
 
-function pdfUploadRequest(subjectId: string, count = 2): Request {
+function pdfUploadRequest(subjectId: string, count: number | null = 2): Request {
   const form = new FormData();
   form.set("subjectId", subjectId);
-  form.set("count", String(count));
+  if (count !== null) form.set("count", String(count));
   form.set("file", new File(["%PDF-test"], "lecture.pdf", { type: "application/pdf" }));
   return new Request("http://localhost/api/pdf", { method: "POST", body: form });
 }
@@ -307,6 +307,51 @@ describe("Question-Bank persistence flow", () => {
 
     const fourQuestions = await generateWithCount(longContent, 4);
     expect(fourQuestions).toHaveLength(4);
+
+    const eightQuestions = await generateWithCount(longContent, 8);
+    expect(eightQuestions).toHaveLength(8);
+    const lastCall = vi.mocked(mlService.generateQuestions).mock.calls.at(-1)?.[0];
+    expect(lastCall?.requestedCount).toBe(8);
+  });
+
+  it("defaults missing count to target 6 and does not rewrite an explicit 8", async () => {
+    const defaultRes = await generateQuestions(
+      postRequest({ subjectId: SEED_SUBJECT_ID, materialText: "A concept has evidence in the notes." }),
+    );
+    expect(defaultRes.status).toBe(201);
+    const defaultBody = await jsonBody<{ questionCount: number; requestedCount: number }>(defaultRes);
+    expect(defaultBody.requestedCount).toBe(6);
+    expect(defaultBody.questionCount).toBe(6);
+    expect(vi.mocked(mlService.generateQuestions).mock.calls.at(-1)?.[0]?.requestedCount).toBe(6);
+    clearGeneratedRows();
+
+    const eightRes = await generateQuestions(
+      postRequest({
+        subjectId: SEED_SUBJECT_ID,
+        materialText: "A concept has evidence in the notes.",
+        count: 8,
+      }),
+    );
+    expect(eightRes.status).toBe(201);
+    const eightBody = await jsonBody<{ questionCount: number; requestedCount: number }>(eightRes);
+    expect(eightBody.requestedCount).toBe(8);
+    expect(eightBody.questionCount).toBe(8);
+    expect(vi.mocked(mlService.generateQuestions).mock.calls.at(-1)?.[0]?.requestedCount).toBe(8);
+    clearGeneratedRows();
+  });
+
+  it("fails when generation returns zero usable questions", async () => {
+    vi.mocked(mlService.generateQuestions).mockResolvedValueOnce([]);
+    const res = await generateQuestions(
+      postRequest({
+        subjectId: SEED_SUBJECT_ID,
+        materialText: "Tiny notes.",
+        count: 8,
+      }),
+    );
+    expect(res.status).toBe(422);
+    const body = await jsonBody<{ error: string }>(res);
+    expect(body.error.toLowerCase()).toMatch(/couldn.?t generate grounded questions/);
   });
 
   it("uses deterministic structured questions through the normal persistence path only in demo mode", async () => {
@@ -317,7 +362,11 @@ describe("Question-Bank persistence flow", () => {
       const res = await generateQuestions(
         postRequest({
           subjectId: SEED_SUBJECT_ID,
-          materialText: "Sampling variability decreases as random sample size increases.",
+          materialText:
+            "Sampling variability decreases as random sample size increases. " +
+            "Bias is a systematic error that does not shrink with larger samples. " +
+            "Random sampling helps estimates represent the population. " +
+            "Confidence intervals communicate uncertainty around an estimate.",
           count: 4,
         }),
       );
@@ -592,7 +641,7 @@ describe("Question-Bank persistence flow", () => {
     }
   });
 
-  it("demo mode produces distinct questions when the batch is larger than the pattern set", async () => {
+  it("demo mode caps at distinct source sentences instead of padding to the target", async () => {
     const previousDemoMode = process.env.CALIBRATE_DEMO_MODE;
     process.env.CALIBRATE_DEMO_MODE = "true";
     try {
@@ -608,8 +657,15 @@ describe("Question-Bank persistence flow", () => {
         }),
       );
       expect(res.status).toBe(201);
-      const body = await jsonBody<{ questions: Array<{ prompt: string; sourceExcerpt: string }> }>(res);
-      expect(body.questions).toHaveLength(8);
+      const body = await jsonBody<{
+        questions: Array<{ prompt: string; sourceExcerpt: string }>;
+        questionCount: number;
+        requestedCount: number;
+      }>(res);
+      // Four distinct sentences → four grounded questions, not eight padded ones.
+      expect(body.questions).toHaveLength(4);
+      expect(body.questionCount).toBe(4);
+      expect(body.requestedCount).toBe(8);
       const pairs = body.questions.map((q) => `${q.prompt}::${q.sourceExcerpt}`);
       expect(new Set(pairs).size).toBe(pairs.length);
     } finally {
@@ -719,6 +775,35 @@ describe("Question-Bank persistence flow", () => {
       .all();
     expect(linkedQuestions).toHaveLength(2);
     expect(linkedQuestions.every((question) => question.status === "generated")).toBe(true);
+  });
+
+  it("forwards an explicit PDF question target of 8 and defaults missing count to 6", async () => {
+    const eightRes = await uploadPdf(pdfUploadRequest(SEED_SUBJECT_ID, 8));
+    expect(eightRes.status).toBe(201);
+    const eightBody = await jsonBody<{ questionCount: number; requestedCount: number }>(eightRes);
+    expect(eightBody.requestedCount).toBe(8);
+    expect(eightBody.questionCount).toBe(8);
+    expect(vi.mocked(mlService.generateQuestions).mock.calls.at(-1)?.[0]?.requestedCount).toBe(8);
+    clearGeneratedRows();
+
+    const defaultRes = await uploadPdf(pdfUploadRequest(SEED_SUBJECT_ID, null));
+    expect(defaultRes.status).toBe(201);
+    const defaultBody = await jsonBody<{ questionCount: number; requestedCount: number }>(defaultRes);
+    expect(defaultBody.requestedCount).toBe(6);
+    expect(defaultBody.questionCount).toBe(6);
+    expect(vi.mocked(mlService.generateQuestions).mock.calls.at(-1)?.[0]?.requestedCount).toBe(6);
+    clearGeneratedRows();
+  });
+
+  it("rejects an invalid explicit PDF question count", async () => {
+    const form = new FormData();
+    form.set("subjectId", SEED_SUBJECT_ID);
+    form.set("count", "11");
+    form.set("file", new File(["%PDF-test"], "lecture.pdf", { type: "application/pdf" }));
+    const res = await uploadPdf(
+      new Request("http://localhost/api/pdf", { method: "POST", body: form }),
+    );
+    expect(res.status).toBe(422);
   });
 
   it("returns a safe validation error when PDF parsing fails", async () => {

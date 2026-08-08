@@ -3,12 +3,22 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { QuestionCountControl } from "@/components/QuestionCountControl";
 import { AiTag, Empty } from "@/components/ui";
 import { deleteJSON, getJSON, patchJSON, postJSON } from "@/lib/client";
 import {
+  QUESTION_BANK_PAGE_SIZE,
+  filterBankQuestions,
+  filtersAreDefault,
+  paginateItems,
+} from "@/lib/question-bank-list";
+import {
+  QUESTION_COUNT_DEFAULT,
+  shortfallCopy,
+} from "@/lib/question-count";
+import {
   countHandoffBatch,
   handoffFilterReset,
-  selectReviewQuestions,
 } from "@/lib/question-handoff";
 
 interface Subject {
@@ -38,12 +48,10 @@ interface Material {
 }
 
 const TYPE_LABEL: Record<string, string> = {
-  // FastAPI-generated types
   active_recall: "Active recall",
   mcq: "Multiple choice",
   feynman: "Feynman / Self-explanation",
   fill_in_blank: "Fill in the blank",
-  // Legacy mock-provider types (kept for existing rows)
   recall: "Active recall",
   practice: "Practice",
   cloze: "Fill in the blank",
@@ -56,7 +64,7 @@ const STATUS_LABEL: Record<"generated" | "edited" | "approved" | "rejected", str
   rejected: "Rejected",
 };
 
-const FILTERS = ["all", "active_recall", "mcq", "feynman", "fill_in_blank", "recall", "cloze"];
+const TYPE_FILTERS = ["all", "active_recall", "mcq", "feynman", "fill_in_blank"] as const;
 const STATUS_FILTERS = ["all", "generated", "edited", "approved", "rejected"] as const;
 
 export default function QuestionsPage() {
@@ -72,7 +80,6 @@ function QuestionsPageContent() {
   const urlSubjectId = searchParams.get("subjectId") ?? "";
   const urlMaterialId = searchParams.get("materialId") ?? "";
   const fromGenerate = searchParams.get("from") === "generate";
-  // Re-run load whenever the generation handoff URL changes (including soft navigations).
   const handoffLoadKey = fromGenerate
     ? `generate:${urlSubjectId}:${urlMaterialId}`
     : `normal:${urlSubjectId}:${urlMaterialId}`;
@@ -80,24 +87,26 @@ function QuestionsPageContent() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [materials, setMaterials] = useState<Material[]>([]);
-  const [subjectId, setSubjectId] = useState(urlSubjectId);
-  const [filter, setFilter] = useState("all");
+  // Generator subject (always a concrete subject when subjects exist).
+  const [generateSubjectId, setGenerateSubjectId] = useState(urlSubjectId);
+  // Saved Questions filters — default All subjects on normal visits.
+  const [subjectFilter, setSubjectFilter] = useState(fromGenerate && urlSubjectId ? urlSubjectId : "all");
+  const [typeFilter, setTypeFilter] = useState("all");
   const [materialFilter, setMaterialFilter] = useState(urlMaterialId || "all");
   const [statusFilter, setStatusFilter] = useState<(typeof STATUS_FILTERS)[number]>("all");
+  const [page, setPage] = useState(1);
   const [highlightedMaterialId, setHighlightedMaterialId] = useState<string | null>(null);
-  // Generation handoff only — never applied for ordinary sidebar visits.
   const [handoffMaterialId, setHandoffMaterialId] = useState<string | null>(
     fromGenerate && urlMaterialId ? urlMaterialId : null,
   );
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [count, setCount] = useState(6);
+  const [count, setCount] = useState(QUESTION_COUNT_DEFAULT);
   const [generating, setGenerating] = useState(false);
   const [provider, setProvider] = useState<string | null>(null);
   const [generatedCount, setGeneratedCount] = useState(0);
+  const [requestedCount, setRequestedCount] = useState(QUESTION_COUNT_DEFAULT);
   const [error, setError] = useState<string | null>(null);
-  // Material saved for a generation attempt that failed, so "Try again"
-  // retries against it instead of saving the same notes a second time.
   const [pendingMaterialId, setPendingMaterialId] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -124,7 +133,7 @@ function QuestionsPageContent() {
     setMaterials(mats);
     if (!options?.preserveFilters) {
       setMaterialFilter((prev) => (prev === "all" || mats.some((m) => m.id === prev) ? prev : "all"));
-      if (!subjectId && subs[0]) setSubjectId(subs[0].id);
+      if (!generateSubjectId && subs[0]) setGenerateSubjectId(subs[0].id);
     }
     setLoaded(true);
   }
@@ -138,14 +147,17 @@ function QuestionsPageContent() {
       setLoadError(null);
       try {
         if (fromGenerate && urlMaterialId) {
-          // Apply handoff filters immediately so an intermediate empty state cannot win.
           const provisionalSubject = urlSubjectId;
           const reset = handoffFilterReset(provisionalSubject, urlMaterialId);
-          setFilter(reset.typeFilter);
+          setTypeFilter(reset.typeFilter);
           setStatusFilter(reset.statusFilter as (typeof STATUS_FILTERS)[number]);
           setMaterialFilter(reset.materialFilter);
           setHandoffMaterialId(reset.handoffMaterialId);
-          if (provisionalSubject) setSubjectId(provisionalSubject);
+          setPage(1);
+          if (provisionalSubject) {
+            setSubjectFilter(provisionalSubject);
+            setGenerateSubjectId(provisionalSubject);
+          }
 
           const { subs, qs, mats } = await fetchQuestionBank({ bustCache: true });
           if (cancelled) return;
@@ -160,16 +172,17 @@ function QuestionsPageContent() {
             subs[0]?.id ||
             "";
           const applied = handoffFilterReset(subject, urlMaterialId);
-          setSubjectId(applied.subjectId);
+          setSubjectFilter(applied.subjectId);
+          setGenerateSubjectId(applied.subjectId || subs[0]?.id || "");
           setMaterialFilter(applied.materialFilter);
-          setFilter(applied.typeFilter);
+          setTypeFilter(applied.typeFilter);
           setStatusFilter(applied.statusFilter as (typeof STATUS_FILTERS)[number]);
           setHandoffMaterialId(applied.handoffMaterialId);
+          setPage(1);
           setLoaded(true);
           return;
         }
 
-        // Ordinary Question Bank visit — no forced handoff banner/scroll.
         setHandoffMaterialId(null);
         const { subs, qs, mats } = await fetchQuestionBank({ bustCache: false });
         if (cancelled) return;
@@ -178,13 +191,18 @@ function QuestionsPageContent() {
         setMaterials(mats);
 
         if (urlSubjectId && subs.some((subject) => subject.id === urlSubjectId)) {
-          setSubjectId(urlSubjectId);
-        } else if (subs[0]) {
-          setSubjectId((current) => current || subs[0].id);
+          setSubjectFilter(urlSubjectId);
+          setGenerateSubjectId(urlSubjectId);
+        } else {
+          setSubjectFilter("all");
+          if (subs[0]) setGenerateSubjectId((current) => current || subs[0].id);
         }
         if (urlMaterialId && mats.some((material) => material.id === urlMaterialId)) {
           setMaterialFilter(urlMaterialId);
+        } else {
+          setMaterialFilter("all");
         }
+        setPage(1);
         setLoaded(true);
       } catch (cause) {
         if (cancelled) return;
@@ -205,29 +223,42 @@ function QuestionsPageContent() {
     [materials],
   );
 
-  const subjectMaterials = useMemo(() => {
-    const list = subjectId
-      ? materials.filter((material) => material.subjectId === subjectId)
-      : [...materials];
-    // Keep the handed-off material selectable even if subject state briefly lags.
+  const filterMaterials = useMemo(() => {
+    if (subjectFilter === "all") return [] as Material[];
+    const list = materials.filter((material) => material.subjectId === subjectFilter);
     if (handoffMaterialId && !list.some((material) => material.id === handoffMaterialId)) {
       const handoffMaterial = materials.find((material) => material.id === handoffMaterialId);
       if (handoffMaterial) list.unshift(handoffMaterial);
     }
     return list;
-  }, [materials, subjectId, handoffMaterialId]);
+  }, [materials, subjectFilter, handoffMaterialId]);
+
+  const visibleMaterials = useMemo(() => {
+    if (subjectFilter === "all") return materials;
+    return materials.filter((material) => material.subjectId === subjectFilter);
+  }, [materials, subjectFilter]);
 
   const reviewQuestions = useMemo(
     () =>
-      selectReviewQuestions(questions, {
-        subjectId,
+      filterBankQuestions(questions, {
+        subjectFilter,
         materialFilter,
-        typeFilter: filter,
+        typeFilter,
         statusFilter,
         handoffMaterialId,
       }),
-    [questions, subjectId, materialFilter, filter, statusFilter, handoffMaterialId],
+    [questions, subjectFilter, materialFilter, typeFilter, statusFilter, handoffMaterialId],
   );
+
+  const pageSlice = useMemo(
+    () => paginateItems(reviewQuestions, page, QUESTION_BANK_PAGE_SIZE),
+    [reviewQuestions, page],
+  );
+
+  // Keep page in range when the filtered set shrinks.
+  useEffect(() => {
+    if (page !== pageSlice.page) setPage(pageSlice.page);
+  }, [page, pageSlice.page]);
 
   const handoffBatchCount = countHandoffBatch(questions, handoffMaterialId);
   const handoffMaterialTitle = handoffMaterialId ? materialTitleById[handoffMaterialId] : null;
@@ -241,41 +272,101 @@ function QuestionsPageContent() {
     });
   }, [loaded, handoffMaterialId, handoffBatchCount, reviewQuestions.length]);
 
+  function resetPage() {
+    setPage(1);
+  }
+
+  function changeSubjectFilter(next: string) {
+    setSubjectFilter(next);
+    setMaterialFilter("all");
+    setHighlightedMaterialId(null);
+    if (handoffMaterialId) setHandoffMaterialId(null);
+    resetPage();
+  }
+
+  function changeMaterialFilter(next: string) {
+    setMaterialFilter(next);
+    if (handoffMaterialId && next !== handoffMaterialId) setHandoffMaterialId(null);
+    if (next !== "all") {
+      const mat = materials.find((item) => item.id === next);
+      if (mat) setSubjectFilter(mat.subjectId);
+    }
+    resetPage();
+  }
+
+  function changeTypeFilter(next: string) {
+    setTypeFilter(next);
+    if (handoffMaterialId) setHandoffMaterialId(null);
+    resetPage();
+  }
+
+  function changeStatusFilter(next: (typeof STATUS_FILTERS)[number]) {
+    setStatusFilter(next);
+    if (handoffMaterialId) setHandoffMaterialId(null);
+    resetPage();
+  }
+
+  function clearFilters() {
+    setSubjectFilter("all");
+    setMaterialFilter("all");
+    setTypeFilter("all");
+    setStatusFilter("all");
+    setHandoffMaterialId(null);
+    setHighlightedMaterialId(null);
+    setPage(1);
+  }
+
+  function selectMaterialCard(mat: Material) {
+    setSubjectFilter(mat.subjectId);
+    setMaterialFilter(mat.id);
+    setHighlightedMaterialId(mat.id);
+    setHandoffMaterialId(null);
+    setPage(1);
+  }
+
   async function generate() {
-    if (!subjectId || !content.trim()) return;
+    if (!generateSubjectId || !content.trim()) return;
 
     setGenerating(true);
     setError(null);
     setProvider(null);
     setGeneratedCount(0);
+    setRequestedCount(count);
 
     try {
-      const subjectName = subjects.find((subject) => subject.id === subjectId)?.name;
-      // A new submit saves a new material; a retry reuses the one already saved.
+      const subjectName = subjects.find((subject) => subject.id === generateSubjectId)?.name;
       const materialId =
         pendingMaterialId ??
         (
           await postJSON<{ id: string }>("/api/materials", {
-            subjectId,
+            subjectId: generateSubjectId,
             title: title.trim() || "Untitled material",
             content,
           })
         ).id;
       setPendingMaterialId(materialId);
 
-      const result = await postJSON<{ provider: string; questions: Question[] }>(
-        "/api/questions/generate",
-        { subjectId, subjectName, materialId, count },
-      );
+      const result = await postJSON<{
+        provider: string;
+        questions: Question[];
+        questionCount?: number;
+      }>("/api/questions/generate", {
+        subjectId: generateSubjectId,
+        subjectName,
+        materialId,
+        count,
+      });
 
-      const reset = handoffFilterReset(subjectId, materialId);
+      const actual = result.questionCount ?? result.questions.length;
+      const reset = handoffFilterReset(generateSubjectId, materialId);
       setProvider(result.provider);
-      setGeneratedCount(result.questions.length);
-      setSubjectId(reset.subjectId);
+      setGeneratedCount(actual);
+      setSubjectFilter(reset.subjectId);
       setMaterialFilter(reset.materialFilter);
-      setFilter(reset.typeFilter);
+      setTypeFilter(reset.typeFilter);
       setStatusFilter(reset.statusFilter as (typeof STATUS_FILTERS)[number]);
       setHandoffMaterialId(reset.handoffMaterialId);
+      setPage(1);
       scrolledHandoffRef.current = false;
       setPendingMaterialId(null);
       setTitle("");
@@ -294,11 +385,16 @@ function QuestionsPageContent() {
 
   function reviewGeneratedQuestions() {
     if (materialFilter !== "all") {
-      const reset = handoffFilterReset(subjectId, materialFilter);
+      const reset = handoffFilterReset(
+        subjectFilter !== "all" ? subjectFilter : generateSubjectId,
+        materialFilter,
+      );
       setHandoffMaterialId(reset.handoffMaterialId);
+      setSubjectFilter(reset.subjectId);
       setMaterialFilter(reset.materialFilter);
-      setFilter(reset.typeFilter);
+      setTypeFilter(reset.typeFilter);
       setStatusFilter(reset.statusFilter as (typeof STATUS_FILTERS)[number]);
+      setPage(1);
       scrolledHandoffRef.current = false;
       return;
     }
@@ -307,14 +403,9 @@ function QuestionsPageContent() {
       ?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  function selectMaterialFilter(next: string) {
-    setMaterialFilter(next);
-    if (handoffMaterialId && next !== handoffMaterialId) {
-      setHandoffMaterialId(null);
-    }
-  }
-
-  const handoffSubjectName = subjects.find((subject) => subject.id === subjectId)?.name ?? null;
+  const handoffSubjectName =
+    subjects.find((subject) => subject.id === (subjectFilter !== "all" ? subjectFilter : generateSubjectId))
+      ?.name ?? null;
 
   const scopedReviewable = reviewQuestions.filter((question) =>
     ["generated", "edited"].includes(question.status ?? "approved"),
@@ -324,6 +415,18 @@ function QuestionsPageContent() {
   const handoffLoading = handoffActive && !loaded;
   const handoffReady = handoffActive && loaded && handoffBatchCount > 0;
   const handoffEmpty = handoffActive && loaded && handoffBatchCount === 0;
+  const filtersActive = !filtersAreDefault({
+    subjectFilter,
+    materialFilter,
+    typeFilter,
+    statusFilter,
+  });
+  const generationShortfall = shortfallCopy(requestedCount, generatedCount);
+
+  const studySubjectId =
+    subjectFilter !== "all"
+      ? subjectFilter
+      : materials.find((item) => item.id === materialFilter)?.subjectId ?? "";
 
   async function updateQuestion(id: string, body: Record<string, unknown>) {
     const updated = await patchJSON<Question>(`/api/questions/${id}`, body);
@@ -331,19 +434,19 @@ function QuestionsPageContent() {
   }
 
   async function approveAllRemaining() {
-    if (!subjectId) return;
-    const result = await patchJSON<{ approved: number }>("/api/questions", {
-      subjectId,
-      materialId: materialFilter === "all" ? null : materialFilter,
-    });
-    if (result.approved) await refresh();
+    // Approve only questions matching the current filtered view (not the whole bank).
+    for (const question of scopedReviewable) {
+      await patchJSON(`/api/questions/${question.id}`, { action: "approve" });
+    }
+    await refresh({ preserveFilters: true });
   }
 
   async function deleteMaterial(id: string, matTitle: string) {
     const linkedCount = questions.filter((q) => q.materialId === id).length;
-    const confirmMsg = linkedCount > 0
-      ? `Delete "${matTitle}" and its ${linkedCount} linked question${linkedCount === 1 ? "" : "s"}? This cannot be undone.`
-      : `Delete "${matTitle}"? This cannot be undone.`;
+    const confirmMsg =
+      linkedCount > 0
+        ? `Delete "${matTitle}" and its ${linkedCount} linked question${linkedCount === 1 ? "" : "s"}? This cannot be undone.`
+        : `Delete "${matTitle}"? This cannot be undone.`;
     if (!confirm(confirmMsg)) return;
     await deleteJSON(`/api/materials/${id}`);
     await refresh();
@@ -354,8 +457,8 @@ function QuestionsPageContent() {
     setQuestions((prev) => prev.filter((q) => q.id !== id));
   }
 
-  const addMaterialHref = subjectId
-    ? `/subjects/${encodeURIComponent(subjectId)}/materials/new`
+  const addMaterialHref = generateSubjectId
+    ? `/subjects/${encodeURIComponent(generateSubjectId)}/materials/new`
     : "/subjects";
 
   return (
@@ -404,14 +507,8 @@ function QuestionsPageContent() {
                 </label>
                 <select
                   id="question-subject"
-                  value={subjectId}
-                  onChange={(event) => {
-                    const nextSubject = event.target.value;
-                    setSubjectId(nextSubject);
-                    setMaterialFilter("all");
-                    setHandoffMaterialId(null);
-                    setHighlightedMaterialId(null);
-                  }}
+                  value={generateSubjectId}
+                  onChange={(event) => setGenerateSubjectId(event.target.value)}
                   className="calibrate-question-bank__field"
                 >
                   {subjects.map((subject) => (
@@ -422,23 +519,12 @@ function QuestionsPageContent() {
                 </select>
               </div>
 
-              <div>
-                <label className="calibrate-question-bank__label" htmlFor="question-count">
-                  Number of questions
-                </label>
-                <input
-                  id="question-count"
-                  type="number"
-                  min={1}
-                  max={15}
-                  value={count}
-                  onChange={(event) => {
-                    const nextCount = Number(event.target.value);
-                    setCount(Number.isFinite(nextCount) ? Math.min(15, Math.max(1, nextCount)) : 1);
-                  }}
-                  className="calibrate-question-bank__field"
-                />
-              </div>
+              <QuestionCountControl
+                value={count}
+                onChange={setCount}
+                id="question-count"
+                label="Number of questions"
+              />
             </div>
 
             <div className="calibrate-generator__notes">
@@ -511,6 +597,7 @@ function QuestionsPageContent() {
                 <strong>Questions ready</strong> — {generatedCount} question
                 {generatedCount === 1 ? "" : "s"} waiting for your review.
               </p>
+              {generationShortfall && <p>{generationShortfall}</p>}
               <button
                 type="button"
                 className="calibrate-question-bank__button"
@@ -523,28 +610,27 @@ function QuestionsPageContent() {
         </section>
       )}
 
-      {materials.length > 0 && (
+      {visibleMaterials.length > 0 && (
         <section className="calibrate-saved-questions" aria-labelledby="saved-materials-title">
           <div className="calibrate-saved-questions__heading">
             <div>
               <p className="calibrate-question-bank__eyebrow">Your library</p>
               <h2 id="saved-materials-title">
-                Saved materials <span>{materials.length}</span>
+                Saved materials <span>{visibleMaterials.length}</span>
               </h2>
             </div>
           </div>
           <div className="calibrate-question-list">
-            {materials.map((mat) => {
+            {visibleMaterials.map((mat) => {
               const subject = subjects.find((s) => s.id === mat.subjectId);
               const linkedCount = questions.filter((q) => q.materialId === mat.id).length;
-              const isHighlighted = highlightedMaterialId === mat.id;
+              const isHighlighted =
+                highlightedMaterialId === mat.id || materialFilter === mat.id;
               return (
                 <article
                   key={mat.id}
                   className={`calibrate-question-card${isHighlighted ? " is-highlighted" : ""}`}
-                  onClick={() =>
-                    setHighlightedMaterialId((prev) => (prev === mat.id ? null : mat.id))
-                  }
+                  onClick={() => selectMaterialCard(mat)}
                   style={{ cursor: "pointer" }}
                 >
                   <div className="calibrate-question-card__meta">
@@ -555,7 +641,7 @@ function QuestionsPageContent() {
                   <div className="calibrate-question-card__meta" style={{ marginTop: "0.25rem" }}>
                     <span style={{ fontSize: "0.8rem", opacity: 0.7 }}>
                       {linkedCount} question{linkedCount === 1 ? "" : "s"}
-                      {linkedCount > 0 ? " — click to highlight" : ""}
+                      {linkedCount > 0 ? " — click to filter" : ""}
                     </span>
                   </div>
                   <div className="calibrate-question-card__actions">
@@ -582,161 +668,242 @@ function QuestionsPageContent() {
           <div>
             <p className="calibrate-question-bank__eyebrow">Review queue</p>
             <h2 id="saved-questions-title">
-              Saved questions <span>{questions.length}</span>
+              Saved questions <span>{questions.length} total</span>
             </h2>
+            {loaded && questions.length > 0 && (
+              <p className="calibrate-question-bank__count-line">
+                {reviewQuestions.length === questions.length
+                  ? `Showing ${pageSlice.from}–${pageSlice.to} of ${pageSlice.total}`
+                  : `${reviewQuestions.length} match your filters · Showing ${pageSlice.from}–${pageSlice.to}`}
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="calibrate-question-filter-bar" aria-label="Filter saved questions">
+          <div className="calibrate-question-filter-field">
+            <label htmlFor="filter-subject">Subject</label>
+            <select
+              id="filter-subject"
+              value={subjectFilter}
+              onChange={(event) => changeSubjectFilter(event.target.value)}
+              className="calibrate-question-filters__material-select"
+            >
+              <option value="all">All subjects</option>
+              {subjects.map((subject) => (
+                <option key={subject.id} value={subject.id}>
+                  {subject.name}
+                </option>
+              ))}
+            </select>
           </div>
 
-          <div className="calibrate-question-filters" aria-label="Filter saved questions">
-            {FILTERS.map((value) => (
-              <button
-                type="button"
-                key={value}
-                onClick={() => setFilter(value)}
-                className={filter === value ? "is-active" : ""}
-              >
-                {value === "all" ? "All" : TYPE_LABEL[value]}
-              </button>
-            ))}
-            {subjectMaterials.length > 0 && (
-              <select
-                aria-label="Filter by material"
-                value={materialFilter}
-                onChange={(e) => selectMaterialFilter(e.target.value)}
-                className="calibrate-question-filters__material-select"
-              >
-                <option value="all">All materials</option>
-                {subjectMaterials.map((mat) => (
+          <div className="calibrate-question-filter-field">
+            <label htmlFor="filter-material">Material</label>
+            <select
+              id="filter-material"
+              value={subjectFilter === "all" ? "all" : materialFilter}
+              onChange={(event) => changeMaterialFilter(event.target.value)}
+              className="calibrate-question-filters__material-select"
+              disabled={subjectFilter === "all"}
+            >
+              <option value="all">All materials</option>
+              {subjectFilter !== "all" &&
+                filterMaterials.map((mat) => (
                   <option key={mat.id} value={mat.id}>
                     {mat.title}
                   </option>
                 ))}
-              </select>
-            )}
-              <select
-                aria-label="Filter by review status"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
-                className="calibrate-question-filters__material-select"
-              >
-                {STATUS_FILTERS.map((status) => (
-                  <option key={status} value={status}>
-                    {status === "all" ? "All review states" : STATUS_LABEL[status]}
-                  </option>
-                ))}
-              </select>
+            </select>
           </div>
+
+          <div className="calibrate-question-filter-field">
+            <label htmlFor="filter-type">Question type</label>
+            <select
+              id="filter-type"
+              value={typeFilter}
+              onChange={(event) => changeTypeFilter(event.target.value)}
+              className="calibrate-question-filters__material-select"
+            >
+              {TYPE_FILTERS.map((value) => (
+                <option key={value} value={value}>
+                  {value === "all" ? "All" : TYPE_LABEL[value]}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="calibrate-question-filter-field">
+            <label htmlFor="filter-status">Review state</label>
+            <select
+              id="filter-status"
+              value={statusFilter}
+              onChange={(event) =>
+                changeStatusFilter(event.target.value as (typeof STATUS_FILTERS)[number])
+              }
+              className="calibrate-question-filters__material-select"
+            >
+              {STATUS_FILTERS.map((status) => (
+                <option key={status} value={status}>
+                  {status === "all" ? "All review states" : STATUS_LABEL[status]}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {filtersActive && (
+            <div className="calibrate-question-filter-field calibrate-question-filter-field--action">
+              <button type="button" className="calibrate-question-bank__secondary" onClick={clearFilters}>
+                Clear filters
+              </button>
+            </div>
+          )}
         </div>
 
-          {handoffLoading && (
-            <div id="review-batch" className="calibrate-review-batch" role="status" aria-live="polite">
-              <p className="calibrate-question-bank__eyebrow">Ready for review</p>
-              <h3>Loading your generated questions…</h3>
-              <p>Fetching the new batch for this material.</p>
-            </div>
-          )}
-
-          {handoffReady && (
-            <div
-              id="review-batch"
-              className="calibrate-review-batch"
-              aria-labelledby="review-batch-title"
-            >
-              <div className="calibrate-review-batch__top">
-                <p className="calibrate-question-bank__eyebrow">Ready for review</p>
-                <span className="calibrate-review-batch__badge">Just generated</span>
-              </div>
-              <h3 id="review-batch-title">
-                {handoffBatchCount} question{handoffBatchCount === 1 ? "" : "s"} generated from{" "}
-                {handoffMaterialTitle ?? "your material"}
-              </h3>
-              <p>
-                {handoffSubjectName ? `${handoffSubjectName} · ` : ""}
-                Review each question before it can be used in Study. Status stays Generated until you
-                edit, approve, or reject.
-              </p>
-            </div>
-          )}
-
-          {handoffEmpty && (
-            <div id="review-batch" className="calibrate-review-batch" role="alert">
-              <p className="calibrate-question-bank__eyebrow">Ready for review</p>
-              <h3>We couldn’t find questions for this material yet</h3>
-              <p>
-                Generation finished, but Question Bank has no persisted rows for this material. Try
-                generating again from Add material.
-              </p>
-            </div>
-          )}
-
-          <div className="calibrate-question-review-summary" id="question-review-summary">
-            <p>
-              Review generated questions before studying. {scopedApproved.length} approved in this view.
-            </p>
-            {scopedReviewable.length > 0 && (
-              <button type="button" className="calibrate-question-bank__button" onClick={() => void approveAllRemaining()}>
-                Approve all remaining ({scopedReviewable.length})
-              </button>
-            )}
-            {scopedApproved.length > 0 && (
-              <Link
-                className="calibrate-question-bank__button calibrate-question-bank__button--study"
-                href={`/study?subjectId=${encodeURIComponent(subjectId)}${materialFilter !== "all" ? `&materialId=${encodeURIComponent(materialFilter)}` : ""}`}
-              >
-                Study approved questions
-              </Link>
-            )}
+        {handoffLoading && (
+          <div id="review-batch" className="calibrate-review-batch" role="status" aria-live="polite">
+            <p className="calibrate-question-bank__eyebrow">Ready for review</p>
+            <h3>Loading your generated questions…</h3>
+            <p>Fetching the new batch for this material.</p>
           </div>
+        )}
+
+        {handoffReady && (
+          <div
+            id="review-batch"
+            className="calibrate-review-batch"
+            aria-labelledby="review-batch-title"
+          >
+            <div className="calibrate-review-batch__top">
+              <p className="calibrate-question-bank__eyebrow">Ready for review</p>
+              <span className="calibrate-review-batch__badge">Just generated</span>
+            </div>
+            <h3 id="review-batch-title">
+              {handoffBatchCount} question{handoffBatchCount === 1 ? "" : "s"} generated from{" "}
+              {handoffMaterialTitle ?? "your material"}
+            </h3>
+            <p>
+              {handoffSubjectName ? `${handoffSubjectName} · ` : ""}
+              Review each question before it can be used in Study. Status stays Generated until you
+              edit, approve, or reject.
+            </p>
+          </div>
+        )}
+
+        {handoffEmpty && (
+          <div id="review-batch" className="calibrate-review-batch" role="alert">
+            <p className="calibrate-question-bank__eyebrow">Ready for review</p>
+            <h3>We couldn’t find questions for this material yet</h3>
+            <p>
+              Generation finished, but Question Bank has no persisted rows for this material. Try
+              generating again from Add material.
+            </p>
+          </div>
+        )}
+
+        <div className="calibrate-question-review-summary" id="question-review-summary">
+          <p>
+            Review generated questions before studying. {scopedApproved.length} approved in this
+            view.
+          </p>
+          {scopedReviewable.length > 0 && (
+            <button
+              type="button"
+              className="calibrate-question-bank__button"
+              onClick={() => void approveAllRemaining()}
+            >
+              Approve all generated in this view ({scopedReviewable.length})
+            </button>
+          )}
+          {scopedApproved.length > 0 && studySubjectId && (
+            <Link
+              className="calibrate-question-bank__button calibrate-question-bank__button--study"
+              href={`/study?subjectId=${encodeURIComponent(studySubjectId)}${
+                materialFilter !== "all" ? `&materialId=${encodeURIComponent(materialFilter)}` : ""
+              }`}
+            >
+              Study approved questions
+            </Link>
+          )}
+        </div>
 
         {loadError ? (
           <Empty title="We couldn’t load Question Bank">{loadError}</Empty>
         ) : !loaded ? (
           <Empty title="Loading questions…">Fetching your review queue.</Empty>
+        ) : questions.length === 0 ? (
+          <Empty title="No questions yet">
+            Paste notes above, or{" "}
+            <Link href={addMaterialHref} className="font-medium text-brand hover:underline">
+              Add material
+            </Link>{" "}
+            to generate questions.
+          </Empty>
         ) : reviewQuestions.length === 0 ? (
-          <Empty
-            title={
-              handoffEmpty
-                ? "No persisted questions for this material"
-                : questions.some((question) => !subjectId || question.subjectId === subjectId)
-                  ? "No questions match this filter"
-                  : statusFilter === "approved"
-                    ? "No approved questions yet"
-                    : statusFilter === "generated" || statusFilter === "edited"
-                      ? "No questions waiting for review"
-                      : "No questions yet"
-            }
-          >
+          <Empty title="No questions match these filters.">
             {handoffEmpty ? (
               "Go back to Add material and generate again."
-            ) : questions.some((question) => !subjectId || question.subjectId === subjectId) ? (
-              "Try another status, type, or material filter."
             ) : (
-              <>
-                Paste notes above, or{" "}
-                <Link href={addMaterialHref} className="font-medium text-brand hover:underline">
-                  Add material
-                </Link>{" "}
-                to generate questions for this subject.
-              </>
+              <button type="button" className="calibrate-question-bank__button" onClick={clearFilters}>
+                Clear filters
+              </button>
             )}
           </Empty>
         ) : (
-          <div className="calibrate-question-list">
-            {reviewQuestions.map((question) => (
-              <QuestionCard
-                key={question.id}
-                question={question}
-                materialTitle={question.materialId ? materialTitleById[question.materialId] : undefined}
-                subjectName={subjects.find((subject) => subject.id === question.subjectId)?.name}
-                highlighted={
-                  !!question.materialId &&
-                  (question.materialId === handoffMaterialId ||
-                    question.materialId === highlightedMaterialId)
-                }
-                onDelete={deleteQuestion}
-                onUpdate={updateQuestion}
-              />
-            ))}
-          </div>
+          <>
+            <div className="calibrate-question-list">
+              {pageSlice.items.map((question) => (
+                <QuestionCard
+                  key={question.id}
+                  question={question}
+                  materialTitle={
+                    question.materialId ? materialTitleById[question.materialId] : undefined
+                  }
+                  subjectName={subjects.find((subject) => subject.id === question.subjectId)?.name}
+                  highlighted={
+                    !!question.materialId &&
+                    (question.materialId === handoffMaterialId ||
+                      question.materialId === highlightedMaterialId)
+                  }
+                  onDelete={deleteQuestion}
+                  onUpdate={updateQuestion}
+                />
+              ))}
+            </div>
+
+            {pageSlice.totalPages > 1 && (
+              <nav className="calibrate-question-pagination" aria-label="Question pages">
+                <p className="calibrate-question-pagination__summary">
+                  Showing {pageSlice.from}–{pageSlice.to} of {pageSlice.total}
+                </p>
+                <div className="calibrate-question-pagination__controls">
+                  <button
+                    type="button"
+                    className="calibrate-question-bank__secondary"
+                    onClick={() => setPage((current) => Math.max(1, current - 1))}
+                    disabled={pageSlice.page <= 1}
+                    aria-label="Previous page"
+                  >
+                    ← Previous
+                  </button>
+                  <span aria-current="page">
+                    Page {pageSlice.page} of {pageSlice.totalPages}
+                  </span>
+                  <button
+                    type="button"
+                    className="calibrate-question-bank__secondary"
+                    onClick={() =>
+                      setPage((current) => Math.min(pageSlice.totalPages, current + 1))
+                    }
+                    disabled={pageSlice.page >= pageSlice.totalPages}
+                    aria-label="Next page"
+                  >
+                    Next →
+                  </button>
+                </div>
+              </nav>
+            )}
+          </>
         )}
       </section>
     </div>
@@ -828,7 +995,10 @@ function QuestionCard({
         </span>
         <span className="calibrate-question-card__context">{subjectName ?? "Unknown subject"}</span>
         {materialTitle && (
-          <span className="calibrate-question-card__context calibrate-question-card__material-tag" title="Source material">
+          <span
+            className="calibrate-question-card__context calibrate-question-card__material-tag"
+            title="Source material"
+          >
             {materialTitle}
           </span>
         )}
@@ -836,27 +1006,72 @@ function QuestionCard({
       {editing ? (
         <div className="calibrate-question-card__practice">
           <label className="calibrate-question-bank__label">Question</label>
-          <textarea value={draftPrompt} onChange={(event) => setDraftPrompt(event.target.value)} rows={3} className="calibrate-question-bank__field calibrate-question-bank__textarea" />
+          <textarea
+            value={draftPrompt}
+            onChange={(event) => setDraftPrompt(event.target.value)}
+            rows={3}
+            className="calibrate-question-bank__field calibrate-question-bank__textarea"
+          />
           <label className="calibrate-question-bank__label">Answer</label>
-          <textarea value={draftAnswer} onChange={(event) => setDraftAnswer(event.target.value)} rows={2} className="calibrate-question-bank__field calibrate-question-bank__textarea" />
-          {question.type === "mcq" && draftChoices.map((choice, index) => (
-            <input key={index} value={choice} onChange={(event) => setDraftChoices((current) => current.map((item, itemIndex) => itemIndex === index ? event.target.value : item))} className="calibrate-question-bank__field" aria-label={`Answer choice ${index + 1}`} />
-          ))}
+          <textarea
+            value={draftAnswer}
+            onChange={(event) => setDraftAnswer(event.target.value)}
+            rows={2}
+            className="calibrate-question-bank__field calibrate-question-bank__textarea"
+          />
+          {question.type === "mcq" &&
+            draftChoices.map((choice, index) => (
+              <input
+                key={index}
+                value={choice}
+                onChange={(event) =>
+                  setDraftChoices((current) =>
+                    current.map((item, itemIndex) =>
+                      itemIndex === index ? event.target.value : item,
+                    ),
+                  )
+                }
+                className="calibrate-question-bank__field"
+                aria-label={`Answer choice ${index + 1}`}
+              />
+            ))}
           <div className="calibrate-question-card__actions">
-            <button type="button" onClick={() => void update("edit")} disabled={saving}>Save edit</button>
-            <button type="button" onClick={() => setEditing(false)}>Cancel</button>
+            <button type="button" onClick={() => void update("edit")} disabled={saving}>
+              Save edit
+            </button>
+            <button type="button" onClick={() => setEditing(false)}>
+              Cancel
+            </button>
           </div>
         </div>
-      ) : <p className="calibrate-question-card__prompt">{question.prompt}</p>}
+      ) : (
+        <p className="calibrate-question-card__prompt">{question.prompt}</p>
+      )}
 
       <div className="calibrate-question-card__actions">
         <button type="button" onClick={() => setRevealed((isRevealed) => !isRevealed)}>
           {revealed ? "Hide answer" : "Show answer"}
         </button>
-        {question.sourceExcerpt && <button type="button" onClick={() => setSourceVisible((visible) => !visible)}>{sourceVisible ? "Hide supporting notes" : "View supporting notes"}</button>}
-        {question.status !== "approved" && question.status !== "rejected" && <button type="button" onClick={() => setEditing(true)}>Edit</button>}
-        {question.status !== "approved" && question.status !== "rejected" && <button type="button" onClick={() => void update("approve")} disabled={saving}>Approve</button>}
-        {question.status !== "rejected" && <button type="button" onClick={() => void update("reject")} disabled={saving}>Reject</button>}
+        {question.sourceExcerpt && (
+          <button type="button" onClick={() => setSourceVisible((visible) => !visible)}>
+            {sourceVisible ? "Hide supporting notes" : "View supporting notes"}
+          </button>
+        )}
+        {question.status !== "approved" && question.status !== "rejected" && (
+          <button type="button" onClick={() => setEditing(true)}>
+            Edit
+          </button>
+        )}
+        {question.status !== "approved" && question.status !== "rejected" && (
+          <button type="button" onClick={() => void update("approve")} disabled={saving}>
+            Approve
+          </button>
+        )}
+        {question.status !== "rejected" && (
+          <button type="button" onClick={() => void update("reject")} disabled={saving}>
+            Reject
+          </button>
+        )}
         <button type="button" onClick={() => setPracticing((isPracticing) => !isPracticing)}>
           {practicing ? "Cancel practice" : "Practice this"}
         </button>
@@ -874,10 +1089,24 @@ function QuestionCard({
         <div className="calibrate-question-card__answer">
           <strong>Answer</strong>
           <p>{question.answer}</p>
-          {question.type === "mcq" && <ul>{parseChoices(question.answerChoices).map((choice) => <li key={choice}><span>{choice === question.answer ? "✓ " : ""}</span>{choice}</li>)}</ul>}
+          {question.type === "mcq" && (
+            <ul>
+              {parseChoices(question.answerChoices).map((choice) => (
+                <li key={choice}>
+                  <span>{choice === question.answer ? "✓ " : ""}</span>
+                  {choice}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
-      {sourceVisible && question.sourceExcerpt && <div className="calibrate-question-card__answer"><strong>Supporting notes</strong><p>{question.sourceExcerpt}</p></div>}
+      {sourceVisible && question.sourceExcerpt && (
+        <div className="calibrate-question-card__answer">
+          <strong>Supporting notes</strong>
+          <p>{question.sourceExcerpt}</p>
+        </div>
+      )}
 
       {practicing && (
         <div className="calibrate-question-card__practice">

@@ -17,6 +17,7 @@ import { materials, questions, subjects } from "@/lib/db/schema";
 import { handle, ok, fail } from "@/lib/http";
 import { newId } from "@/lib/ids";
 import { generateQuestions, parsePdf, MlServiceError } from "@/lib/ml-service";
+import { parseQuestionCount } from "@/lib/question-count";
 import { currentUserId } from "@/lib/user";
 
 function mlErrorStatus(code: string): number {
@@ -35,8 +36,12 @@ export async function POST(req: Request) {
     const subjectId = (formData.get("subjectId") as string | null)?.trim() ?? "";
     if (!subjectId) return fail("subjectId is required.", 422);
 
-    const countRaw = parseInt((formData.get("count") as string | null) ?? "6", 10);
-    const count = Number.isFinite(countRaw) ? Math.min(10, Math.max(1, countRaw)) : 6;
+    const countField = formData.get("count");
+    const countParsed = parseQuestionCount(
+      countField === null ? undefined : typeof countField === "string" ? countField : String(countField),
+    );
+    if (!countParsed.ok) return fail(countParsed.error, 422);
+    const count = countParsed.count;
     const title = (formData.get("title") as string | null)?.trim() ?? "";
 
     const file = formData.get("file") as File | null;
@@ -113,9 +118,24 @@ export async function POST(req: Request) {
       createdAt: new Date().toISOString(),
     }));
 
-    if (rows.length) db.insert(questions).values(rows).run();
+    if (!rows.length) {
+      return fail(
+        "We couldn’t generate grounded questions from this material. Try adding more detailed notes or a different text-based PDF.",
+        422,
+      );
+    }
 
-    return ok({ materialId, questionCount: rows.length, questions: rows }, 201);
+    db.insert(questions).values(rows).run();
+
+    return ok(
+      {
+        materialId,
+        questionCount: rows.length,
+        requestedCount: count,
+        questions: rows,
+      },
+      201,
+    );
   });
 }
 

@@ -77,10 +77,13 @@ def generate_questions(
     if not settings.hf_token:
         raise GenerationError
 
+    # Scale completion budget with the requested target so larger batches
+    # (e.g. 8–10) are less likely to truncate mid-JSON. Still capped.
+    max_tokens = min(4000, max(2000, 700 + requested_count * 320))
     payload = {
         "model": settings.hf_model,
         "messages": build_messages(subject, text, requested_count),
-        "max_tokens": 2000,
+        "max_tokens": max_tokens,
     }
     headers = {
         "Authorization": f"Bearer {settings.hf_token}",
