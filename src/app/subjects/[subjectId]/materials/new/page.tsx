@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { ChangeEvent, useEffect, useState } from "react";
 import { getJSON, postJSON } from "@/lib/client";
 
@@ -15,7 +15,6 @@ type Source = "pdf" | "notes";
 
 export default function AddMaterialPage() {
   const params = useParams<{ subjectId: string }>();
-  const router = useRouter();
   const subjectId = params.subjectId;
   const [subject, setSubject] = useState<Subject | null>(null);
   const [source, setSource] = useState<Source>("pdf");
@@ -168,7 +167,10 @@ export default function AddMaterialPage() {
               session.
             </p>
             <div className="calibrate-material-actions">
-              <Link href={`/questions?subjectId=${encodeURIComponent(subjectId)}&materialId=${encodeURIComponent(generatedMaterialId)}`} className="calibrate-button calibrate-button-teal">
+              <Link
+                href={`/questions?subjectId=${encodeURIComponent(subjectId)}&materialId=${encodeURIComponent(generatedMaterialId)}&from=generate#review-batch`}
+                className="calibrate-button calibrate-button-teal"
+              >
                 Review questions
               </Link>
               <button
