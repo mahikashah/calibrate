@@ -1,5 +1,5 @@
 # Calibrate
-An AI-powered study coach that helps students find evidence-based study techniques that actually work for them — through experimentation, not self-reported "learning styles.
+An AI-powered study coach that helps students find evidence-based study techniques that actually work for them - through experimentation, not self-reported "learning styles.
 
 Most students rely on studying habits that feel productive but aren't backed by evidence — and most study apps either give generic advice or lean on debunked "learning style" quizzes (visual, auditory, kinesthetic) that research doesn't support.
 
