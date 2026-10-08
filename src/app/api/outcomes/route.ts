@@ -17,10 +17,10 @@ const CreateOutcome = z.object({
 export async function POST(req: Request) {
   return handle(async () => {
     const body = CreateOutcome.parse(await req.json());
-    const session = db
+    const session = await db
       .select({ id: sessions.id })
       .from(sessions)
-      .where(and(eq(sessions.id, body.sessionId), eq(sessions.userId, currentUserId())))
+      .where(and(eq(sessions.id, body.sessionId), eq(sessions.userId, await currentUserId())))
       .get();
     if (!session) return fail("Study session not found", 404);
     const row = {
@@ -32,7 +32,7 @@ export async function POST(req: Request) {
       notes: body.notes,
       createdAt: new Date().toISOString(),
     };
-    db.insert(outcomes).values(row).run();
+    await db.insert(outcomes).values(row).run();
     return ok(row, 201);
   });
 }

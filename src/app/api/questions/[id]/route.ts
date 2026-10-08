@@ -10,10 +10,10 @@ export async function DELETE(
   { params }: { params: { id: string } },
 ) {
   return handle(async () => {
-    const userId = currentUserId();
+    const userId = await currentUserId();
     const { id } = params;
 
-    const existing = db
+    const existing = await db
       .select({ id: questions.id })
       .from(questions)
       .where(and(eq(questions.id, id), eq(questions.userId, userId)))
@@ -26,7 +26,7 @@ export async function DELETE(
       });
     }
 
-    db.delete(questions).where(eq(questions.id, id)).run();
+    await db.delete(questions).where(eq(questions.id, id)).run();
     return ok({ deleted: id });
   });
 }
@@ -41,8 +41,8 @@ const UpdateQuestion = z.object({
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   return handle(async () => {
     const body = UpdateQuestion.parse(await req.json());
-    const userId = currentUserId();
-    const existing = db
+    const userId = await currentUserId();
+    const existing = await db
       .select()
       .from(questions)
       .where(and(eq(questions.id, params.id), eq(questions.userId, userId)))
@@ -52,7 +52,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
     if (body.action === "approve" || body.action === "reject") {
       const status = body.action === "approve" ? "approved" : "rejected";
-      db.update(questions).set({ status }).where(eq(questions.id, existing.id)).run();
+      await db.update(questions).set({ status }).where(eq(questions.id, existing.id)).run();
     } else {
       if (!body.prompt || !body.answer) {
         return fail("Question text and answer are required.", 422);
@@ -68,7 +68,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       } else if (answerChoices.length > 0) {
         return fail("Only multiple-choice questions can have answer choices.", 422);
       }
-      db.update(questions)
+      await db.update(questions)
         .set({
           prompt: body.prompt.trim(),
           answer: body.answer.trim(),
@@ -79,7 +79,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
         .run();
     }
 
-    const updated = db.select().from(questions).where(eq(questions.id, existing.id)).get();
+    const updated = await db.select().from(questions).where(eq(questions.id, existing.id)).get();
     return ok(updated);
   });
 }

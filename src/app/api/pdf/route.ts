@@ -30,7 +30,7 @@ function mlErrorStatus(code: string): number {
 
 export async function POST(req: Request) {
   return handle(async () => {
-    const userId = currentUserId();
+    const userId = await currentUserId();
     const formData = await req.formData();
 
     const subjectId = (formData.get("subjectId") as string | null)?.trim() ?? "";
@@ -48,7 +48,7 @@ export async function POST(req: Request) {
     if (!file) return fail("No PDF file provided.", 422);
 
     // Verify subject belongs to the current user before doing any ML work.
-    const subject = db.select().from(subjects).where(eq(subjects.id, subjectId)).get();
+    const subject = await db.select().from(subjects).where(eq(subjects.id, subjectId)).get();
     if (!subject || subject.userId !== userId) return fail("Subject not found.", 404);
 
     // --- Step 1: parse PDF via FastAPI ---
@@ -91,7 +91,7 @@ export async function POST(req: Request) {
     const materialTitle =
       title || parsed.file_name.replace(/\.pdf$/i, "").trim() || "Untitled PDF";
 
-    db.insert(materials)
+    await db.insert(materials)
       .values({
         id: materialId,
         userId,
@@ -125,7 +125,7 @@ export async function POST(req: Request) {
       );
     }
 
-    db.insert(questions).values(rows).run();
+    await db.insert(questions).values(rows).run();
 
     return ok(
       {

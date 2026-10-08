@@ -9,10 +9,10 @@ export async function DELETE(
   { params }: { params: { id: string } },
 ) {
   return handle(async () => {
-    const userId = currentUserId();
+    const userId = await currentUserId();
     const { id } = params;
 
-    const existing = db
+    const existing = await db
       .select({ id: materials.id })
       .from(materials)
       .where(and(eq(materials.id, id), eq(materials.userId, userId)))
@@ -26,8 +26,8 @@ export async function DELETE(
     }
 
     // Cascade: delete only this user's questions linked to this material.
-    db.delete(questions).where(and(eq(questions.materialId, id), eq(questions.userId, userId))).run();
-    db.delete(materials).where(eq(materials.id, id)).run();
+    await db.delete(questions).where(and(eq(questions.materialId, id), eq(questions.userId, userId))).run();
+    await db.delete(materials).where(eq(materials.id, id)).run();
 
     return ok({ deleted: id });
   });

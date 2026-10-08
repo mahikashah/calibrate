@@ -1,5 +1,5 @@
-import Database from "better-sqlite3";
-import { drizzle } from "drizzle-orm/better-sqlite3";
+import { createClient } from "@libsql/client";
+import { drizzle } from "drizzle-orm/libsql";
 import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
@@ -17,10 +17,14 @@ import { computeHypothesis } from "../src/lib/hypothesis";
 import { outcomeScore } from "../src/lib/stats";
 import type { TechniqueId } from "../src/lib/techniques";
 
+// Uses Turso when TURSO_DATABASE_URL is set, otherwise the local SQLite file.
 const DB_PATH = process.env.DATABASE_PATH || "./db/studycoach.sqlite";
-const sqlite = new Database(path.resolve(process.cwd(), DB_PATH));
-sqlite.pragma("foreign_keys = ON");
-const db = drizzle(sqlite);
+const client = createClient({
+  url: process.env.TURSO_DATABASE_URL || `file:${path.resolve(process.cwd(), DB_PATH)}`,
+  authToken: process.env.TURSO_AUTH_TOKEN,
+});
+await client.execute("PRAGMA foreign_keys = ON");
+const db = drizzle(client);
 
 const id = (p: string) => `${p}_${randomUUID().slice(0, 12)}`;
 const USER = "local-user";
@@ -56,10 +60,10 @@ console.log("Seeding Calibrate demo data...");
 
 // Wipe existing rows (idempotent reseed).
 for (const t of [sessionFeedback, outcomes, sessions, questions, materials, onboarding, subjects, users]) {
-  db.delete(t).run();
+  await db.delete(t).run();
 }
 
-db.insert(users).values({ id: USER, name: "Alex", createdAt: daysAgo(30) }).run();
+await db.insert(users).values({ id: USER, name: "Alex", createdAt: daysAgo(30) }).run();
 
 const SUBJECTS: SeedSubject[] = [
   { key: "chicano", name: "Chicano Studies", color: "#0E7C66", questionFilePattern: /^chicano_studies_generated_questions_.*\.txt$/i },
@@ -71,13 +75,13 @@ const subjectId: Record<string, string> = {};
 for (const s of SUBJECTS) {
   const sid = id("sub");
   subjectId[s.key] = sid;
-  db.insert(subjects).values({ id: sid, userId: USER, name: s.name, color: s.color, createdAt: daysAgo(28) }).run();
+  await db.insert(subjects).values({ id: sid, userId: USER, name: s.name, color: s.color, createdAt: daysAgo(28) }).run();
 }
 
 // Onboarding hypothesis: guesses "active recall" — the data will disagree,
 // which is exactly the point the product is making.
 const answers = { retention: 1, struggle: 1, check: 0, consistency: 1, subject_type: 1 };
-db.insert(onboarding)
+await db.insert(onboarding)
   .values({
     id: id("onb"),
     userId: USER,
@@ -127,7 +131,7 @@ for (const [key, plan] of Object.entries(PLAN)) {
       const minutes = 20 + Math.round(rand() * 20);
 
       const sid = id("ses");
-      db.insert(sessions)
+      await db.insert(sessions)
         .values({
           id: sid,
           userId: USER,
@@ -142,7 +146,7 @@ for (const [key, plan] of Object.entries(PLAN)) {
           endedAt: when,
         })
         .run();
-      db.insert(outcomes)
+      await db.insert(outcomes)
         .values({
           id: id("out"),
           sessionId: sid,
@@ -188,7 +192,7 @@ function findQuestionFile(subject: SeedSubject) {
   return path.join(ASSETS_DIR, fileName);
 }
 
-function seedQuestionBank() {
+async function seedQuestionBank() {
   const parsedMaterials = JSON.parse(
     fs.readFileSync(path.join(ASSETS_DIR, "parsed_data_1785817790313.json"), "utf8"),
   ) as ParsedMaterial[];
@@ -203,7 +207,7 @@ function seedQuestionBank() {
     }
 
     const mid = id("mat");
-    db.insert(materials)
+    await db.insert(materials)
       .values({
         id: mid,
         userId: USER,
@@ -216,7 +220,7 @@ function seedQuestionBank() {
 
     const generated = parseGeneratedQuestions(fs.readFileSync(findQuestionFile(subject), "utf8"));
     for (const q of generated) {
-      db.insert(questions)
+      await db.insert(questions)
         .values({
           id: id("q"),
           userId: USER,
@@ -238,13 +242,13 @@ function seedQuestionBank() {
 }
 
 try {
-  seedQuestionBank();
+  await seedQuestionBank();
   console.log(
     `Seeded ${SUBJECTS.length} subjects, ${sessionCount} sessions with outcomes, and a starter question bank.`,
   );
-  sqlite.close();
+  client.close();
 } catch (err) {
   console.error(err);
-  sqlite.close();
+  client.close();
   process.exit(1);
 }

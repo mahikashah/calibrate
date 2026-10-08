@@ -9,11 +9,11 @@ export async function DELETE(
   { params }: { params: { id: string } },
 ) {
   return handle(async () => {
-    const userId = currentUserId();
+    const userId = await currentUserId();
     const { id } = params;
 
     // Confirm the subject belongs to the current user.
-    const subject = db
+    const subject = await db
       .select()
       .from(subjects)
       .where(eq(subjects.id, id))
@@ -24,7 +24,7 @@ export async function DELETE(
     }
 
     // Block deletion when linked questions exist.
-    const linkedQuestion = db
+    const linkedQuestion = await db
       .select({ id: questions.id })
       .from(questions)
       .where(eq(questions.subjectId, id))
@@ -38,7 +38,7 @@ export async function DELETE(
     }
 
     // Block deletion when linked materials exist.
-    const linkedMaterial = db
+    const linkedMaterial = await db
       .select({ id: materials.id })
       .from(materials)
       .where(eq(materials.subjectId, id))
@@ -51,7 +51,7 @@ export async function DELETE(
       );
     }
 
-    db.delete(subjects).where(eq(subjects.id, id)).run();
+    await db.delete(subjects).where(eq(subjects.id, id)).run();
     return ok({ id });
   });
 }

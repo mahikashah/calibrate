@@ -8,8 +8,8 @@ import { currentUserId } from "@/lib/user";
 
 export async function GET() {
   return handle(async () => {
-    const userId = currentUserId();
-    const rows = db
+    const userId = await currentUserId();
+    const rows = await db
       .select()
       .from(subjects)
       .where(eq(subjects.userId, userId))
@@ -27,7 +27,7 @@ const CreateSubject = z.object({
 export async function POST(req: Request) {
   return handle(async () => {
     const body = CreateSubject.parse(await req.json());
-    const userId = currentUserId();
+    const userId = await currentUserId();
     const row = {
       id: newId("sub"),
       userId,
@@ -35,7 +35,7 @@ export async function POST(req: Request) {
       color: body.color ?? "#3F817D",
       createdAt: new Date().toISOString(),
     };
-    db.insert(subjects).values(row).run();
+    await db.insert(subjects).values(row).run();
     return ok(row, 201);
   });
 }

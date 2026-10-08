@@ -1,13 +1,18 @@
-import Database from "better-sqlite3";
-import { drizzle } from "drizzle-orm/better-sqlite3";
+import { createClient } from "@libsql/client";
+import { drizzle } from "drizzle-orm/libsql";
 import path from "node:path";
 import fs from "node:fs";
 import * as schema from "./schema";
 
 /**
- * A single shared SQLite connection for the whole app. Next.js can re-import
- * modules across hot reloads, so we cache the connection on globalThis to avoid
- * opening the database file many times in development.
+ * A single shared database connection for the whole app.
+ *
+ * - Production: set TURSO_DATABASE_URL (libsql://...) and TURSO_AUTH_TOKEN to
+ *   use a hosted Turso database.
+ * - Local: falls back to the SQLite file at DATABASE_PATH.
+ *
+ * Next.js can re-import modules across hot reloads, so we cache the connection
+ * on globalThis to avoid opening the database many times in development.
  */
 const DB_PATH = process.env.DATABASE_PATH || "./db/studycoach.sqlite";
 
@@ -16,13 +21,19 @@ declare global {
   var __studycoach_db__: ReturnType<typeof createDb> | undefined;
 }
 
-function createDb() {
+export function databaseUrl(): string {
+  if (process.env.TURSO_DATABASE_URL) return process.env.TURSO_DATABASE_URL;
   const abs = path.resolve(process.cwd(), DB_PATH);
   fs.mkdirSync(path.dirname(abs), { recursive: true });
-  const sqlite = new Database(abs);
-  sqlite.pragma("journal_mode = WAL");
-  sqlite.pragma("foreign_keys = ON");
-  return drizzle(sqlite, { schema });
+  return `file:${abs}`;
+}
+
+function createDb() {
+  const client = createClient({
+    url: databaseUrl(),
+    authToken: process.env.TURSO_AUTH_TOKEN,
+  });
+  return drizzle(client, { schema });
 }
 
 export const db = globalThis.__studycoach_db__ ?? createDb();

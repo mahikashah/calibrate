@@ -53,17 +53,17 @@ function mlErrorStatus(code: string): number {
 export async function POST(req: Request) {
   return handle(async () => {
     const body = GenerateReq.parse(await req.json());
-    const userId = currentUserId();
+    const userId = await currentUserId();
 
     // --- Ownership checks (Next.js concern — never delegated to FastAPI) ---
-    const subject = db.select().from(subjects).where(eq(subjects.id, body.subjectId)).get();
+    const subject = await db.select().from(subjects).where(eq(subjects.id, body.subjectId)).get();
     if (!subject || subject.userId !== userId) return fail("Subject not found.", 404);
 
     let materialText = body.materialText ?? "";
     const materialId = body.materialId ?? null;
 
     if (materialId) {
-      const m = db.select().from(materials).where(eq(materials.id, materialId)).get();
+      const m = await db.select().from(materials).where(eq(materials.id, materialId)).get();
       if (!m || m.userId !== userId) return fail("Material not found.", 404);
       if (m.subjectId !== body.subjectId) return fail("Material does not belong to this subject.", 422);
       if (!materialText) materialText = m.content;
@@ -114,7 +114,7 @@ export async function POST(req: Request) {
       );
     }
 
-    if (body.save) db.insert(questions).values(rows).run();
+    if (body.save) await db.insert(questions).values(rows).run();
 
     // There is no fallback provider: a failed real generation surfaces as an
     // error above, so the provider always reflects the mode that actually ran.

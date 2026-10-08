@@ -8,8 +8,8 @@ import { currentUserId } from "@/lib/user";
 
 export async function GET() {
   return handle(async () => {
-    const userId = currentUserId();
-    const rows = db
+    const userId = await currentUserId();
+    const rows = await db
       .select()
       .from(sessions)
       .where(eq(sessions.userId, userId))
@@ -41,11 +41,11 @@ const CreateSession = z.object({
 export async function POST(req: Request) {
   return handle(async () => {
     const body = CreateSession.parse(await req.json());
-    const userId = currentUserId();
-    const subject = db.select().from(subjects).where(and(eq(subjects.id, body.subjectId), eq(subjects.userId, userId))).get();
+    const userId = await currentUserId();
+    const subject = await db.select().from(subjects).where(and(eq(subjects.id, body.subjectId), eq(subjects.userId, userId))).get();
     if (!subject) return fail("Subject not found", 404);
     if (body.materialId) {
-      const material = db.select().from(materials).where(and(eq(materials.id, body.materialId), eq(materials.userId, userId))).get();
+      const material = await db.select().from(materials).where(and(eq(materials.id, body.materialId), eq(materials.userId, userId))).get();
       if (!material || material.subjectId !== body.subjectId) return fail("Material not found", 404);
     }
     const nowIso = new Date().toISOString();
@@ -65,15 +65,15 @@ export async function POST(req: Request) {
       endedAt: nowIso,
     };
     if (body.completionKey) {
-      db.insert(sessions).values(session).onConflictDoNothing().run();
-      const persisted = db.select().from(sessions).where(eq(sessions.completionKey, body.completionKey)).get();
+      await db.insert(sessions).values(session).onConflictDoNothing().run();
+      const persisted = await db.select().from(sessions).where(eq(sessions.completionKey, body.completionKey)).get();
       if (!persisted) return fail("We couldn’t save this session. Please try again.", 500);
       if (persisted.id !== session.id) {
-        const existingOutcome = db.select().from(outcomes).where(eq(outcomes.sessionId, persisted.id)).get() ?? null;
+        const existingOutcome = await db.select().from(outcomes).where(eq(outcomes.sessionId, persisted.id)).get() ?? null;
         return ok({ session: persisted, outcome: existingOutcome }, 200);
       }
     } else {
-      db.insert(sessions).values(session).run();
+      await db.insert(sessions).values(session).run();
     }
 
     let outcome = null;
@@ -87,7 +87,7 @@ export async function POST(req: Request) {
         notes: body.outcome.notes,
         createdAt: nowIso,
       };
-      db.insert(outcomes).values(outcome).run();
+      await db.insert(outcomes).values(outcome).run();
     }
 
     return ok({ session, outcome }, 201);

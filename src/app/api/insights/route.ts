@@ -10,13 +10,13 @@ import { currentUserId } from "@/lib/user";
 
 export async function GET(req: Request) {
   return handle(async () => {
-    const userId = currentUserId();
+    const userId = await currentUserId();
     const params = new URL(req.url).searchParams;
     const source = params.get("source") === "demo" ? "demo" : "real";
     const subjectId = params.get("subjectId");
 
     if (subjectId) {
-      const subject = db
+      const subject = await db
         .select({ id: subjects.id })
         .from(subjects)
         .where(and(eq(subjects.id, subjectId), eq(subjects.userId, userId)))
@@ -24,7 +24,7 @@ export async function GET(req: Request) {
       if (!subject) return fail("Subject not found", 404);
     }
 
-    const rows = db
+    const rows = await db
       .select({
         sessionId: sessions.id,
         subjectId: sessions.subjectId,
@@ -86,7 +86,7 @@ export async function GET(req: Request) {
       source,
       sourceLabel: source === "real" ? "Your completed sessions" : "Presentation example data",
       report,
-      subjects: db
+      subjects: await db
         .select({ id: subjects.id, name: subjects.name })
         .from(subjects)
         .where(eq(subjects.userId, userId))

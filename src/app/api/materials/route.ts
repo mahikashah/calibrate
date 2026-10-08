@@ -8,9 +8,9 @@ import { currentUserId } from "@/lib/user";
 
 export async function GET(req: Request) {
   return handle(async () => {
-    const userId = currentUserId();
+    const userId = await currentUserId();
     const subjectId = new URL(req.url).searchParams.get("subjectId");
-    const rows = db
+    const rows = await db
       .select()
       .from(materials)
       .where(
@@ -33,9 +33,9 @@ const CreateMaterial = z.object({
 export async function POST(req: Request) {
   return handle(async () => {
     const body = CreateMaterial.parse(await req.json());
-    const userId = currentUserId();
+    const userId = await currentUserId();
 
-    const subject = db.select().from(subjects).where(eq(subjects.id, body.subjectId)).get();
+    const subject = await db.select().from(subjects).where(eq(subjects.id, body.subjectId)).get();
     if (!subject || subject.userId !== userId) return fail("Subject not found.", 404);
 
     const row = {
@@ -46,7 +46,7 @@ export async function POST(req: Request) {
       content: body.content,
       createdAt: new Date().toISOString(),
     };
-    db.insert(materials).values(row).run();
+    await db.insert(materials).values(row).run();
     return ok(row, 201);
   });
 }

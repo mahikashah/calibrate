@@ -8,17 +8,17 @@ import { currentUserId } from "@/lib/user";
 
 export async function GET(req: Request) {
   return handle(async () => {
-    const userId = currentUserId();
+    const userId = await currentUserId();
     const searchParams = new URL(req.url).searchParams;
     const subjectId = searchParams.get("subjectId");
     const materialId = searchParams.get("materialId");
     const approvedOnly = searchParams.get("status") === "approved";
     if (subjectId) {
-      const subject = db.select().from(subjects).where(and(eq(subjects.id, subjectId), eq(subjects.userId, userId))).get();
+      const subject = await db.select().from(subjects).where(and(eq(subjects.id, subjectId), eq(subjects.userId, userId))).get();
       if (!subject) return fail("Subject not found", 404);
     }
     if (materialId) {
-      const material = db.select().from(materials).where(and(eq(materials.id, materialId), eq(materials.userId, userId))).get();
+      const material = await db.select().from(materials).where(and(eq(materials.id, materialId), eq(materials.userId, userId))).get();
       if (!material || (subjectId && material.subjectId !== subjectId)) return fail("Material not found", 404);
     }
     const where = and(
@@ -27,7 +27,7 @@ export async function GET(req: Request) {
       ...(materialId ? [eq(questions.materialId, materialId)] : []),
       ...(approvedOnly ? [eq(questions.status, "approved")] : []),
     );
-    const rows = db
+    const rows = await db
       .select()
       .from(questions)
       .where(where)
@@ -45,16 +45,16 @@ const BulkApprove = z.object({
 export async function PATCH(req: Request) {
   return handle(async () => {
     const { subjectId, materialId } = BulkApprove.parse(await req.json());
-    const userId = currentUserId();
+    const userId = await currentUserId();
     const where = and(
       eq(questions.userId, userId),
       eq(questions.subjectId, subjectId),
       ...(materialId ? [eq(questions.materialId, materialId)] : []),
       inArray(questions.status, ["generated", "edited"]),
     );
-    const eligible = db.select({ id: questions.id }).from(questions).where(where).all();
+    const eligible = await db.select({ id: questions.id }).from(questions).where(where).all();
     if (!eligible.length) return ok({ approved: 0 });
-    db.update(questions).set({ status: "approved" }).where(where).run();
+    await db.update(questions).set({ status: "approved" }).where(where).run();
     return ok({ approved: eligible.length });
   });
 }
@@ -72,7 +72,7 @@ export async function POST(req: Request) {
     const body = CreateQuestion.parse(await req.json());
     const row = {
       id: newId("q"),
-      userId: currentUserId(),
+      userId: await currentUserId(),
       subjectId: body.subjectId,
       materialId: body.materialId ?? null,
       type: body.type,
@@ -81,7 +81,7 @@ export async function POST(req: Request) {
       source: "user",
       createdAt: new Date().toISOString(),
     };
-    db.insert(questions).values(row).run();
+    await db.insert(questions).values(row).run();
     return ok(row, 201);
   });
 }

@@ -138,7 +138,7 @@ describe("evidence_origin classification", () => {
   });
 
   it("creates seeded presentation sessions with evidenceOrigin demo", () => {
-    const seedSource = fs.readFileSync(path.resolve(process.cwd(), "scripts/seed.ts"), "utf8");
+    const seedSource = fs.readFileSync(path.resolve(process.cwd(), "scripts/seed.mts"), "utf8");
     expect(seedSource).toMatch(/evidenceOrigin:\s*"demo"/);
 
     // Mirror the seed insert contract against an isolated DB.

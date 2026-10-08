@@ -9,8 +9,8 @@ import { currentUserId } from "@/lib/user";
 
 export async function GET() {
   return handle(async () => {
-    const userId = currentUserId();
-    const row = db
+    const userId = await currentUserId();
+    const row = await db
       .select()
       .from(onboarding)
       .where(eq(onboarding.userId, userId))
@@ -36,12 +36,12 @@ export async function POST(req: Request) {
     const hypothesis = computeHypothesis(body.answers);
     const row = {
       id: newId("onb"),
-      userId: currentUserId(),
+      userId: await currentUserId(),
       answers: JSON.stringify(body.answers),
       hypothesis: JSON.stringify(hypothesis),
       createdAt: new Date().toISOString(),
     };
-    db.insert(onboarding).values(row).run();
+    await db.insert(onboarding).values(row).run();
     return ok({ completed: true, hypothesis }, 201);
   });
 }

@@ -40,29 +40,29 @@ function hypothesisTechnique(raw: string | undefined): string | undefined {
 
 export async function GET() {
   return handle(async () => {
-    const userId = currentUserId();
+    const userId = await currentUserId();
 
-    const subjectRows = db
+    const subjectRows = await db
       .select({ id: subjects.id, name: subjects.name, color: subjects.color })
       .from(subjects)
       .where(eq(subjects.userId, userId))
       .orderBy(asc(subjects.name))
       .all();
 
-    const materialRows = db
+    const materialRows = await db
       .select({ id: materials.id, subjectId: materials.subjectId })
       .from(materials)
       .where(eq(materials.userId, userId))
       .all();
 
-    const questionRows = db
+    const questionRows = await db
       .select({ subjectId: questions.subjectId, status: questions.status })
       .from(questions)
       .where(eq(questions.userId, userId))
       .all();
 
     // Real, finished sessions only — this is the evidence progress base.
-    const completedRows = db
+    const completedRows = await db
       .select({
         id: sessions.id,
         subjectId: sessions.subjectId,
@@ -83,7 +83,7 @@ export async function GET() {
     // computeInsights (one record per outcome check, so a session re-checked
     // later contributes twice). This query must stay identical to the Insights
     // one: any divergence would give the student two different recommendations.
-    const evidenceRows = db
+    const evidenceRows = await db
       .select({
         subjectId: sessions.subjectId,
         subjectName: subjects.name,
@@ -104,7 +104,7 @@ export async function GET() {
     const evidence: EvidenceRecord[] = evidenceRows.map((row) => ({ ...row }));
     const report = computeInsights(evidence);
 
-    const onboardingRow = db
+    const onboardingRow = await db
       .select({ hypothesis: onboarding.hypothesis, createdAt: onboarding.createdAt })
       .from(onboarding)
       .where(eq(onboarding.userId, userId))
@@ -116,7 +116,7 @@ export async function GET() {
     const recommendation = currentRecommendation(focusSubject, startingHypothesis);
 
     // --- Latest real completed session -------------------------------------
-    const recentRow = db
+    const recentRow = await db
       .select({
         sessionId: sessions.id,
         subjectId: sessions.subjectId,
