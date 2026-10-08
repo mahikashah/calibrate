@@ -11,19 +11,11 @@ body {
   height: 100%;
 }
 
-/* Tailwind sizes are rem-based, so scaling the root size enlarges the whole UI on bigger screens. */
-@media (min-width: 1024px) {
-  html { font-size: 106.25%; }
-}
-@media (min-width: 1280px) {
-  html { font-size: 112.5%; }
-}
-@media (min-width: 1536px) {
-  html { font-size: 118.75%; }
-}
-/* The start, how-it-works, and onboarding screens skip that scale-up and sit a
-   touch smaller, since their hero type is already large. */
+/* Tailwind sizes are rem-based, so the root size scales the whole UI. On
+   tablet and up, the app runs a little compact to keep pages short; the start,
+   how-it-works, and onboarding screens sit slightly larger. */
 @media (min-width: 768px) {
+  html { font-size: 87.5%; }
   html:has(.calibrate-standalone) { font-size: 93.75%; }
 }
 
