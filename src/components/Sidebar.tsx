@@ -29,15 +29,15 @@ function isActive(path: string, href: string) {
 export function Sidebar() {
   const path = usePathname();
   return (
-    <aside className="flex h-full w-full flex-col gap-1 md:w-60">
-      <Link href="/dashboard" className="mb-7 flex items-center gap-2.5 px-2">
+    <aside className="flex h-full w-full flex-col gap-1 md:w-64 lg:w-72">
+      <Link href="/dashboard" className="mb-10 flex items-center gap-3 px-2">
         <CalibrateMark />
-        <span className="font-serif text-[1.05rem] font-semibold tracking-tight text-ink">
+        <span className="font-serif text-[1.35rem] font-semibold tracking-tight text-ink">
           Calibrate
         </span>
       </Link>
 
-      <nav className="flex flex-col gap-0.5" aria-label="Main">
+      <nav className="flex flex-col gap-1" aria-label="Main">
         {NAV.map((item) => {
           const active = isActive(path, item.href);
           return (
@@ -45,7 +45,7 @@ export function Sidebar() {
               key={item.href}
               href={item.href}
               aria-current={active ? "page" : undefined}
-              className={`rounded-lg border-l-[3px] px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
+              className={`rounded-lg border-l-[3px] px-4 py-3 text-[0.95rem] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
                 active
                   ? "border-brand bg-brand-soft text-brand-ink"
                   : "border-transparent text-muted hover:bg-brand-soft/50 hover:text-ink"
@@ -58,12 +58,12 @@ export function Sidebar() {
       </nav>
 
       <div className="mt-auto space-y-4 px-3 pt-8">
-        <p className="text-xs leading-relaxed text-muted">
+        <p className="text-sm leading-relaxed text-muted">
           Test techniques as experiments. Let your own results decide what works.
         </p>
         <Link
           href="/onboarding"
-          className="block text-xs font-medium text-muted underline decoration-line underline-offset-4 transition-colors hover:text-brand-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+          className="block text-sm font-medium text-muted underline decoration-line underline-offset-4 transition-colors hover:text-brand-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
         >
           Retake onboarding
         </Link>

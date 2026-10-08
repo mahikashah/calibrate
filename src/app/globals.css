@@ -11,6 +11,17 @@ body {
   height: 100%;
 }
 
+/* Tailwind sizes are rem-based, so scaling the root size enlarges the whole UI on bigger screens. */
+@media (min-width: 1024px) {
+  html { font-size: 106.25%; }
+}
+@media (min-width: 1280px) {
+  html { font-size: 112.5%; }
+}
+@media (min-width: 1536px) {
+  html { font-size: 118.75%; }
+}
+
 body {
   @apply bg-paper text-ink antialiased;
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
@@ -183,8 +194,11 @@ main h1 {
   gap: 0.8rem;
   margin-right: auto;
   font-family: Georgia, Cambria, "Times New Roman", serif;
-  font-size: 1.45rem;
+  font-size: 1.75rem;
   letter-spacing: -0.045em;
+}
+.calibrate-start__brand--centered {
+  margin: 0 0 1.75rem;
 }
 .calibrate-bar-mark {
   display: inline-flex;
@@ -442,6 +456,25 @@ main h1 {
   display: block;
   margin-bottom: 0.28rem;
   color: #4e7774;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.calibrate-tour__privacy {
+  margin: 1rem 0 0;
+  padding: 0.85rem 1rem;
+  border: 1px solid #cfe1d4;
+  border-radius: 0.75rem;
+  background: rgba(220, 234, 222, 0.55);
+  color: #4f5a50;
+  font-size: 0.8rem;
+  line-height: 1.55;
+}
+.calibrate-tour__privacy span {
+  display: block;
+  margin-bottom: 0.28rem;
+  color: #1e613b;
   font-size: 0.68rem;
   font-weight: 800;
   letter-spacing: 0.12em;

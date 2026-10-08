@@ -18,12 +18,11 @@ export default function StartPage() {
       <div className="calibrate-start__grid" aria-hidden="true" />
 
       <div className="calibrate-start__content animate-rise">
-        <header className="calibrate-start__brand">
-          <CalibrateMark />
-          <span>Calibrate</span>
-        </header>
-
         <div className="calibrate-start__hero">
+          <header className="calibrate-start__brand calibrate-start__brand--centered">
+            <CalibrateMark />
+            <span>Calibrate</span>
+          </header>
           <p className="calibrate-start__eyebrow">Study with evidence</p>
           <h1>Stop guessing how to study.</h1>
           <p className="calibrate-start__lede">

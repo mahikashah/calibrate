@@ -6,11 +6,15 @@ type Step = {
   title: string;
   explanation: string;
   why: string;
+  privacy?: string;
   previews: Array<{
     src: string;
     alt: string;
   }>;
 };
+
+const PRIVACY_NOTE =
+  "Calibrate uses retrieval-augmented generation (RAG). Your material is used only to generate your questions and is not used to train AI models.";
 
 const STEPS: Step[] = [
   {
@@ -42,6 +46,7 @@ const STEPS: Step[] = [
     title: "Bring your real class material",
     explanation: "Upload a PDF or paste the notes you’re actually studying.",
     why: "Your practice questions are created from your own course material.",
+    privacy: PRIVACY_NOTE,
     previews: [
       {
         src: "/how-it-works/step3.png",
@@ -54,6 +59,7 @@ const STEPS: Step[] = [
     title: "Review your questions, then study",
     explanation: "Review the AI-generated practice, then run a focused session using the technique you’re testing.",
     why: "You stay in control of the questions before they affect your study experiment.",
+    privacy: PRIVACY_NOTE,
     previews: [
       {
         src: "/how-it-works/step4_1.png",
@@ -69,7 +75,7 @@ const STEPS: Step[] = [
     number: "05",
     title: "See what actually worked",
     explanation: "After enough study sessions, Calibrate compares your results across techniques.",
-    why: "Your actual session data — not a learning-style label — helps decide what is worth using again.",
+    why: "This is your actual session data, not a learning-style label. It helps decide what is worth using again.",
     previews: [
       {
         src: "/how-it-works/step5.png",
@@ -146,6 +152,12 @@ export default function HowItWorksPage() {
                     <span>Why this matters</span>
                     {step.why}
                   </p>
+                  {step.privacy ? (
+                    <p className="calibrate-tour__privacy">
+                      <span>Your privacy</span>
+                      {step.privacy}
+                    </p>
+                  ) : null}
                 </div>
 
                 <div className={`calibrate-tour__previews ${paired ? "calibrate-tour__previews--paired" : ""}`}>
