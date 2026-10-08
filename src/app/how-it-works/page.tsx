@@ -14,7 +14,7 @@ type Step = {
 };
 
 const PRIVACY_NOTE =
-  "Calibrate uses retrieval-augmented generation (RAG). Your material is used only to generate your questions and is not used to train AI models.";
+  "Your material is used only to generate your questions and is not used to train AI models.";
 
 const STEPS: Step[] = [
   {
