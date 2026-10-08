@@ -1,0 +1,11 @@
+# Keep local-only files out of `vercel` CLI uploads.
+.env*
+!.env.example
+db/*.sqlite*
+calibrate/
+ml-service/
+screenshots/
+attached_assets/
+.next/
+node_modules/
+*.tsbuildinfo

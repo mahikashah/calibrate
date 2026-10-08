@@ -1,0 +1,43 @@
+services:
+  # Next.js app. Data lives in a hosted Turso database, so the free instance
+  # needs no disk.
+  - type: web
+    name: calibrate
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm run db:migrate && npm run start
+    healthCheckPath: /start
+    envVars:
+      - key: TURSO_DATABASE_URL
+        sync: false # libsql://<db-name>-<org>.turso.io
+      - key: TURSO_AUTH_TOKEN
+        sync: false
+      - key: ML_SERVICE_URL
+        sync: false # set to the calibrate-ml public URL, e.g. https://calibrate-ml.onrender.com
+      - key: ML_SERVICE_API_KEY
+        fromService:
+          type: web
+          name: calibrate-ml
+          envVarKey: ML_SERVICE_API_KEY
+      - key: CALIBRATE_DEMO_MODE
+        value: "false"
+      - key: LLM_PROVIDER
+        value: mock
+
+  # FastAPI service for PDF parsing and question generation.
+  - type: web
+    name: calibrate-ml
+    runtime: python
+    plan: free
+    rootDir: ml-service
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.11
+      - key: ML_SERVICE_API_KEY
+        generateValue: true
+      - key: HF_TOKEN
+        sync: false
