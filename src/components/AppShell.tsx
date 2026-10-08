@@ -13,7 +13,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   if (STANDALONE_ROUTES.has(pathname)) {
-    return <main>{children}</main>;
+    return <main className="calibrate-standalone">{children}</main>;
   }
 
   if (FOCUSED_ROUTES.has(pathname)) {

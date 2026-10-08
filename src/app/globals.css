@@ -21,6 +21,11 @@ body {
 @media (min-width: 1536px) {
   html { font-size: 118.75%; }
 }
+/* The start, how-it-works, and onboarding screens skip that scale-up and sit a
+   touch smaller, since their hero type is already large. */
+@media (min-width: 768px) {
+  html:has(.calibrate-standalone) { font-size: 93.75%; }
+}
 
 body {
   @apply bg-paper text-ink antialiased;
