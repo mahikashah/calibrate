@@ -63,3 +63,6 @@ timeoutMs = 180000
 [nix]
 packages = ["sqlite"]
 channel = "stable-25_05"
+
+[agent]
+expertMode = true
