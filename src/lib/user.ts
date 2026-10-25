@@ -12,7 +12,7 @@ export const DEFAULT_USER_ID = "local-user";
 export async function getCurrentUser() {
   let user = await db.select().from(users).where(eq(users.id, DEFAULT_USER_ID)).get();
   if (!user) {
-    user = { id: DEFAULT_USER_ID, name: "You", createdAt: new Date().toISOString() };
+    user = { id: DEFAULT_USER_ID, name: "You", email: null, createdAt: new Date().toISOString() };
     await db.insert(users).values(user).run();
   }
   return user;

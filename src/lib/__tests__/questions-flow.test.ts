@@ -25,6 +25,10 @@ let sharedDb: BetterSQLite3Database<typeof DbSchema>;
 const SEED_USER_ID = "test-user";
 const SEED_SUBJECT_ID = "test-subject";
 
+// The daily generation cap has its own tests (generation-cap.test.ts); keep it
+// out of the way here so this file can generate freely.
+vi.stubEnv("GENERATIONS_PER_DAY", "1000");
+
 // ---------------------------------------------------------------------------
 // Module mocks
 // ---------------------------------------------------------------------------
@@ -41,6 +45,7 @@ vi.mock("@/lib/db", async () => {
     CREATE TABLE users (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
+      email TEXT UNIQUE,
       created_at TEXT NOT NULL
     );
     CREATE TABLE subjects (
@@ -70,6 +75,15 @@ vi.mock("@/lib/db", async () => {
       source_excerpt TEXT,
       status TEXT NOT NULL DEFAULT 'generated',
       source TEXT NOT NULL DEFAULT 'ai',
+      created_at TEXT NOT NULL
+    );
+    CREATE TABLE generation_events (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      ok INTEGER NOT NULL,
+      error_code TEXT,
+      question_count INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL
     );
   `);

@@ -35,6 +35,7 @@ vi.mock("@/lib/db", async () => {
     CREATE TABLE users (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
+      email TEXT UNIQUE,
       created_at TEXT NOT NULL
     );
     CREATE TABLE subjects (
