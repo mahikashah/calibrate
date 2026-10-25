@@ -14,6 +14,7 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { materials, questions, subjects } from "@/lib/db/schema";
+import { capMessage, checkGenerationCap, recordGeneration } from "@/lib/generation-cap";
 import { handle, ok, fail } from "@/lib/http";
 import { newId } from "@/lib/ids";
 import { generateQuestions, parsePdf, MlServiceError } from "@/lib/ml-service";
@@ -51,18 +52,25 @@ export async function POST(req: Request) {
     const subject = await db.select().from(subjects).where(eq(subjects.id, subjectId)).get();
     if (!subject || subject.userId !== userId) return fail("Subject not found.", 404);
 
+    // Per-user daily cap protects the paid inference account.
+    const cap = await checkGenerationCap(userId);
+    if (!cap.allowed) return fail(capMessage(cap.limit), 429);
+
     // --- Step 1: parse PDF via FastAPI ---
     let parsed;
     try {
       parsed = await parsePdf(file, file.name);
     } catch (err) {
       if (err instanceof MlServiceError) {
+        await recordGeneration({ userId, kind: "pdf", ok: false, errorCode: err.code });
         return fail(err.studentMessage, mlErrorStatus(err.code));
       }
+      await recordGeneration({ userId, kind: "pdf", ok: false, errorCode: "UNEXPECTED" });
       throw err;
     }
 
     if (!parsed.text.trim()) {
+      await recordGeneration({ userId, kind: "pdf", ok: false, errorCode: "UNSUPPORTED_PDF" });
       return fail(
         "This PDF appears to be scanned or empty. Try a text-based PDF or paste your notes instead.",
         422,
@@ -81,8 +89,10 @@ export async function POST(req: Request) {
       });
     } catch (err) {
       if (err instanceof MlServiceError) {
+        await recordGeneration({ userId, kind: "pdf", ok: false, errorCode: err.code });
         return fail(err.studentMessage, mlErrorStatus(err.code));
       }
+      await recordGeneration({ userId, kind: "pdf", ok: false, errorCode: "UNEXPECTED" });
       throw err;
     }
 
@@ -119,6 +129,7 @@ export async function POST(req: Request) {
     }));
 
     if (!rows.length) {
+      await recordGeneration({ userId, kind: "pdf", ok: false, errorCode: "NO_GROUNDED_QUESTIONS" });
       return fail(
         "We couldn’t generate grounded questions from this material. Try adding more detailed notes or a different text-based PDF.",
         422,
@@ -126,6 +137,7 @@ export async function POST(req: Request) {
     }
 
     await db.insert(questions).values(rows).run();
+    await recordGeneration({ userId, kind: "pdf", ok: true, questionCount: rows.length });
 
     return ok(
       {

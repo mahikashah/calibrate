@@ -18,6 +18,7 @@ import { materials, questions, subjects } from "@/lib/db/schema";
 import { handle, ok, fail } from "@/lib/http";
 import { newId } from "@/lib/ids";
 import { generateDemoQuestions } from "@/lib/demo-questions";
+import { capMessage, checkGenerationCap, recordGeneration } from "@/lib/generation-cap";
 import { generateQuestions as mlGenerate, MlServiceError } from "@/lib/ml-service";
 import {
   QUESTION_COUNT_DEFAULT,
@@ -77,6 +78,10 @@ export async function POST(req: Request) {
     if (demoMode) {
       generated = generateDemoQuestions(materialText, body.count);
     } else {
+      // Per-user daily cap protects the paid inference account.
+      const cap = await checkGenerationCap(userId);
+      if (!cap.allowed) return fail(capMessage(cap.limit), 429);
+
       try {
         generated = await mlGenerate({
           subject: subject.name,
@@ -85,8 +90,10 @@ export async function POST(req: Request) {
         });
       } catch (err) {
         if (err instanceof MlServiceError) {
+          await recordGeneration({ userId, kind: "notes", ok: false, errorCode: err.code });
           return fail(err.studentMessage, mlErrorStatus(err.code));
         }
+        await recordGeneration({ userId, kind: "notes", ok: false, errorCode: "UNEXPECTED" });
         throw err;
       }
     }
@@ -108,6 +115,9 @@ export async function POST(req: Request) {
     }));
 
     if (!rows.length) {
+      if (!demoMode) {
+        await recordGeneration({ userId, kind: "notes", ok: false, errorCode: "NO_GROUNDED_QUESTIONS" });
+      }
       return fail(
         "We couldn’t generate grounded questions from this material. Try adding more detailed notes or a different text-based PDF.",
         422,
@@ -115,6 +125,9 @@ export async function POST(req: Request) {
     }
 
     if (body.save) await db.insert(questions).values(rows).run();
+    if (!demoMode) {
+      await recordGeneration({ userId, kind: "notes", ok: true, questionCount: rows.length });
+    }
 
     // There is no fallback provider: a failed real generation surfaces as an
     // error above, so the provider always reflects the mode that actually ran.
