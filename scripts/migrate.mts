@@ -3,9 +3,11 @@ import { drizzle } from "drizzle-orm/libsql";
 import { migrate } from "drizzle-orm/libsql/migrator";
 import fs from "node:fs";
 import path from "node:path";
+import { assertDurableDatabase } from "../src/lib/db/config";
 
 // Uses Turso when TURSO_DATABASE_URL is set, otherwise the local SQLite file.
 function databaseUrl(): string {
+  assertDurableDatabase();
   if (process.env.TURSO_DATABASE_URL) return process.env.TURSO_DATABASE_URL;
   const abs = path.resolve(process.cwd(), process.env.DATABASE_PATH || "./db/studycoach.sqlite");
   fs.mkdirSync(path.dirname(abs), { recursive: true });

@@ -13,11 +13,13 @@ import {
   subjects,
   users,
 } from "../src/lib/db/schema";
+import { assertDurableDatabase } from "../src/lib/db/config";
 import { computeHypothesis } from "../src/lib/hypothesis";
 import { outcomeScore } from "../src/lib/stats";
 import type { TechniqueId } from "../src/lib/techniques";
 
 // Uses Turso when TURSO_DATABASE_URL is set, otherwise the local SQLite file.
+assertDurableDatabase();
 const DB_PATH = process.env.DATABASE_PATH || "./db/studycoach.sqlite";
 const client = createClient({
   url: process.env.TURSO_DATABASE_URL || `file:${path.resolve(process.cwd(), DB_PATH)}`,

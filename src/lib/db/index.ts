@@ -2,6 +2,7 @@ import { createClient } from "@libsql/client";
 import { drizzle } from "drizzle-orm/libsql";
 import path from "node:path";
 import fs from "node:fs";
+import { assertDurableDatabase } from "./config";
 import * as schema from "./schema";
 
 /**
@@ -22,6 +23,8 @@ declare global {
 }
 
 export function databaseUrl(): string {
+  // Fail fast rather than silently using an ephemeral local file on a host.
+  assertDurableDatabase();
   if (process.env.TURSO_DATABASE_URL) return process.env.TURSO_DATABASE_URL;
   const abs = path.resolve(process.cwd(), DB_PATH);
   fs.mkdirSync(path.dirname(abs), { recursive: true });
