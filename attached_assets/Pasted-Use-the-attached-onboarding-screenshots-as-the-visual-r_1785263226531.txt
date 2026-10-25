@@ -1,0 +1,58 @@
+Use the attached onboarding screenshots as the visual reference. Do not use them as image backgrounds. Recreate the UI as real React/Tailwind components.
+
+We are working inside the existing mentor starter repo for Calibrate. Do not rebuild from scratch.
+
+Keep:
+- existing Next.js app
+- existing API routes
+- SQLite/Drizzle setup
+- existing /api/onboarding route
+- existing hypothesis logic in src/lib/hypothesis.ts
+- dashboard, study, questions, insights, and subjects routes
+
+Task:
+Redesign /onboarding to match the attached Calibrate onboarding screenshots.
+
+Also add a visible way to access onboarding:
+- Add an “Onboarding” item to the sidebar, or
+- Add a clear “Start onboarding” button on the dashboard if onboarding is incomplete.
+Prefer adding it to the sidebar for now.
+
+Screens to implement in /onboarding:
+1. Welcome screen with Calibrate logo, “Here for all your study needs,” “Get Started,” and “See how it works.”
+2. Intro screen: “Calibrate is a dedicated AI study coach to help you figure out what study method works best for you.” and “We test, measure, and adapt.”
+3. How it Works screen with the three steps from the screenshot.
+4. Quick Questions intro screen.
+5. Behavioral question screen using the existing ONBOARDING_QUESTIONS from src/lib/hypothesis.ts.
+6. Starting hypothesis reveal using the response from /api/onboarding.
+
+Design requirements:
+- warm off-white/tan background
+- large soft pale green circle in top-right
+- soft gray/tan circle in bottom-left
+- centered content
+- black/near-black typography
+- muted teal buttons
+- progress dots near top
+- selected answer states in soft green with dark green border
+- responsive on laptop and mobile
+- do not use purple StudyCoach styling on onboarding
+
+Branding:
+Change visible onboarding branding from StudyCoach to Calibrate.
+
+Important product copy:
+Do not say learning style.
+The hypothesis reveal must include:
+“This is a starting hypothesis based on your answers. It is not a learning-style label. We’ll adjust it based on your actual results.”
+
+Acceptance criteria:
+- /onboarding works end to end
+- users can click through all intro screens
+- users can answer onboarding questions
+- answers still POST to /api/onboarding
+- final hypothesis appears
+- sidebar or dashboard includes a way to reach onboarding
+- app still compiles
+- existing tests still pass
+- no backend routes are deleted

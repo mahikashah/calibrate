@@ -1,0 +1,828 @@
+We are beginning the end-to-end Calibrate ML integration milestone.
+
+IMPORTANT CONTEXT
+
+Before making changes, read:
+
+- replit.md
+- docs/CALIBRATE_MASTER_CONTEXT.md
+- docs/ML_INTEGRATION_CONTRACT.md
+- ml-service/README.md
+
+The isolated FastAPI ML service is already implemented and tested.
+
+It currently provides:
+
+GET /health
+
+POST /parse-pdf
+
+POST /generate-questions
+
+The FastAPI service currently runs locally in this Replit project with:
+
+PYTHONPATH=ml-service python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+The existing Next.js app remains on port 5000.
+
+The ML service wraps Shreya's Python pipeline using:
+
+- pdfplumber
+- Hugging Face Inference Router
+- Qwen/Qwen2.5-7B-Instruct
+- structured question output
+
+This milestone should CONNECT the existing Calibrate application to that FastAPI service.
+
+--------------------------------------------------
+PRIMARY GOAL
+--------------------------------------------------
+
+Create the first real end-to-end Calibrate generation flow:
+
+Subject
+→ Add Material
+→ PDF or Paste Notes
+→ Next.js server
+→ FastAPI
+→ Shreya's generation pipeline
+→ structured questions
+→ Calibrate database
+→ Question Bank
+
+The browser must NOT communicate directly with Hugging Face.
+
+The browser should also NOT communicate directly with FastAPI.
+
+The request path must remain:
+
+Browser
+→ Next.js
+→ FastAPI
+→ Hugging Face
+
+--------------------------------------------------
+1. ENVIRONMENT VARIABLES
+--------------------------------------------------
+
+Use:
+
+ML_SERVICE_URL
+
+to locate FastAPI.
+
+For current Replit development this may be:
+
+http://127.0.0.1:8000
+
+Use:
+
+ML_SERVICE_API_KEY
+
+for the server-to-server authentication header expected by FastAPI.
+
+Do NOT hardcode either value.
+
+Do NOT expose ML_SERVICE_API_KEY in browser/client-side JavaScript.
+
+HF_TOKEN belongs only to the Python ML service.
+
+The Next.js application should never need HF_TOKEN.
+
+--------------------------------------------------
+2. INSPECT EXISTING GENERATION FLOW FIRST
+--------------------------------------------------
+
+Before modifying anything, inspect:
+
+src/app/api/questions/generate/route.ts
+
+and the existing:
+
+- question schema
+- Drizzle schema
+- question persistence
+- material persistence
+- subject ownership validation
+- material ownership validation
+- Question Bank generation UI
+- notes-to-questions flow
+- current LLM provider abstraction
+
+Determine how the existing generation flow works today.
+
+Reuse existing ownership and persistence protections.
+
+Do NOT create a second parallel question-generation system.
+
+--------------------------------------------------
+3. PRESERVE OWNERSHIP VALIDATION
+--------------------------------------------------
+
+The existing Next.js application remains responsible for:
+
+- current user
+- subject ownership
+- material ownership
+- subjectId
+- materialId
+- database writes
+
+Before calling FastAPI:
+
+verify that the selected subject belongs to the current user.
+
+If materialId is provided:
+
+verify the material belongs to that subject/current user.
+
+Never trust browser-supplied ownership identifiers blindly.
+
+Preserve the existing 404/validation behavior already established by the application where practical.
+
+--------------------------------------------------
+4. CREATE A SMALL FASTAPI CLIENT
+--------------------------------------------------
+
+Prefer creating a small reusable server-only client module rather than scattering fetch calls throughout routes.
+
+For example:
+
+src/lib/ml-service.ts
+
+or another location consistent with the current project structure.
+
+It should handle:
+
+- ML_SERVICE_URL
+- ML_SERVICE_API_KEY
+- server-to-server fetch
+- timeout behavior
+- JSON parsing
+- structured ML-service errors
+
+Functions may conceptually include:
+
+parsePdf(...)
+
+generateQuestions(...)
+
+Use the actual FastAPI schemas already implemented.
+
+This module must remain server-only.
+
+--------------------------------------------------
+5. CONNECT QUESTION GENERATION
+--------------------------------------------------
+
+Update the existing server-side:
+
+src/app/api/questions/generate/route.ts
+
+to use the FastAPI:
+
+POST /generate-questions
+
+rather than generating through the old live provider path.
+
+Preserve a mock provider/test path if the existing automated test architecture relies on it.
+
+Do not delete useful test abstractions unnecessarily.
+
+--------------------------------------------------
+6. GENERATION REQUEST
+--------------------------------------------------
+
+FastAPI expects:
+
+{
+  "subject": "Neuroscience",
+  "text": "...",
+  "requested_count": 6
+}
+
+Construct this request server-side.
+
+The subject name should come from the verified database subject.
+
+The text should come from the verified material or approved incoming material workflow.
+
+Do NOT send FastAPI:
+
+- userId
+- subjectId
+- materialId
+- sessionId
+
+unless there is an actual ML requirement.
+
+Those remain Next.js application concerns.
+
+--------------------------------------------------
+7. FASTAPI AUTH HEADER
+--------------------------------------------------
+
+If ML_SERVICE_API_KEY is configured, send:
+
+X-ML-Service-Key: <ML_SERVICE_API_KEY>
+
+from the Next.js server.
+
+Never send this header from browser code.
+
+--------------------------------------------------
+8. HANDLE FASTAPI RESPONSE
+--------------------------------------------------
+
+FastAPI returns:
+
+{
+  "questions": [
+    {
+      "type": "active_recall",
+      "question": "...",
+      "answer": "...",
+      "answer_choices": [],
+      "source_excerpt": "..."
+    }
+  ]
+}
+
+Supported types:
+
+active_recall
+mcq
+feynman
+fill_in_blank
+
+Validate this response again on the Next.js side before database persistence.
+
+Do not blindly trust even the internal ML service.
+
+Use Zod or the project's existing validation approach.
+
+--------------------------------------------------
+9. INSPECT DATABASE QUESTION SCHEMA
+--------------------------------------------------
+
+Before saving questions, compare the existing questions table/schema with the real FastAPI structured output.
+
+We need to preserve:
+
+- type
+- question
+- answer
+- answer choices
+- source excerpt/supporting context
+- subject relationship
+- material relationship
+
+Also inspect whether an approval/review status already exists.
+
+IMPORTANT:
+
+Do not silently drop answer, answer_choices, or source_excerpt merely because the old schema did not support them.
+
+If the existing schema already has appropriate equivalent fields:
+
+reuse them.
+
+If fields are genuinely missing:
+
+make the SMALLEST necessary schema change to persist the real structured question format.
+
+Before making a schema change, clearly identify:
+
+- what is missing
+- why persistence requires it
+- the minimal migration needed
+
+Do not redesign unrelated tables.
+
+--------------------------------------------------
+10. QUESTION FIELD MAPPING
+--------------------------------------------------
+
+Keep the Python/FastAPI contract in snake_case if that is its established API format.
+
+Inside TypeScript/database code, follow the existing project's naming convention.
+
+For example, mapping may be:
+
+answer_choices
+→ answerChoices
+
+source_excerpt
+→ sourceExcerpt
+
+Do this in one clear boundary rather than mixing naming styles throughout the UI.
+
+--------------------------------------------------
+11. QUESTION REVIEW STATUS
+--------------------------------------------------
+
+Inspect whether the current question system already supports review/approval state.
+
+Our intended product model is:
+
+generated
+→ approved / edited / rejected
+
+Do NOT overbuild a complex workflow in this task.
+
+If status already exists:
+
+new ML-generated questions should enter as:
+
+generated
+
+or the closest existing equivalent.
+
+If no status system exists yet:
+
+do not build a large review system here unless a minimal field is required for the next Question Bank milestone.
+
+Document what exists and what the next UI milestone needs.
+
+--------------------------------------------------
+12. PASTE NOTES FLOW
+--------------------------------------------------
+
+Connect the current pasted-notes material flow end-to-end.
+
+The intended behavior:
+
+Student creates/selects subject
+↓
+Paste Notes
+↓
+Save material using existing /api/materials
+↓
+Generate questions
+↓
+Next.js retrieves verified material text
+↓
+Next.js calls FastAPI /generate-questions
+↓
+structured questions returned
+↓
+questions saved linked to subjectId + materialId
+↓
+Question Bank
+
+Reuse the existing safely persisted Material record.
+
+Do NOT create duplicate material records during generation.
+
+--------------------------------------------------
+13. PDF FLOW
+--------------------------------------------------
+
+Connect the current PDF-selection UI to FastAPI through NEXT.JS.
+
+The browser must NOT upload directly to FastAPI.
+
+Create or use an appropriate Next.js server route for PDF processing.
+
+Conceptual path:
+
+Browser
+↓
+Next.js PDF endpoint
+↓
+FastAPI /parse-pdf
+↓
+normalized extracted text
+↓
+Next.js saves Material
+↓
+FastAPI /generate-questions
+↓
+Next.js saves Questions
+↓
+Question Bank
+
+Use the smallest route structure consistent with the existing application.
+
+Do not create unnecessary multiple upload APIs.
+
+--------------------------------------------------
+14. PDF MATERIAL PERSISTENCE
+--------------------------------------------------
+
+After FastAPI successfully parses a PDF:
+
+save the returned normalized text in the existing Calibrate Material system.
+
+Associate it with:
+
+- current user through the existing ownership model
+- selected subject
+- original file_name/title where appropriate
+
+Do NOT store meaningless placeholder content.
+
+Do NOT create a second Python-side material database.
+
+FastAPI remains stateless.
+
+--------------------------------------------------
+15. PDF ERRORS
+--------------------------------------------------
+
+Translate structured FastAPI errors into useful student-facing responses.
+
+Examples:
+
+UNSUPPORTED_PDF
+
+Student-facing meaning:
+
+“This PDF appears to be scanned. Try a text-based PDF or paste your notes instead.”
+
+NOTES_TOO_LONG
+
+Student-facing meaning:
+
+“This material is too long. Try one lecture, chapter, or study section at a time.”
+
+MODEL_TIMEOUT
+
+Student-facing meaning:
+
+“Question generation took too long. Please try again.”
+
+INVALID_MODEL_RESPONSE
+
+Student-facing meaning:
+
+“We couldn't generate valid questions from this material. Please try again.”
+
+Do not expose Python stack traces or Hugging Face errors.
+
+--------------------------------------------------
+16. GENERATION UI
+--------------------------------------------------
+
+Make only the MINIMUM UI changes required to complete this flow.
+
+Do NOT redesign Question Bank yet.
+
+Do NOT redesign material intake yet.
+
+The next milestone is a full Question Bank UI pass.
+
+For now, ensure students can clearly:
+
+- choose/add material
+- trigger Generate Questions
+- see a loading state
+- see success
+- see safe errors
+- reach Question Bank after successful generation
+
+A successful generation may route to:
+
+/question-bank
+
+or the existing Question Bank route.
+
+Use the real current route.
+
+--------------------------------------------------
+17. LOADING STATE
+--------------------------------------------------
+
+Real Hugging Face generation may take several seconds.
+
+When generation is active:
+
+- disable duplicate submission
+- show a clear loading state
+
+Suggested wording:
+
+“Generating questions from your material…”
+
+Optionally:
+
+“This may take a few moments.”
+
+Do not fake progress percentages.
+
+--------------------------------------------------
+18. SUCCESS STATE
+--------------------------------------------------
+
+After successful generation:
+
+show a clear success state such as:
+
+“6 questions generated”
+
+Then provide or perform a clear transition into Question Bank.
+
+Do not automatically start a Study Session.
+
+Questions must be reviewed first.
+
+--------------------------------------------------
+19. NO STUDY SESSION YET
+--------------------------------------------------
+
+The correct product sequence is:
+
+Material
+→ Generate
+→ Question Bank review
+→ Approved questions
+→ Study Session
+
+Do NOT route directly from generation into Study Session.
+
+--------------------------------------------------
+20. KEEP EVALUATION OFFLINE
+--------------------------------------------------
+
+Do NOT call:
+
+- llm_judge_eval
+- evaluation scripts
+- benchmarking scripts
+
+during generation.
+
+The live path should use Shreya's production generation only.
+
+--------------------------------------------------
+21. PROVIDER FALLBACK
+--------------------------------------------------
+
+Inspect the existing mock/provider abstraction.
+
+For automated tests:
+
+it is acceptable to preserve MockProvider or mock the ml-service client.
+
+Do NOT make automated Next.js tests depend on:
+
+- FastAPI being live
+- HF_TOKEN
+- Hugging Face credits
+- internet access
+
+Production/dev real generation should use FastAPI.
+
+Tests should remain deterministic.
+
+--------------------------------------------------
+22. SERVICE UNAVAILABLE ERROR
+--------------------------------------------------
+
+Handle FastAPI being offline/unreachable.
+
+Return a safe error such as:
+
+ML_SERVICE_UNAVAILABLE
+
+Student message:
+
+“Question generation is temporarily unavailable. Please try again.”
+
+Do not crash the Next.js route.
+
+--------------------------------------------------
+23. TIMEOUT
+--------------------------------------------------
+
+Add a reasonable server-side timeout when Next.js calls FastAPI.
+
+It should account for the FastAPI/model timeout.
+
+Do not allow requests to hang indefinitely.
+
+Follow the existing contract/defaults.
+
+--------------------------------------------------
+24. TESTS
+--------------------------------------------------
+
+Update/add Next.js tests for the integration.
+
+Automated tests must mock FastAPI.
+
+At minimum test:
+
+1. valid generation flow
+
+2. subject ownership rejection
+
+3. material ownership rejection
+
+4. FastAPI structured question response validation
+
+5. malformed FastAPI response
+
+6. ML service unavailable
+
+7. ML error mapping
+
+8. generated questions are linked to the correct subject
+
+9. generated questions are linked to the correct material
+
+10. duplicate generation request behavior where relevant
+
+11. PDF parse error mapping if PDF integration is covered by route tests
+
+Do not call real Hugging Face during tests.
+
+--------------------------------------------------
+25. REAL DEVELOPMENT SMOKE TEST
+--------------------------------------------------
+
+After automated tests pass:
+
+With both workflows running:
+
+Next.js:
+port 5000
+
+FastAPI:
+port 8000
+
+and with a real HF_TOKEN configured:
+
+perform ONE real development smoke test.
+
+Prefer a small pasted-notes example first.
+
+Example:
+
+Subject:
+Statistics
+
+Notes:
+A short paragraph or two.
+
+Requested questions:
+3
+
+Verify:
+
+Next.js
+→ FastAPI
+→ Hugging Face
+→ FastAPI
+→ Next.js
+→ database
+
+Do not perform repeated unnecessary model calls.
+
+--------------------------------------------------
+26. VERIFY SAVED QUESTIONS
+--------------------------------------------------
+
+After the smoke test, inspect the saved records.
+
+Verify the real questions contain:
+
+- correct subjectId
+- correct materialId
+- supported type
+- question text
+- answer
+- answer choices
+- source/supporting excerpt
+
+Do not leave temporary smoke-test data if it would pollute important demo data.
+
+Clean up only the temporary test records when safe.
+
+--------------------------------------------------
+27. PDF SMOKE TEST
+--------------------------------------------------
+
+If the pasted-notes smoke test succeeds:
+
+perform one small text-based PDF test if an appropriate fixture is available.
+
+Verify:
+
+PDF
+→ Next.js
+→ /parse-pdf
+→ extracted Material
+→ /generate-questions
+→ Questions
+
+If there is no safe PDF fixture available:
+
+do not block the entire milestone.
+
+Document that PDF automated behavior is covered and real PDF smoke testing remains.
+
+--------------------------------------------------
+28. SECURITY
+--------------------------------------------------
+
+Verify:
+
+- HF_TOKEN never appears in client JS
+- ML_SERVICE_API_KEY never appears in client JS
+- browser never receives those secrets
+- browser never directly calls Hugging Face
+- browser never directly calls FastAPI
+- ownership checks happen before ML generation
+- FastAPI remains stateless
+
+--------------------------------------------------
+29. DO NOT REDESIGN YET
+--------------------------------------------------
+
+Do NOT perform the major UI redesign of:
+
+- Question Bank
+- Study Session
+- Insights
+- Dashboard
+- sidebar
+
+in this task.
+
+The purpose of this milestone is to get REAL ML DATA flowing through the existing application.
+
+Once that works, the next milestone will redesign Question Bank around this actual structured data.
+
+--------------------------------------------------
+30. VALIDATION
+--------------------------------------------------
+
+Run:
+
+npm test
+npm run typecheck
+npm run build
+
+Run FastAPI tests as well.
+
+Verify:
+
+GET /health
+
+still works.
+
+Verify both workflows can run simultaneously.
+
+If HF_TOKEN is available, perform the single real smoke test.
+
+--------------------------------------------------
+COMPLETION REPORT
+--------------------------------------------------
+
+Before finishing, report:
+
+1. Exact files changed.
+
+2. Existing generation architecture discovered.
+
+3. Database question fields discovered.
+
+4. Any minimal schema migration required and why.
+
+5. FastAPI client module created.
+
+6. Next.js route(s) connected to FastAPI.
+
+7. PDF request flow.
+
+8. Paste Notes request flow.
+
+9. Exact field mapping from FastAPI → TypeScript/database.
+
+10. Question status behavior.
+
+11. Student-facing error mappings.
+
+12. Loading/success behavior.
+
+13. Automated test results.
+
+14. FastAPI test results.
+
+15. npm typecheck result.
+
+16. npm build result.
+
+17. Whether a REAL Hugging Face smoke test was completed.
+
+18. If real generation was tested, how many questions were generated.
+
+19. Confirmation that questions persisted with subject/material linkage.
+
+20. Confirmation that Question Bank redesign has NOT been done yet.
+
+21. Confirmation that Study Session was NOT changed.
+
+22. Exact next recommended milestone:
+Question Bank UI + review workflow using the real structured generated-question data.

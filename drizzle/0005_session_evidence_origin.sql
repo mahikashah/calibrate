@@ -1,0 +1,1 @@
+ALTER TABLE `sessions` ADD `evidence_origin` text DEFAULT 'real' NOT NULL;

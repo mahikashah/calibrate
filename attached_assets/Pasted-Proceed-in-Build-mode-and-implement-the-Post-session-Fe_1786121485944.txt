@@ -1,0 +1,626 @@
+Proceed in Build mode and implement the Post-session Feedback milestone you just mapped.
+
+Do not restart the architecture analysis from scratch.
+
+You already determined that the existing /api/feedback route belongs to Question Bank answer feedback.
+
+IMPORTANT:
+Do NOT overload or repurpose /api/feedback.
+
+Create a distinct post-session feedback path and persistence model.
+
+==================================================
+PRIMARY FLOW
+==================================================
+
+Complete this real Calibrate workflow:
+
+Approved Questions
+→ Study Session
+→ Persisted Session + Outcome
+→ Completion Summary
+→ Continue
+→ Post-session Feedback
+→ Persisted session context
+→ /insights
+
+Do NOT redesign Insights yet.
+
+==================================================
+1. DISTINCT SESSION FEEDBACK API
+==================================================
+
+Create a dedicated route for post-session feedback.
+
+Preferred route:
+
+/api/session-feedback
+
+unless the current project structure strongly suggests an equivalent clearer name.
+
+Do NOT modify the meaning of the existing:
+
+/api/feedback
+
+That existing route must continue serving its current Question Bank purpose.
+
+==================================================
+2. SESSION FEEDBACK DATA MODEL
+==================================================
+
+Create the smallest dedicated persistence representation required for completed-session feedback.
+
+Prefer a dedicated table/entity such as:
+
+sessionFeedback
+
+linked to:
+
+sessionId
+
+The record should conceptually preserve:
+
+- sessionId
+- overall experience: rough | good
+- calm/wired slider value
+- structured reason values
+- created/updated timestamp if consistent with the existing schema
+
+Do NOT duplicate objective result information such as:
+
+- question correctness
+- outcome score
+- elapsed time
+- technique
+- subject
+
+Those already belong to session/outcome data.
+
+Feedback is CONTEXT layered on top of the objective result.
+
+==================================================
+3. UNIQUE SESSION RELATIONSHIP
+==================================================
+
+A completed session should have at most one current post-session feedback record.
+
+Prefer:
+
+one session
+→ one session feedback record
+
+Use a database uniqueness constraint or equivalent safe architecture around sessionId where appropriate.
+
+Submitting feedback again because of a retry should update/upsert the same feedback rather than create duplicate evidence.
+
+==================================================
+4. OWNERSHIP
+==================================================
+
+All session-feedback reads/writes must verify server-side that:
+
+the referenced session belongs to the current user.
+
+Do not trust:
+
+sessionId
+
+from the browser without checking ownership.
+
+A user must not be able to:
+
+- read another user’s session feedback
+- create feedback for another user’s session
+- modify another user’s feedback
+
+==================================================
+5. STUDY COMPLETION HANDOFF
+==================================================
+
+Preserve the completed Study Session summary.
+
+Update its main:
+
+Continue
+
+action so a REAL completed session routes to:
+
+/feedback?sessionId=<completed-session-id>
+
+or the smallest equivalent route consistent with the app.
+
+Do not send the student directly to Dashboard or Insights before feedback.
+
+Preserve the separate seeded/presentation Study Session behavior where appropriate.
+
+==================================================
+6. POST-SESSION PAGE
+==================================================
+
+Create/refine:
+
+/feedback
+
+for post-session feedback.
+
+This page should remain focused and visually consistent with the Calibrate Figma direction.
+
+Show:
+
+“How’d it go?”
+
+Large selectable choices:
+
+Rough
+Good
+
+Then:
+
+“Anxiety while studying”
+
+Calm ←────────→ Wired
+
+Use an accessible slider.
+
+Keep the interaction short and visually simple.
+
+==================================================
+7. SLIDER VALUE
+==================================================
+
+Store the Calm → Wired state as a simple deterministic numeric value.
+
+Use a bounded numeric range consistent with the UI implementation.
+
+For example:
+
+0 = Calm
+100 = Wired
+
+or an existing project convention if one already exists.
+
+Do not introduce an ML-derived interpretation.
+
+==================================================
+8. GOOD PATH
+==================================================
+
+If:
+
+Good
+
+is selected:
+
+do not require negative cause selection.
+
+Flow:
+
+Good
+→ Calm/Wired slider
+→ Submit
+
+Keep this path very fast.
+
+==================================================
+9. ROUGH PATH
+==================================================
+
+If:
+
+Rough
+
+is selected:
+
+show:
+
+“Score dipped today — what happened?”
+
+Supporting text:
+
+“Select all that apply”
+
+Options:
+
+- Technique wasn’t right
+- Questions weren’t right
+- Material was hard
+- Distracted / low energy
+- Not sure
+
+Allow multiple selections.
+
+If the current outcome architecture already has a clearly established low-performance threshold, it may also trigger this screen.
+
+If NO existing threshold exists:
+
+DO NOT invent one.
+
+For MVP, use the student’s Rough selection as the trigger.
+
+==================================================
+10. STRUCTURED REASON VALUES
+==================================================
+
+Persist machine-readable values.
+
+Use:
+
+technique_wrong
+questions_wrong
+material_hard
+distracted_low_energy
+not_sure
+
+or equivalent naming consistent with the current codebase.
+
+Keep UI labels student-friendly.
+
+==================================================
+11. QUESTIONS WRONG IS NOT TECHNIQUE WRONG
+==================================================
+
+Preserve this distinction explicitly.
+
+questions_wrong
+
+means:
+
+the practice-question quality may have confounded the session.
+
+technique_wrong
+
+means:
+
+the student felt the study technique itself may not have been effective.
+
+These must remain separate stored values.
+
+Do NOT treat questions_wrong as evidence that the technique failed.
+
+==================================================
+12. DO NOT ALTER OBJECTIVE OUTCOME DATA
+==================================================
+
+Submitting feedback must NOT rewrite:
+
+- score
+- correctness
+- elapsed time
+- technique
+- question results
+- session timing
+
+Feedback supplements those records.
+
+It does not replace them.
+
+==================================================
+13. RETRY / PARTIAL SAVE SAFETY
+==================================================
+
+Build on the existing retry-safe Study Session completion architecture.
+
+If:
+
+Session + Outcome successfully persisted
+
+but:
+
+Session Feedback fails
+
+then:
+
+- keep the completed Session
+- keep the Outcome
+- show a recoverable feedback error
+- preserve the student’s selections where practical
+- allow retry
+- do NOT create another Study Session
+- do NOT create another Outcome
+
+Retrying feedback should upsert against the existing sessionId.
+
+==================================================
+14. INVALID SESSION STATE
+==================================================
+
+Handle safely:
+
+- missing sessionId
+- nonexistent session
+- incomplete session where feedback should not yet be submitted
+- unauthorized session
+- malformed request
+
+Use student-safe errors.
+
+Do not expose SQLite or stack traces.
+
+==================================================
+15. AFTER SUBMISSION
+==================================================
+
+After successful feedback persistence:
+
+route to:
+
+/insights
+
+Do NOT fully redesign Insights in this task.
+
+==================================================
+16. PREPARE INSIGHTS DATA
+==================================================
+
+Inspect the current Insights data path.
+
+Make the smallest backend/query addition required so the next Insights milestone can access REAL evidence containing:
+
+- completed session
+- subject
+- technique
+- outcome/performance
+- duration where available
+- post-session overall feedback
+- Calm/Wired state
+- structured reason values
+
+Prefer joining/querying existing session + outcome + sessionFeedback records.
+
+Do NOT create a second analytics database.
+
+Do NOT implement the final technique-comparison algorithm yet.
+
+==================================================
+17. SEEDED / DEMO DATA
+==================================================
+
+Preserve existing seeded/demo Dashboard and Insights content used for presentation.
+
+Do not reset the database.
+
+The application may temporarily contain:
+
+A. real workflow data
+B. seeded presentation data
+
+Do not delete seeded presentation history unless it breaks correctness.
+
+Do not silently represent seeded analytics as if they came from the newly completed real workflow.
+
+==================================================
+18. NO ML
+==================================================
+
+This milestone must NOT call:
+
+- FastAPI generation
+- Hugging Face
+- Qwen
+- LLM-as-judge
+- any recommendation LLM
+
+Session feedback is deterministic structured application data.
+
+==================================================
+19. DESIGN
+==================================================
+
+Match established Calibrate UI:
+
+- warm cream/off-white
+- charcoal text
+- turquoise primary actions
+- sage selection states
+- thin dark/muted borders
+- generous whitespace
+- large simple cards
+- restrained decorative shapes
+
+The feedback flow should resemble the provided Figma/product direction:
+
+“How’d it go?”
+
+Rough / Good
+
+then, when needed:
+
+“Score dipped today — what happened?”
+
+Avoid generic survey styling.
+
+==================================================
+20. KEEP IT SHORT
+==================================================
+
+Do not add:
+
+- essays
+- long reflections
+- many ratings
+- new onboarding-style screens
+- complicated psychological questions
+
+The feedback should take seconds.
+
+==================================================
+21. TESTS
+==================================================
+
+Add automated coverage for at least:
+
+1. Good feedback saves successfully.
+
+2. Rough feedback saves successfully.
+
+3. Multiple reasons persist.
+
+4. questions_wrong stays distinct from technique_wrong.
+
+5. Calm/Wired value persists.
+
+6. Feedback can only be submitted for the current user’s session.
+
+7. Unauthorized reads fail.
+
+8. Unauthorized writes fail.
+
+9. Repeated submission upserts/reuses one session feedback record.
+
+10. Feedback retry does not create another session.
+
+11. Feedback retry does not create another outcome.
+
+12. Invalid/missing session fails safely.
+
+13. Completed real session + outcome + feedback can be queried by the Insights data path.
+
+14. Existing Question Bank /api/feedback behavior remains unchanged.
+
+15. Seeded/demo Insights data remains available.
+
+16. No ML provider is invoked.
+
+==================================================
+22. MANUAL FLOW
+==================================================
+
+Manually verify:
+
+Question Bank
+→ Approve questions
+→ Start Study Session
+→ Complete Study Session
+→ Completion Summary
+→ Continue
+→ /feedback?sessionId=...
+→ Good
+→ slider
+→ Submit
+→ /insights
+
+Then verify:
+
+Study Session
+→ Completion Summary
+→ Continue
+→ Rough
+→ slider
+→ select multiple reasons
+→ Submit
+→ /insights
+
+Confirm feedback belongs to the correct session.
+
+==================================================
+23. DO NOT REDESIGN
+==================================================
+
+Do NOT fully redesign:
+
+- Insights
+- Dashboard
+- sidebar
+- Question Bank
+- Study Session
+- Start
+- How It Works
+- Onboarding
+
+Do NOT change:
+
+- Qwen
+- FastAPI generation
+- OCR
+- authentication
+- SQLite architecture
+- recommendation algorithm
+
+This milestone is ONLY:
+
+SESSION
+→ OUTCOME
+→ SESSION FEEDBACK
+→ INSIGHTS-READY DATA
+
+==================================================
+24. VALIDATION
+==================================================
+
+Run:
+
+npm test
+npm run typecheck
+npm run build
+
+Run:
+
+PYTHONPATH=ml-service python -m pytest ml-service/tests -q
+
+Verify:
+
+GET /health
+
+on the existing FastAPI service.
+
+==================================================
+25. COMPLETION REPORT
+==================================================
+
+Before finishing, report:
+
+1. Exact files changed.
+
+2. Why /api/session-feedback or equivalent was chosen.
+
+3. Confirmation existing /api/feedback was preserved.
+
+4. Session-feedback schema/table added.
+
+5. Unique session-feedback behavior.
+
+6. Final Good path.
+
+7. Final Rough path.
+
+8. Calm/Wired persistence representation.
+
+9. Structured reason values.
+
+10. questions_wrong vs technique_wrong storage.
+
+11. Ownership validation.
+
+12. Retry/upsert behavior.
+
+13. Study completion → feedback routing.
+
+14. Feedback → Insights routing.
+
+15. How real session/outcome/feedback data becomes available to Insights.
+
+16. How seeded/demo data remains preserved.
+
+17. Tests added.
+
+18. npm test result.
+
+19. npm run typecheck result.
+
+20. npm run build result.
+
+21. FastAPI test result.
+
+22. /health result.
+
+23. Confirmation no ML calls occur during feedback.
+
+24. Confirmation Insights was NOT redesigned yet.
+
+25. Exact next recommended milestone:
+
+INSIGHTS
+→ real session/outcome/feedback evidence
+→ transparent technique comparison
+→ Dashboard summaries
+→ final navigation + visual consistency pass.

@@ -1,0 +1,583 @@
+We are beginning the Calibrate ML integration milestone.
+
+IMPORTANT CONTEXT
+
+Before doing anything, read:
+
+- replit.md
+- docs/CALIBRATE_MASTER_CONTEXT.md
+
+The frontend flow now supports:
+
+Starting Hypothesis
+→ Set Up First Subject
+→ Add Study Material
+
+The existing implementation now has:
+
+- existing /api/subjects persistence
+- existing /api/materials persistence for text materials
+- /subjects/[subjectId]/materials/new
+- PDF selection in frontend state only
+- Paste Notes persistence
+- NO FastAPI integration yet
+- NO new ML calls yet
+
+This is intentional.
+
+The next goal is to connect Calibrate to Shreya's existing Python ML/question-generation work.
+
+However:
+
+DO NOT IMPLEMENT THE INTEGRATION YET.
+
+This task is specifically to inspect Shreya's latest branch and define the exact integration contract before modifying production application code.
+
+--------------------------------------------------
+PRIMARY GOAL
+--------------------------------------------------
+
+Inspect the latest remote:
+
+origin/shreya-ml
+
+and determine exactly:
+
+1. What Python files currently make up Shreya's pipeline.
+2. How PDF parsing currently works.
+3. How pasted/raw text can enter the pipeline.
+4. How token/length checking works.
+5. Which LLM/model/provider is currently used.
+6. What question types are currently generated.
+7. What JSON/data structure is currently returned.
+8. What fields exist for answers, choices, and source/supporting text.
+9. What dependencies/environment variables are required.
+10. Which parts should become FastAPI endpoints.
+
+Then create a clear integration contract document that Shane and Shreya can review together.
+
+--------------------------------------------------
+GIT SAFETY
+--------------------------------------------------
+
+We are currently developing on Shane's feature branch.
+
+DO NOT:
+
+- checkout shreya-ml
+- merge shreya-ml
+- rebase onto shreya-ml
+- modify shreya-ml
+- cherry-pick Shreya's commits
+- push changes to Shreya's branch
+- overwrite current frontend work
+
+You MAY:
+
+- git fetch origin
+- inspect origin/shreya-ml
+- use git show
+- inspect files from the remote branch
+- compare files without switching branches
+
+Begin with something equivalent to:
+
+git fetch origin
+
+Then inspect:
+
+origin/shreya-ml
+
+safely from the current branch.
+
+--------------------------------------------------
+INSPECT THE PYTHON PIPELINE
+--------------------------------------------------
+
+Find all relevant Python/ML files.
+
+Look specifically for areas related to:
+
+- PDF parsing
+- text cleanup
+- token counting
+- question generation
+- prompts
+- model/provider configuration
+- generated question schemas
+- evaluation scripts
+- LLM-as-judge scripts
+- requirements/dependencies
+- environment variables
+- test fixtures
+- generated outputs
+
+Do not assume filenames from project documentation are still current.
+
+Use the actual latest branch as the source of truth.
+
+--------------------------------------------------
+PDF PARSING
+--------------------------------------------------
+
+Determine:
+
+- which Python library currently parses PDFs
+- what input the parser expects
+- what output it produces
+- whether it supports typed/text PDFs only
+- whether scanned/image PDFs are supported
+- whether token count is computed
+- whether word count is computed
+- whether filename/date/subject metadata is returned
+- what happens when parsing fails
+
+Document these findings.
+
+Do NOT add OCR in this task.
+
+--------------------------------------------------
+PASTED NOTES
+--------------------------------------------------
+
+Determine whether Shreya's current generation pipeline can already accept plain text directly.
+
+If it can:
+
+document the path.
+
+If it cannot:
+
+identify the smallest change that would let both:
+
+PDF extracted text
+and
+pasted notes
+
+feed the SAME generation function.
+
+Conceptually we want:
+
+PDF
+→ extract text
+       ↘
+        normalized text
+       ↗
+Paste Notes
+        ↓
+question generation
+
+Do not create separate ML pipelines for each source type.
+
+--------------------------------------------------
+TOKEN / LENGTH LIMIT
+--------------------------------------------------
+
+Inspect the actual current implementation and determine:
+
+- whether a token limit already exists
+- how tokens are approximated or counted
+- what the current intended maximum is
+- what happens when input exceeds it
+
+Do NOT invent a limit if the branch does not currently enforce one.
+
+If documentation mentions approximately 6000 tokens but the implementation differs, report the difference explicitly.
+
+--------------------------------------------------
+QUESTION GENERATION
+--------------------------------------------------
+
+Inspect the actual generation code.
+
+Determine:
+
+- current model/provider
+- current prompt structure
+- supported question types
+- requested question-count behavior
+- error handling
+- whether output parsing/validation exists
+
+Document the real implementation.
+
+--------------------------------------------------
+STRUCTURED QUESTION OUTPUT
+--------------------------------------------------
+
+Determine the exact question structure currently produced.
+
+We expect something conceptually similar to:
+
+{
+  "type": "mcq",
+  "question": "...",
+  "answer": "...",
+  "answer_choices": [
+    "...",
+    "...",
+    "...",
+    "..."
+  ],
+  "source_excerpt": "..."
+}
+
+BUT:
+
+Do not assume this is still exact.
+
+Use Shreya's latest code as the source of truth.
+
+Document:
+
+- exact field names
+- required fields
+- optional fields
+- question-type-specific fields
+- whether MCQ answer choices are always present
+- whether non-MCQ answer choices are empty/omitted
+- how supporting/source text is represented
+
+--------------------------------------------------
+EVALUATION CODE
+--------------------------------------------------
+
+Inspect Shreya's evaluation / LLM-as-judge tooling.
+
+Determine which parts are:
+
+A. production question-generation logic
+
+versus
+
+B. offline/testing/evaluation logic
+
+Do NOT include LLM-as-judge evaluation in the synchronous student question-generation API unless Shreya's current architecture absolutely requires it.
+
+Prefer keeping evaluation tools offline/dev-only.
+
+Document the distinction.
+
+--------------------------------------------------
+DEPENDENCIES AND SECRETS
+--------------------------------------------------
+
+Identify all Python dependencies required for production generation.
+
+Identify required environment variables or API credentials.
+
+Examples might include:
+
+- Hugging Face token
+- model provider key
+
+BUT use the actual branch as the source of truth.
+
+Do not expose any secret values.
+
+Only list environment variable NAMES.
+
+--------------------------------------------------
+PROPOSED FASTAPI BOUNDARY
+--------------------------------------------------
+
+Based on the ACTUAL Python code, propose the smallest clean FastAPI wrapper.
+
+Preferred conceptual endpoints:
+
+GET /health
+
+Purpose:
+Confirm the ML service is alive.
+
+POST /parse-pdf
+
+Purpose:
+Receive a PDF and return normalized extracted material text and metadata.
+
+POST /generate-questions
+
+Purpose:
+Receive normalized text plus subject/question-count context and return structured questions.
+
+Do not create separate generation engines for PDF and pasted notes.
+
+Preferred architecture:
+
+PDF
+→ /parse-pdf
+→ normalized text
+                    ↘
+                     /generate-questions
+                    ↗
+Paste Notes
+→ existing text
+
+If Shreya's implementation strongly suggests a better interface, explain why before changing this proposal.
+
+--------------------------------------------------
+PROPOSED GENERATION REQUEST
+--------------------------------------------------
+
+Create a proposed request contract based on Shreya's real function inputs.
+
+Conceptually it may resemble:
+
+{
+  "subject": "Neuroscience",
+  "text": "...",
+  "requestedQuestionCount": 6,
+  "fileName": "study-guide.pdf"
+}
+
+Do not include fields the Python code does not need merely because they were mentioned in older planning documents.
+
+Separate:
+
+fields needed by ML
+
+from
+
+fields Calibrate already knows in its database.
+
+For example:
+
+subjectId
+materialId
+userId
+
+may belong on the Next.js side rather than needing to be sent to the ML model.
+
+Make that distinction explicit.
+
+--------------------------------------------------
+PROPOSED GENERATION RESPONSE
+--------------------------------------------------
+
+Define the exact normalized response Calibrate should expect.
+
+The contract should support the real question types in Shreya's branch.
+
+Conceptually:
+
+{
+  "questions": [
+    {
+      "type": "...",
+      "question": "...",
+      "answer": "...",
+      "answer_choices": [],
+      "source_excerpt": "..."
+    }
+  ]
+}
+
+Again:
+
+Use Shreya's actual schema when deciding exact names.
+
+--------------------------------------------------
+ERROR CONTRACT
+--------------------------------------------------
+
+Define a small set of machine-readable errors.
+
+Examples:
+
+PDF_PARSE_FAILED
+UNSUPPORTED_PDF
+NOTES_TOO_LONG
+MODEL_TIMEOUT
+INVALID_MODEL_RESPONSE
+GENERATION_FAILED
+
+Each error should conceptually have:
+
+{
+  "success": false,
+  "code": "...",
+  "message": "student-safe message"
+}
+
+Do not expose provider stack traces or secret information to the browser.
+
+--------------------------------------------------
+NEXT.JS RESPONSIBILITY
+--------------------------------------------------
+
+Document that the Calibrate Next.js side should remain responsible for:
+
+- current user
+- ownership validation
+- subjects
+- material records
+- materialId
+- subjectId
+- database writes
+- review status
+- Question Bank
+- Study Session
+- outcomes
+- feedback
+- Insights
+
+FastAPI should NOT become a second Calibrate database/backend.
+
+--------------------------------------------------
+FASTAPI RESPONSIBILITY
+--------------------------------------------------
+
+Document that the Python/FastAPI service should remain responsible for:
+
+- PDF text extraction
+- material normalization where needed
+- token/length validation
+- ML prompt execution
+- structured question generation
+- validating its ML output
+
+Keep the boundary narrow.
+
+--------------------------------------------------
+SECURITY ARCHITECTURE
+--------------------------------------------------
+
+The intended request path is:
+
+Browser
+→ Next.js API
+→ FastAPI
+→ model provider
+
+NOT:
+
+Browser
+→ FastAPI directly
+
+and NOT:
+
+Browser
+→ model provider
+
+This keeps service credentials server-side.
+
+The future deployment should support environment variables such as:
+
+ML_SERVICE_URL
+
+and potentially:
+
+ML_SERVICE_API_KEY
+
+Do not add these secrets yet unless implementation requires them.
+
+--------------------------------------------------
+CREATE INTEGRATION DOCUMENT
+--------------------------------------------------
+
+Create:
+
+docs/ML_INTEGRATION_CONTRACT.md
+
+This should contain:
+
+1. Executive summary
+2. Actual Shreya pipeline discovered
+3. Production Python files
+4. Evaluation-only Python files
+5. Current model/provider
+6. Required Python dependencies
+7. Required secret/env variable names
+8. PDF parser input/output
+9. Token/length behavior
+10. Supported question types
+11. Current structured question format
+12. Recommended FastAPI endpoints
+13. Request schema
+14. Response schema
+15. Error schema
+16. Responsibility split:
+    - Next.js
+    - FastAPI
+17. Security/request path
+18. Any discrepancies between current project assumptions and Shreya's actual latest code
+19. Questions Shane and Shreya need to resolve before implementation
+
+Make this document readable by both a frontend developer and an ML developer.
+
+--------------------------------------------------
+DO NOT CHANGE
+--------------------------------------------------
+
+Do NOT modify:
+
+- frontend UI
+- /subjects
+- material intake
+- Question Bank
+- Study Session
+- database schema
+- current Next.js APIs
+- current generation provider
+- Shreya's Python code
+- package.json
+- Python dependencies
+- deployment configuration
+- Secrets
+- authentication
+
+This is an INSPECTION + CONTRACT task.
+
+--------------------------------------------------
+VALIDATION
+--------------------------------------------------
+
+Because no application behavior should change:
+
+Run:
+
+git status
+
+and verify the only intentional product change is:
+
+docs/ML_INTEGRATION_CONTRACT.md
+
+If documentation changes require no application build, do not create unrelated code changes merely to satisfy a build checklist.
+
+You may still run existing tests if useful, but do not modify application code.
+
+--------------------------------------------------
+COMPLETION REPORT
+--------------------------------------------------
+
+Before finishing, report:
+
+1. Exact Shreya branch commit inspected.
+
+2. Relevant Python files discovered.
+
+3. Actual PDF library.
+
+4. Actual model/provider.
+
+5. Actual input/token limit behavior.
+
+6. Actual question types.
+
+7. Actual structured question fields.
+
+8. Production vs evaluation file split.
+
+9. Required environment variable NAMES.
+
+10. Recommended FastAPI endpoints.
+
+11. Any mismatches between our previous assumptions and Shreya's latest code.
+
+12. Questions that require Shane/Shreya agreement.
+
+13. Confirmation that no production app code was changed.
+
+14. Path to the new contract:
+
+docs/ML_INTEGRATION_CONTRACT.md

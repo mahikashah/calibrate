@@ -1,0 +1,301 @@
+Continue the current FastAPI ML-service implementation milestone.
+
+You have already:
+
+- read replit.md
+- read docs/CALIBRATE_MASTER_CONTEXT.md
+- read docs/ML_INTEGRATION_CONTRACT.md
+- read the full FastAPI implementation brief
+- inspected origin/shreya-ml
+- confirmed that the current Replit environment does not yet have pip available
+
+Do NOT restart the task from scratch.
+
+The next prerequisite is to make Python available in this existing Replit project so the isolated ml-service can be implemented and tested.
+
+--------------------------------------------------
+GOAL
+--------------------------------------------------
+
+Add the smallest safe Python runtime/tooling setup required to develop:
+
+ml-service/
+
+inside the existing Calibrate Replit project.
+
+Then continue and COMPLETE the previously approved FastAPI implementation milestone.
+
+The existing Next.js application must continue working normally.
+
+--------------------------------------------------
+1. PYTHON ENVIRONMENT
+--------------------------------------------------
+
+Inspect the current Replit project configuration first.
+
+Determine the smallest Replit-supported way to provide:
+
+- Python 3.11 or Python 3.12
+- pip
+- virtual environment support if appropriate
+
+Prefer Python 3.11 or 3.12 for compatibility.
+
+Do NOT:
+
+- replace the Node.js environment
+- remove Node/npm support
+- convert the whole repository into a Python project
+- modify the Next.js runtime unnecessarily
+- install random global system packages
+- change package.json just to manage Python dependencies
+
+The project must support BOTH:
+
+Next.js / Node
+and
+the isolated Python FastAPI service.
+
+If a Replit configuration file must be updated to make Python available, make the smallest possible change and clearly document it.
+
+--------------------------------------------------
+2. ISOLATE THE ML SERVICE
+--------------------------------------------------
+
+All Python runtime code should remain under:
+
+ml-service/
+
+Preferred structure:
+
+ml-service/
+├── app/
+│   ├── __init__.py
+│   ├── main.py
+│   ├── schemas.py
+│   ├── config.py
+│   ├── pdf_parser.py
+│   └── question_generator.py
+├── tests/
+├── requirements.txt
+├── .env.example
+└── README.md
+
+Do not scatter Python files across the Next.js application.
+
+--------------------------------------------------
+3. CONTINUE THE PREVIOUSLY APPROVED IMPLEMENTATION
+--------------------------------------------------
+
+Once Python/pip are available, continue the FastAPI task already described in the implementation brief.
+
+Implement:
+
+GET /health
+
+POST /parse-pdf
+
+POST /generate-questions
+
+using:
+
+- Shreya's existing pdfplumber parsing logic
+- Shreya's existing Hugging Face / Qwen generation logic
+- the schemas and decisions documented in docs/ML_INTEGRATION_CONTRACT.md
+
+Do not invent a new ML architecture.
+
+--------------------------------------------------
+4. MVP DECISIONS
+--------------------------------------------------
+
+Continue using the approved MVP decisions:
+
+Input limit:
+- 4,600 words
+- reject rather than silently truncate
+
+PDF:
+- text-based PDFs only
+- pdfplumber
+- no OCR
+- scanned/image-only PDF → UNSUPPORTED_PDF
+
+Model:
+- Qwen/Qwen2.5-7B-Instruct
+- configurable through HF_MODEL
+
+Provider:
+- Hugging Face
+
+Question count:
+- default 6
+- allowed range 1–10
+
+Supported types:
+- active_recall
+- mcq
+- feynman
+- fill_in_blank
+
+Structured question fields:
+- type
+- question
+- answer
+- answer_choices
+- source_excerpt
+
+MCQ:
+- exactly 4 answer choices
+- answer must exactly match one choice
+
+Evaluation:
+- offline/dev only
+- do not run LLM-as-judge during student generation
+
+--------------------------------------------------
+5. SECRETS
+--------------------------------------------------
+
+Do NOT require a real HF_TOKEN to complete automated testing.
+
+Create:
+
+ml-service/.env.example
+
+with safe placeholders only.
+
+Expected configuration should include the actual required names, such as:
+
+HF_TOKEN=
+HF_MODEL=Qwen/Qwen2.5-7B-Instruct
+HF_ENDPOINT=
+GENERATION_TIMEOUT_SECONDS=90
+WORD_LIMIT=4600
+ML_SERVICE_API_KEY=
+
+Do not commit actual credentials.
+
+--------------------------------------------------
+6. TEST WITHOUT REAL MODEL CREDITS
+--------------------------------------------------
+
+Automated tests must mock the Hugging Face request.
+
+Test at minimum:
+
+- GET /health
+- valid mocked generation
+- requested_count validation
+- empty text
+- 4,600-word limit
+- valid MCQ
+- invalid MCQ answer
+- invalid non-MCQ answer_choices
+- malformed model output
+- PDF with no extractable text
+- service-key behavior if implemented
+
+Do not consume real Hugging Face credits during routine automated tests.
+
+--------------------------------------------------
+7. RUN FASTAPI
+--------------------------------------------------
+
+After implementation, actually start the FastAPI service.
+
+Verify:
+
+GET /health
+
+returns the expected healthy response.
+
+Verify:
+
+/docs
+
+loads successfully.
+
+If Replit requires a separate run command or workflow for the Python service, document the exact command.
+
+Do not replace the existing Next.js Start application workflow.
+
+--------------------------------------------------
+8. DO NOT CONNECT NEXT.JS YET
+--------------------------------------------------
+
+This remains an independent-service milestone.
+
+Do NOT modify:
+
+- /api/questions/generate
+- /api/materials
+- Question Bank
+- material intake UI
+- Subjects
+- Study Session
+- Dashboard
+- Insights
+- onboarding
+- database schema
+- current Next.js provider abstraction
+
+The NEXT milestone will connect Next.js to FastAPI.
+
+--------------------------------------------------
+9. VERIFY NEXT.JS STILL WORKS
+--------------------------------------------------
+
+After adding Python tooling and the FastAPI service, also run:
+
+npm test
+npm run typecheck
+npm run build
+
+The existing Calibrate app must still pass.
+
+--------------------------------------------------
+10. COMPLETION REPORT
+--------------------------------------------------
+
+Before finishing, report:
+
+1. How Python/pip were enabled in this Replit project.
+
+2. Exact project/config files changed to support Python.
+
+3. Python version used.
+
+4. Exact ml-service files created.
+
+5. Which Shreya production logic was reused/adapted.
+
+6. FastAPI endpoints implemented.
+
+7. /health result.
+
+8. /docs verification.
+
+9. PDF parser behavior.
+
+10. Generation request/response schemas.
+
+11. Environment variable names.
+
+12. Python test results.
+
+13. Whether tests used mocked or real Hugging Face calls.
+
+14. npm test result.
+
+15. npm run typecheck result.
+
+16. npm run build result.
+
+17. Confirmation that existing Next.js application behavior was preserved.
+
+18. Confirmation that Next.js has NOT been connected to FastAPI yet.
+
+19. Exact run command for the FastAPI service.
+
+20. Exact next integration point for wiring Calibrate's Generate Questions flow to this service.

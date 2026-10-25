@@ -1,0 +1,94 @@
+Build the next Calibrate MVP screen: Paste Notes / Question Bank.
+
+We are working inside the existing mentor starter repo on branch shane-dev. Do not rebuild from scratch.
+
+Keep existing backend logic:
+- Next.js app
+- SQLite/Drizzle database
+- /api/materials
+- /api/questions
+- /api/questions/generate
+- existing materials table
+- existing questions table
+- existing LLM provider abstraction
+- existing mock question generation
+- existing onboarding and dashboard routes
+
+Important team context:
+Shreya is working on ML question generation in branch shreya-ml. Her branch includes generated_questions outputs and token_counts CSV. She plans to add date_added metadata for multiple uploads per subject. Design this screen so it does not assume only one note upload per subject. Keep the materials/questions structure flexible for multiple materials per subject.
+
+Task:
+Redesign and improve the /questions page into a Calibrate-style Paste Notes / Question Bank workflow using the Figma reference.
+
+User flow:
+1. User selects a subject.
+2. User enters a material title.
+3. User pastes notes for today’s session.
+4. User chooses how many questions to generate.
+5. User clicks Generate questions.
+6. Generated questions are saved and shown in the Question Bank.
+7. User can view saved questions.
+
+Visual direction:
+- warm tan/off-white Calibrate background
+- muted teal primary button
+- near-black text
+- subtle borders
+- calm academic feel
+- avoid purple StudyCoach styling
+- responsive laptop-first layout
+- sidebar should still work
+- simple question cards
+
+Required UI sections:
+1. Page heading:
+   - Eyebrow: “Question Bank”
+   - Title: “Turn your material into practice”
+   - Short helper copy: “Paste the material you’re studying today. Calibrate will generate practice questions only from this text.”
+
+2. Generate from notes panel:
+   - Subject dropdown
+   - Number of questions input
+   - Material title input
+   - Notes textarea
+   - Character counter
+   - Generate questions button
+   - Loading state while generating
+   - Error state if generation fails
+   - Empty state if no subjects exist
+
+3. Saved questions section:
+   - Question count
+   - Filter buttons if existing data supports it: All, Active recall, Fill-in, Explain-back, Practice
+   - Question cards showing:
+     - question type
+     - source label, such as AI or User
+     - prompt text
+     - reveal answer button or expandable answer
+     - practice action if already available
+   - Empty state if no questions exist
+
+Backend behavior:
+- Use existing /api/materials and /api/questions/generate if possible.
+- Do not hard-code fake generated questions if the existing API can generate them.
+- Do not delete existing question generation logic.
+- Preserve materialId links between questions and materials.
+- Keep support for multiple materials per subject.
+
+Branding/copy:
+- Rename visible StudyCoach references on this page to Calibrate.
+- Do not say learning style.
+- Include trust copy somewhere subtle:
+  “Generated questions should be reviewed before they become part of your experiment data.”
+
+Acceptance criteria:
+- /questions loads
+- existing subjects appear in subject dropdown
+- user can paste notes and generate questions
+- generated questions appear in saved questions
+- saved questions can reveal answers
+- app compiles
+- npm test passes
+- npm run typecheck passes
+- onboarding still works
+- no backend routes are removed

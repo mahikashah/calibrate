@@ -1,0 +1,481 @@
+We are continuing the Calibrate first-time user experience milestone.
+
+IMPORTANT CONTEXT
+
+Before making changes, read:
+
+- replit.md
+- docs/CALIBRATE_MASTER_CONTEXT.md
+
+The following first-time experience is already established:
+
+/
+→ /start
+→ /how-it-works
+→ /onboarding
+→ Starting Hypothesis
+
+The onboarding question experience has already been refined.
+
+This task is specifically to refine the Starting Hypothesis completion screen and fix its handoff into the next correct Calibrate step.
+
+DO NOT redesign Subjects, Question Bank, Study Session, Dashboard, Insights, APIs, database schema, or ML integration in this task.
+
+--------------------------------------------------
+GOAL
+--------------------------------------------------
+
+The Starting Hypothesis screen should clearly communicate:
+
+1. Onboarding is complete.
+2. Calibrate has chosen a useful technique to TEST FIRST.
+3. This recommendation is only a starting hypothesis.
+4. The recommendation can change based on real study-session results.
+5. The student is NOT ready for a Study Session yet.
+6. The next step is to create/set up their first subject.
+
+The correct journey should become:
+
+Start
+→ How It Works
+→ Onboarding
+→ Starting Hypothesis
+→ Set Up First Subject
+→ Add Material
+→ Generate Questions
+→ Review / Approve Questions
+→ Study Session
+→ Feedback
+→ Insights
+
+This task only handles:
+
+Starting Hypothesis
+→ Set Up First Subject
+
+Do not implement the later material, ML, Question Bank, or Study Session steps yet.
+
+--------------------------------------------------
+1. PRESERVE HYPOTHESIS LOGIC
+--------------------------------------------------
+
+IMPORTANT:
+
+Preserve the existing onboarding recommendation / hypothesis algorithm exactly.
+
+Do NOT change:
+
+- how answers are scored
+- how techniques are ranked
+- how the starting technique is chosen
+- existing API behavior
+- existing persistence
+- onboarding answer data
+
+The current screen may display a ranked list such as:
+
+1. Spaced repetition
+2. Feynman / self-explanation
+3. Active recall
+4. Practice questions
+
+Preserve the dynamic ranked result produced by the existing logic.
+
+Do not hardcode a technique.
+
+--------------------------------------------------
+2. VISUAL DIRECTION
+--------------------------------------------------
+
+Keep the Starting Hypothesis screen outside the normal application sidebar.
+
+It should remain part of the focused onboarding experience.
+
+Use the established Calibrate visual system:
+
+- warm cream / off-white background
+- sage decorative shapes
+- turquoise/green accents
+- charcoal text
+- white result card
+- thin muted/dark borders
+- generous whitespace
+- clear large heading
+- calm, intentional completion/reveal feeling
+
+The screen should visually feel like:
+
+“Onboarding complete — here’s where we begin.”
+
+Do not make it feel like another dashboard page.
+
+--------------------------------------------------
+3. TOP COMPLETION STATE
+--------------------------------------------------
+
+At the top, preserve or refine the completion label:
+
+“ONBOARDING COMPLETE”
+
+Main heading:
+
+“Your starting hypothesis”
+
+Supporting copy:
+
+“This is a starting hypothesis based on your answers. It is not a learning-style label. We’ll adjust it based on your actual results.”
+
+Keep this wording or a very close version.
+
+Do NOT use fixed-learning-style language.
+
+--------------------------------------------------
+4. TECHNIQUES TO TEST FIRST
+--------------------------------------------------
+
+Preserve the ranked technique card.
+
+Heading:
+
+“TECHNIQUES TO TEST FIRST”
+
+Show the techniques in the order produced by the existing recommendation logic.
+
+Clearly mark the top technique with a subtle label such as:
+
+“start here”
+
+The top recommendation should visually stand out, but the other techniques should remain visible because Calibrate will eventually compare them through real study experiments.
+
+Preserve the current idea that multiple techniques may be tested over time.
+
+--------------------------------------------------
+5. EXPLAIN THE RESULT IN PLAIN LANGUAGE
+--------------------------------------------------
+
+Below the ranked techniques, show a short explanation generated from the existing result.
+
+Example tone:
+
+“Based on your answers, a useful first technique to test is spaced repetition, followed by Feynman / self-explanation.”
+
+Then:
+
+“This is only a starting guess — Calibrate will confirm or overturn it with your real session data.”
+
+Keep the language:
+
+- simple
+- transparent
+- non-diagnostic
+- experimental
+
+Avoid:
+
+- “This is your learning style”
+- “This is how your brain learns best”
+- “Calibrate has determined your ideal method”
+
+--------------------------------------------------
+6. REMOVE THE INCORRECT PRIMARY ACTION
+--------------------------------------------------
+
+The current screen may contain:
+
+“Start first session”
+
+REMOVE or replace this action.
+
+The student should NOT enter a Study Session immediately after onboarding.
+
+At this point they have not necessarily:
+
+- created a subject
+- added study material
+- generated questions
+- reviewed questions
+
+Therefore the primary CTA must become:
+
+“Set up my first subject”
+
+Route:
+
+/subjects
+
+This should be the strongest and most obvious action on the page.
+
+--------------------------------------------------
+7. ADD A CLEAR NEXT-STEP BRIDGE
+--------------------------------------------------
+
+Near the primary CTA, add a small transition cue that explains what happens next.
+
+Use concise wording such as:
+
+“Next: create a subject and add the material you want to study.”
+
+Optionally add a very lightweight 3-step preview:
+
+Create subject
+→ Add material
+→ Start studying
+
+Do NOT make this another full tutorial.
+
+The goal is simply to make the handoff understandable.
+
+--------------------------------------------------
+8. SECONDARY ACTION
+--------------------------------------------------
+
+Preserve a secondary:
+
+“Go to dashboard”
+
+action.
+
+Route:
+
+/dashboard
+
+This should be visually secondary to:
+
+“Set up my first subject”
+
+The primary first-time journey should encourage subject setup.
+
+Do NOT route this to / because / is reserved for the Start entry experience.
+
+--------------------------------------------------
+9. RETAKE ONBOARDING
+--------------------------------------------------
+
+Preserve:
+
+“Retake onboarding”
+
+as a tertiary text action.
+
+It should remain visually subtle.
+
+When selected:
+
+- restart the onboarding UI appropriately
+- preserve existing backend behavior
+- do not create a duplicate How It Works/tutorial experience
+- return the user to the first real onboarding question
+
+Do not make Retake onboarding compete visually with the primary setup action.
+
+--------------------------------------------------
+10. SUBJECT HANDOFF
+--------------------------------------------------
+
+When the user clicks:
+
+“Set up my first subject”
+
+route them to the existing:
+
+/subjects
+
+page.
+
+IMPORTANT:
+
+Do NOT redesign /subjects in this task.
+
+Do NOT add PDF upload functionality in this task.
+
+Do NOT connect Shreya's ML pipeline yet.
+
+Do NOT automatically start a Study Session.
+
+The goal is only to create the correct handoff.
+
+A later milestone will refine:
+
+Subjects
+→ Material
+→ ML question generation
+→ Question Bank
+
+--------------------------------------------------
+11. FIRST-TIME PRODUCT LOGIC
+--------------------------------------------------
+
+The screen should communicate the following mental model:
+
+“We have a starting idea about what technique you should test.
+
+Now tell Calibrate what class you are studying.
+
+Then we can create practice from your real material.”
+
+Do not overload the student with technical details.
+
+Do not mention:
+
+- FastAPI
+- LLMs
+- tokens
+- JSON
+- Shreya
+- model providers
+
+This is student-facing UI.
+
+--------------------------------------------------
+12. RESPONSIVE DESIGN
+--------------------------------------------------
+
+Desktop:
+
+- centered completion/reveal layout
+- ranked hypothesis card remains prominent
+- primary and secondary CTAs are clearly differentiated
+- page should not feel overly wide
+
+Mobile:
+
+- heading remains readable
+- ranked techniques stack cleanly
+- buttons become comfortable full-width or near-full-width actions
+- primary CTA appears before secondary
+- no horizontal scrolling
+- Retake onboarding remains easy to find without dominating the page
+
+--------------------------------------------------
+13. ACCESSIBILITY
+--------------------------------------------------
+
+Ensure:
+
+- semantic heading structure
+- sufficient contrast
+- keyboard-accessible CTAs
+- strong focus states
+- the top recommendation is not indicated by color alone
+- ranking order is understandable to screen readers
+
+--------------------------------------------------
+14. DO NOT CHANGE
+--------------------------------------------------
+
+Do NOT modify:
+
+- /start
+- /how-it-works
+- onboarding question UI
+- onboarding question text
+- onboarding answers
+- onboarding recommendation algorithm
+- database schema
+- Question Bank
+- question generation
+- Study Session
+- Dashboard design
+- Insights logic
+- Subjects design/functionality beyond routing to it
+- Materials APIs
+- Shreya's Python ML pipeline
+- FastAPI integration
+- authentication
+- existing user/data ownership protections
+
+This task is ONLY:
+
+Starting Hypothesis UI refinement
++
+correct handoff to /subjects
+
+--------------------------------------------------
+15. VALIDATION
+--------------------------------------------------
+
+After implementation run:
+
+npm test
+npm run typecheck
+npm run build
+
+Then manually verify the entire onboarding journey:
+
+/
+→ /start
+→ Start Calibrating
+→ /how-it-works
+→ Start onboarding
+→ complete onboarding
+→ Starting Hypothesis
+
+Verify:
+
+1. “ONBOARDING COMPLETE” is clearly visible.
+
+2. “Your starting hypothesis” is the primary heading.
+
+3. The ranked techniques still come from the existing recommendation logic.
+
+4. The top technique is clearly marked as the first technique to test.
+
+5. The screen clearly says this is a hypothesis, not a learning-style label.
+
+6. “Start first session” is no longer the primary action.
+
+7. Primary CTA is:
+
+“Set up my first subject”
+
+8. “Set up my first subject” → /subjects.
+
+9. Secondary CTA:
+
+“Go to dashboard”
+
+→ /dashboard.
+
+10. Retake onboarding still works.
+
+11. No Study Session begins automatically.
+
+12. No subject/material/question data is created automatically.
+
+13. Existing onboarding API and recommendation behavior remain unchanged.
+
+14. Mobile layout has no horizontal overflow.
+
+15. /start and /how-it-works remain unchanged.
+
+--------------------------------------------------
+16. COMPLETION REPORT
+--------------------------------------------------
+
+Before finishing, provide:
+
+1. Exact files changed.
+
+2. Confirmation that the recommendation algorithm was not changed.
+
+3. Confirmation that the ranked techniques remain dynamic.
+
+4. The final primary CTA text and route.
+
+5. Confirmation that “Start first session” was removed/replaced.
+
+6. Final dashboard route used.
+
+7. Retake onboarding behavior.
+
+8. Confirmation that /subjects was NOT redesigned.
+
+9. Confirmation that Question Bank, Study Session, ML integration, database schema, and APIs were not modified.
+
+10. npm test result.
+
+11. npm run typecheck result.
+
+12. npm run build result.
+
+13. Briefly describe the final user journey from onboarding completion to /subjects.

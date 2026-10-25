@@ -1,0 +1,17 @@
+1. Using the General Addition Rule, if the probability of event A is 0.4 and the probability of event B is 0.5, and the probability of both A and B occurring is 0.2, what is the probability of A or B occurring?  
+   - P (A U B) = P(A) + P(B) - P (A and B)
+
+2. If the probability of event A is 0.3 and the probability of event B is 0.4, and A and B are independent events, what is the probability of both A and B occurring?  
+   - If events are independent, P(A and B) = P(A) x P(B)
+
+3. Given that the probability of event A is 0.7, what is the probability of event A not occurring?  
+   - P(A^c) = 1 - P(A)
+
+4. If you are performing a simulation to estimate the probability of getting at least one success in 5 trials, and the probability of success in each trial is 0.2, what is the formula you would use?  
+   - P(at least 1) = 1 - P(A^c)^some number
+
+5. If a random variable is discrete and takes the values 1, 2, and 3 with respective probabilities 0.2, 0.5, and 0.3, what is the mean of this random variable?  
+   - μ = (n*p) + (n*p) + (n*p).....
+
+6. If a binomial distribution has 10 trials (n = 10) and a success probability of 0.3 (p = 0.3), what is the expected number of successes (mean) according to the binomial distribution formula?  
+   - μ = ηρ

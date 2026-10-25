@@ -41,7 +41,7 @@ The current version includes:
 - Dashboard and Insights views
 - Separation of real evidence from seeded/demo evidence
 
-**Important:** Calibrate is currently a single-user MVP/demo application. Authentication, user accounts, and production-grade multi-user persistence are future work.
+**Important:** Locally (`npm run dev`) Calibrate runs as a single-user app with no sign-in. Production builds require student sign-in (see [Pilot deployment](#pilot-deployment)). Sign-in is passwordless and unverified, so it is suitable for a small closed pilot, not a public launch.
 
 ## Architecture
 
@@ -73,8 +73,8 @@ Next.js 14 App Router
 - React
 - TypeScript
 - Tailwind CSS
-- SQLite
-- better-sqlite3
+- SQLite (local) and Turso / libSQL (hosted)
+- @libsql/client
 - Drizzle ORM
 - FastAPI
 - Python 3.11
@@ -606,13 +606,50 @@ docs/
   WHITEPAPER.md
 ```
 
+## Pilot deployment
+
+For a closed student pilot, deploy the Next.js app and the FastAPI service (see `render.yaml`) with a hosted Turso database.
+
+| Variable | Service | Purpose |
+|---|---|---|
+| `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` | web | Durable database. Production refuses to start without it. |
+| `SESSION_SECRET` | web | 32+ random characters; signs session cookies. |
+| `ML_SERVICE_URL`, `ML_SERVICE_API_KEY` | web | Where to reach FastAPI and the shared key. |
+| `ML_SERVICE_API_KEY`, `HF_TOKEN` | ml-service | The key must match the web one. The Hugging Face account needs PRO or purchased credits. |
+| `GENERATIONS_PER_DAY` | web | Optional per-student cap (default 15). |
+
+After deploying, `curl -i -X POST $ML_SERVICE_URL/generate-questions` with no key header must return `401`.
+
+### Student sign-in
+
+- Students enter an email on `/signin` (no password). The server finds or creates a user for that email and sets a signed, httpOnly cookie valid for 30 days.
+- Every API route filters by the signed-in user's id, so one student cannot read or change another's subjects, notes, questions, sessions, or evidence.
+- Unauthenticated page requests redirect to `/signin`; unauthenticated API requests return `401`. `/start` and `/how-it-works` stay public.
+- `/signin` also offers a shared demo account (the seeded `local-user`) for reviewers. Disable it with `DEMO_ACCOUNT_ENABLED=false`.
+- Known limitation: emails are not verified, so anyone who knows a classmate's email can sign in as them. Add magic links or OAuth before any public launch.
+- Auth is on by default in production and off in `next dev`. Override with `AUTH_REQUIRED=true|false`.
+
+### Generation cap and log
+
+Each student can run up to `GENERATIONS_PER_DAY` AI generations per rolling 24 hours (notes and PDF share the cap) and then gets a `429` with a friendly message. Attempts that never reach the model (service unreachable, scanned PDF, notes too long) are not charged. Every attempt, including failures and their error codes, is stored in `generation_events`. Explicit demo mode (`CALIBRATE_DEMO_MODE=true`) is neither capped nor logged.
+
+### Pilot metrics
+
+```bash
+npm run metrics
+npm run metrics -- --exclude-emails=you@school.edu,teammate@school.edu
+npm run metrics -- --since=2026-10-27 --tz=America/Los_Angeles --json
+```
+
+Export the Turso variables first to read production. The script is read-only and counts only real (non-demo) evidence from non-excluded students: the signup-to-session funnel, users with 2+ and 3+ completed sessions, users who returned on a different calendar day, D7 retention (once anyone is old enough), AI question approve/edit/reject shares, and generation failures by error code. A "completed session" is a real session with an outcome check.
+
 ## Current Limitations and Future Work
 
 Calibrate is a strong MVP, but it is not yet a production multi-user learning platform.
 
-**Authentication / accounts** - Not implemented. Future work: login, user accounts, per-user data isolation, session management, account deletion/export.
+**Authentication / accounts** - Passwordless email sign-in with signed session cookies and per-user data isolation exist for the closed pilot (see Pilot deployment). Not yet implemented: email verification (magic links/OAuth), rate limiting on sign-in, account deletion/export.
 
-**Production database** - Current application persistence uses SQLite, appropriate for local development and the current demo. A public multi-user release should migrate to durable hosted storage such as PostgreSQL, with production-safe migrations, per-user ownership constraints, backups, and a data retention strategy.
+**Production database** - Local development uses a SQLite file; hosted deployments use Turso (libSQL), and production refuses to start without `TURSO_DATABASE_URL` so a missing variable can never silently fall back to an ephemeral local file. A larger public release should still add backups, a data retention strategy, and possibly hosted Postgres.
 
 **Demo data** - The current project may contain seeded presentation evidence so Dashboard and Insights look mature during demonstrations. For a real public launch: new users should start with clean personal evidence, seeded history should not appear as their own activity, and example data should remain optional and explicitly labeled.
 
@@ -630,7 +667,7 @@ Calibrate is a strong MVP, but it is not yet a production multi-user learning pl
 
 **Question generation reliability** - Live AI generation depends on FastAPI availability, Hugging Face availability, provider/model availability, token permissions, and inference quota/credits. Future production work should add rate limiting, observability, generation logging, retry strategy, cost controls, and provider fallback only if explicitly designed and honestly surfaced. Calibrate currently avoids silent fallback from real AI to demo generation.
 
-**Deployment** - A public deployment still needs production configuration. The immediate demo architecture can host Next.js + FastAPI + a server-side Hugging Face secret. Public users should not need to supply their own API keys. Before an advertised production launch, also address: persistent hosted database, authentication, per-user data isolation, production secrets, AI usage/cost limits, monitoring, rate limiting.
+**Deployment** - A public deployment still needs production configuration. The immediate demo architecture can host Next.js + FastAPI + a server-side Hugging Face secret. Public users should not need to supply their own API keys. Before an advertised production launch, also address: verified authentication (the pilot sign-in is unverified), monitoring and alerting, and rate limiting (generation is capped per student; sign-in is not rate limited).
 
 **Insight quality** - Insights currently depend on repeated outcome evidence. Future improvements: session-specific insight handoff, clearer visual explanation of how one session changed the evidence, longitudinal trends, material/topic-level comparisons, stronger uncertainty visualization, explainable sample-size thresholds. Recommendations should remain deterministic and evidence-based.
 

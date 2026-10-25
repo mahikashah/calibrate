@@ -1,0 +1,63 @@
+Continue the ACTIVE “Complete transparent Insights” task from the current clean shane-dev state.
+
+The current HEAD is:
+
+07aa0c0 — Implement insights dashboard features and update database schema
+
+The implementation is already committed, but the task review rejected completion because the evidence_origin migration incorrectly assumed pre-existing sessions were demo data.
+
+Fix ONLY that remaining review issue and finish validation.
+
+Required behavior:
+
+- Legacy/pre-existing sessions must remain evidence_origin = "real" by default.
+- Do NOT classify rows as demo merely because they existed before the migration.
+- New real Study Sessions must be evidence_origin = "real".
+- Seeded/presentation sessions must be explicitly created as evidence_origin = "demo".
+- Real Insights calculations must use only real evidence.
+- Demo Insights must use only explicitly demo evidence.
+- Preserve the deterministic Insights implementation already completed.
+- Preserve the current Insights UI.
+- Preserve subject filtering and feedback context.
+- Do NOT redesign Dashboard.
+- Do NOT add LLM recommendation logic.
+
+The unsafe migration has already been applied to the local dev database.
+
+Do NOT blindly reset the database.
+
+First inspect whether currently misclassified local rows can be repaired safely using known seed identities or explicit seed logic.
+
+If legitimate real and seeded rows cannot be reliably distinguished in the already-migrated local database, explain that limitation before any destructive action.
+
+For FRESH migrations, fix drizzle/0005_session_evidence_origin.sql so existing rows remain real.
+
+Update the seed/setup code so presentation rows are explicitly inserted as demo.
+
+Add a migration regression test proving:
+
+1. legacy completed session before migration
+2. migration applied
+3. legacy session remains real
+4. seeded presentation session is demo
+5. newly created real Study Session is real
+
+Then rerun:
+
+npm test
+npm run typecheck
+npm run build
+
+PYTHONPATH=ml-service python -m pytest ml-service/tests -q
+
+Verify FastAPI /health.
+
+Also verify:
+
+real Insights → real evidence only
+demo Insights → demo evidence only
+legacy upgrade → real
+new Study Session → real
+seeded presentation session → demo
+
+Do not mark the active task complete until the review issue is resolved and all validations pass.

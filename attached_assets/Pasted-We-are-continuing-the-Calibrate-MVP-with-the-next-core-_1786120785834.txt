@@ -1,0 +1,689 @@
+We are continuing the Calibrate MVP with the next core milestone:
+
+STUDY SESSION
+→ POST-SESSION FEEDBACK
+→ REAL OUTCOME CONTEXT FOR INSIGHTS
+
+IMPORTANT CONTEXT
+
+Before making changes, read:
+
+- replit.md
+- docs/CALIBRATE_MASTER_CONTEXT.md
+- docs/ML_INTEGRATION_CONTRACT.md
+- ml-service/README.md
+
+CURRENT VERIFIED STATE
+
+The application now supports:
+
+Start
+→ How It Works
+→ Onboarding
+→ Starting Hypothesis
+→ Subject
+→ Material
+→ Structured question generation
+→ Question Bank review
+→ Approved questions
+→ Real Study Session
+→ Persisted session/outcome result
+
+The Study Session milestone has already implemented and verified:
+
+- approved-only real-context question loading
+- ownership validation
+- Active Recall rendering
+- Multiple Choice rendering/grading
+- Fill in the Blank rendering
+- Feynman / Self-Explanation rendering
+- hidden-until-reveal supporting notes
+- session timer/progress
+- existing session/outcome persistence
+- re-reading control behavior
+- seeded presentation-safe Study Session kept separate
+- malformed MCQ skipping
+- idempotent session completion
+- unique session completionKey with database uniqueness
+- retry protection against duplicate completed sessions
+
+All current Node/FastAPI/build validations pass.
+
+DO NOT redesign Study Session again in this milestone.
+
+--------------------------------------------------
+PRIMARY GOAL
+--------------------------------------------------
+
+Complete the next part of the real Calibrate experiment loop:
+
+Study Session
+↓
+Session Complete
+↓
+“How’d it go?”
+↓
+Post-session feedback
+↓
+Context about WHY the result happened
+↓
+Persist feedback
+↓
+Insights can later interpret the result correctly
+
+The student should not simply finish a quiz and immediately see an analytics dashboard.
+
+Calibrate needs a small amount of context about the session first.
+
+--------------------------------------------------
+1. PRODUCT PRINCIPLE
+--------------------------------------------------
+
+A low score does NOT automatically mean:
+
+“The study technique failed.”
+
+Possible causes include:
+
+- the technique did not work well
+- the generated questions were poor
+- the material was especially difficult
+- the student was distracted / low energy
+- other session conditions
+
+The post-session flow should capture this context before Insights interprets the session.
+
+Do NOT automatically change the recommended technique based on one session.
+
+--------------------------------------------------
+2. INSPECT EXISTING ARCHITECTURE FIRST
+--------------------------------------------------
+
+Before changing code, inspect:
+
+- current session completion state
+- /api/sessions
+- /api/outcomes
+- outcome/session database schema
+- existing feedback APIs/routes if any
+- current Insights page/data loading
+- any existing post-session Figma-inspired UI
+- current seeded/demo outcome data
+
+Reuse existing architecture.
+
+Do NOT create a parallel analytics or feedback system if one already exists.
+
+--------------------------------------------------
+3. SESSION COMPLETION HANDOFF
+--------------------------------------------------
+
+After a REAL Study Session successfully persists its session/outcome:
+
+the primary next action should be:
+
+“Continue”
+
+and should enter the post-session feedback flow.
+
+Do not immediately route the student to Dashboard or Insights.
+
+The intended path is:
+
+Study Session
+→ Session complete
+→ Post-session feedback
+
+Preserve the completion summary already implemented.
+
+--------------------------------------------------
+4. POST-SESSION SCREEN 1
+--------------------------------------------------
+
+Create/refine the first post-session feedback screen using the Calibrate Figma direction.
+
+Heading:
+
+“How’d it go?”
+
+Provide a simple overall experience choice:
+
+Rough
+Good
+
+Use large selectable cards/buttons.
+
+Also capture a lightweight session-state measure.
+
+Use the existing Figma concept:
+
+“Anxiety while studying”
+
+Calm ←────────→ Wired
+
+If the current product direction uses focus/energy instead and that fits the existing data architecture better, use the existing terminology rather than inventing a new psychological metric.
+
+Keep this interaction lightweight.
+
+Do NOT turn it into a long survey.
+
+--------------------------------------------------
+5. RESULT CONTEXT / SCORE DIP
+--------------------------------------------------
+
+If the student:
+
+- marks the session as Rough
+OR
+- has a meaningfully poor recorded performance based on existing outcome data
+
+show the next contextual question:
+
+“Score dipped today — what happened?”
+
+Supporting text:
+
+“Select all that apply”
+
+Options:
+
+- Technique wasn’t right
+- Questions weren’t right
+- Material was hard
+- Distracted / low energy
+
+Use the existing Figma/product wording where practical.
+
+Allow multiple selections.
+
+Do not force the student to choose an explanation if they genuinely do not know.
+
+If useful, include:
+
+“Not sure”
+
+as a secondary option.
+
+--------------------------------------------------
+6. GOOD SESSION PATH
+--------------------------------------------------
+
+If the student reports the session went well:
+
+do not force them through the negative-cause screen.
+
+Allow them to submit the shorter feedback path.
+
+Conceptually:
+
+Good
+→ session-state slider
+→ Submit
+
+Keep the workflow fast.
+
+--------------------------------------------------
+7. QUESTIONS WEREN’T RIGHT
+--------------------------------------------------
+
+This option is especially important because Calibrate uses AI-generated questions.
+
+If the student selects:
+
+“Questions weren’t right”
+
+record that fact separately from:
+
+“Technique wasn’t right”
+
+Do NOT interpret bad-question feedback as evidence that the study technique failed.
+
+Where practical, later Insights should be able to identify sessions whose results may have been confounded by question quality.
+
+Do NOT automatically delete or reject questions during this feedback step.
+
+A later UI may link the student back to Question Bank for review.
+
+--------------------------------------------------
+8. FEEDBACK DATA MODEL
+--------------------------------------------------
+
+Inspect the current outcomes/feedback schema.
+
+Persist the smallest useful structured feedback representation.
+
+We need to preserve enough information to know:
+
+- which completed session this feedback belongs to
+- overall session feeling (Rough / Good)
+- session-state slider value
+- selected reason(s), if any
+- timestamp if existing architecture supports it
+
+Prefer existing tables/fields.
+
+If a small schema addition is genuinely required:
+
+explain exactly what is missing and make the smallest safe migration.
+
+Do not redesign unrelated schemas.
+
+--------------------------------------------------
+9. STRUCTURED REASON VALUES
+--------------------------------------------------
+
+Store machine-readable values rather than only display strings.
+
+Conceptually:
+
+technique_wrong
+questions_wrong
+material_hard
+distracted_low_energy
+not_sure
+
+Use naming conventions consistent with the existing project.
+
+UI should show student-friendly labels.
+
+--------------------------------------------------
+10. SESSION OWNERSHIP
+--------------------------------------------------
+
+Feedback submission must verify:
+
+- the completed session belongs to the current user
+- the user cannot submit feedback for another user’s session
+
+Do not trust a sessionId from the browser without server-side ownership validation.
+
+--------------------------------------------------
+11. PARTIAL-SAVE SAFETY
+--------------------------------------------------
+
+Address the remaining suggested safety issue as part of this milestone:
+
+A completed session must not become silently inconsistent if:
+
+- the session record saves
+- but its outcome or feedback write fails
+
+Use the existing completionKey/idempotency architecture.
+
+Do NOT create duplicate completed sessions when retrying.
+
+Preferred behavior:
+
+If the Study Session result is already safely persisted but feedback fails:
+
+- preserve the completed session
+- show a recoverable feedback error
+- allow feedback submission to retry
+- do not create a second session
+
+If outcome persistence itself fails:
+
+- do not pretend the session was fully saved
+- provide a clear retry/recovery path
+- reuse the same completion identity where applicable
+
+Add tests for this behavior.
+
+--------------------------------------------------
+12. SUBMISSION
+--------------------------------------------------
+
+Primary CTA:
+
+“Submit”
+
+or:
+
+“Save feedback”
+
+After a successful feedback save:
+
+route toward the next appropriate experience.
+
+For this milestone, prefer:
+
+→ Insights
+
+because the next step in the Calibrate loop is understanding the accumulated evidence.
+
+Do NOT rebuild Insights fully in this task.
+
+A minimal route handoff is sufficient.
+
+--------------------------------------------------
+13. INSIGHTS DATA PREPARATION
+--------------------------------------------------
+
+Make the smallest backend/data change required so Insights can access:
+
+- completed real sessions
+- persisted outcomes
+- post-session feedback context
+
+Do NOT fully redesign Insights yet.
+
+The NEXT milestone will update the Insights UI and calculations around this real data.
+
+For now, ensure the data connection is available and cleanly queryable.
+
+--------------------------------------------------
+14. DEMO / SEEDED DATA
+--------------------------------------------------
+
+Preserve the existing seeded/demo data used to make Insights and Dashboard presentation-friendly.
+
+Do NOT reset the database.
+
+The app may temporarily contain:
+
+A. real completed sessions/outcomes/feedback
+
+and
+
+B. seeded demonstration history
+
+Keep them structurally separate where necessary.
+
+Do not silently overwrite seeded content.
+
+Do not falsely imply all seeded analytics came from the current user's newly completed real workflow.
+
+--------------------------------------------------
+15. UI / UX DIRECTION
+--------------------------------------------------
+
+Use the established Calibrate/Figma visual system:
+
+- warm cream/off-white background
+- turquoise primary actions
+- sage accents
+- charcoal typography
+- large simple choices
+- thin borders
+- generous whitespace
+- focused layouts
+
+Use the Figma inspiration for:
+
+“How’d it go?”
+
+Rough / Good
+
+and:
+
+“Score dipped today — what happened?”
+
+Avoid generic survey styling.
+
+Post-session feedback should feel like the natural final step of a Calibrate study experiment.
+
+--------------------------------------------------
+16. KEEP IT SHORT
+--------------------------------------------------
+
+The entire post-session feedback should take approximately a few seconds.
+
+Do not ask:
+
+- long written-response questions
+- detailed mental-health questions
+- unnecessary ratings
+- many screens
+
+The purpose is context, not a research survey.
+
+--------------------------------------------------
+17. DO NOT USE AN LLM
+--------------------------------------------------
+
+Do NOT use:
+
+- Qwen
+- Hugging Face
+- FastAPI generation
+- LLM-as-judge
+
+to interpret the student's post-session feedback.
+
+This should be deterministic structured application data.
+
+--------------------------------------------------
+18. DO NOT CHANGE RECOMMENDATION YET
+--------------------------------------------------
+
+Do not immediately switch the user's recommended technique because:
+
+“Technique wasn’t right”
+
+was selected once.
+
+This feedback is evidence/context.
+
+The Insights/recommendation milestone will decide how multiple sessions are interpreted.
+
+--------------------------------------------------
+19. RESPONSIVE DESIGN
+--------------------------------------------------
+
+Desktop:
+
+- focused centered post-session experience
+- large Rough / Good choices
+- easy-to-read slider
+- reason cards arranged cleanly
+
+Mobile:
+
+- choices stack naturally
+- no horizontal scrolling
+- slider remains usable
+- reason cards are easy to tap
+- primary CTA remains obvious
+
+--------------------------------------------------
+20. ACCESSIBILITY
+--------------------------------------------------
+
+Ensure:
+
+- Rough / Good controls are keyboard accessible
+- slider has an accessible label and value
+- multi-select reasons expose checked state semantically
+- focus indicators are visible
+- important meaning is not conveyed only through color
+- error messages are accessible
+
+--------------------------------------------------
+21. ERROR STATES
+--------------------------------------------------
+
+Handle:
+
+- feedback load failure
+- invalid session
+- unauthorized session
+- feedback submission failure
+- duplicate feedback submission
+
+Use safe student-facing messages.
+
+Do not expose database errors.
+
+If a submission is retried:
+
+do not duplicate feedback records unnecessarily.
+
+--------------------------------------------------
+22. TESTS
+--------------------------------------------------
+
+Add/update automated tests for at least:
+
+1. feedback can only be submitted for the current user's session
+
+2. Good session feedback saves
+
+3. Rough session feedback saves
+
+4. multiple reason values save correctly
+
+5. questions_wrong remains distinct from technique_wrong
+
+6. slider/state value persists
+
+7. duplicate feedback retry does not create duplicate session evidence
+
+8. failed feedback save does not create another Study Session
+
+9. feedback can be retried after failure
+
+10. completed real session is available to the Insights data path
+
+11. seeded/demo Insights data remains intact
+
+12. no ML provider is called during feedback
+
+--------------------------------------------------
+23. MANUAL FLOW
+--------------------------------------------------
+
+Manually verify:
+
+Question Bank
+↓
+Approved questions
+↓
+Study Session
+↓
+Complete session
+↓
+Session summary
+↓
+Continue
+↓
+How’d it go?
+↓
+Rough or Good
+↓
+session-state slider
+↓
+if needed: Score dipped today — what happened?
+↓
+select reasons
+↓
+Submit
+↓
+feedback persists
+↓
+route to Insights
+
+Also verify a Good session can complete without unnecessary negative-reason questions.
+
+--------------------------------------------------
+24. DO NOT REDESIGN YET
+--------------------------------------------------
+
+Do NOT fully redesign:
+
+- Insights
+- Dashboard
+- sidebar/navigation
+- Question Bank
+- Study Session
+- onboarding
+- Start
+- How It Works
+
+Do NOT:
+
+- change Qwen
+- add OCR
+- add auth
+- add RAG
+- migrate away from SQLite
+- create a complex recommendation engine
+
+This milestone is:
+
+SESSION RESULT
+→ POST-SESSION CONTEXT
+→ DATA READY FOR INSIGHTS
+
+--------------------------------------------------
+25. VALIDATION
+--------------------------------------------------
+
+Run:
+
+npm test
+npm run typecheck
+npm run build
+
+Run:
+
+PYTHONPATH=ml-service python -m pytest ml-service/tests -q
+
+Verify:
+
+FastAPI /health
+
+The FastAPI service should remain unaffected even though this milestone does not use it directly.
+
+--------------------------------------------------
+26. COMPLETION REPORT
+--------------------------------------------------
+
+Before finishing, report:
+
+1. Exact files changed.
+
+2. Existing feedback/outcome architecture discovered.
+
+3. Any schema change required and why.
+
+4. Final post-session screen flow.
+
+5. Rough / Good persistence behavior.
+
+6. Slider/state persistence.
+
+7. Reason values supported.
+
+8. How questions_wrong differs from technique_wrong in stored data.
+
+9. Partial-save/retry protection.
+
+10. Session ownership behavior.
+
+11. Final Insights handoff route.
+
+12. How real completed sessions become available to Insights.
+
+13. How seeded/demo data was preserved.
+
+14. Tests added.
+
+15. npm test result.
+
+16. npm run typecheck result.
+
+17. npm run build result.
+
+18. FastAPI test result.
+
+19. /health result.
+
+20. Confirmation no ML/LLM calls occur during feedback.
+
+21. Confirmation Insights was NOT fully redesigned yet.
+
+22. Exact next recommended milestone:
+
+Insights using real sessions/outcomes/feedback
+→ then Dashboard summary
+→ then final navigation/UI consistency pass.

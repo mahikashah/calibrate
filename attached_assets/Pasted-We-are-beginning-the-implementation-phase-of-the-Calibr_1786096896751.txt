@@ -1,0 +1,790 @@
+We are beginning the implementation phase of the Calibrate ML integration.
+
+IMPORTANT CONTEXT
+
+Before making any changes, read:
+
+- replit.md
+- docs/CALIBRATE_MASTER_CONTEXT.md
+- docs/ML_INTEGRATION_CONTRACT.md
+
+The integration contract was produced by inspecting:
+
+origin/shreya-ml
+commit:
+d163b0ead66d9904831747cc787062a7dd288379
+
+Treat the actual Shreya implementation and ML_INTEGRATION_CONTRACT.md as the source of truth.
+
+--------------------------------------------------
+IMPLEMENTATION DECISIONS
+--------------------------------------------------
+
+For this MVP, use these decisions unless the contract has since been explicitly updated:
+
+1. Input length:
+- enforce 4,600 words as the current production limit
+- do not silently truncate
+- return NOTES_TOO_LONG when exceeded
+
+2. PDFs:
+- support text-based PDFs through pdfplumber
+- do not add OCR
+- scanned/image-only PDFs return UNSUPPORTED_PDF
+
+3. Model:
+- preserve Qwen/Qwen2.5-7B-Instruct as the current baseline
+- make the model configurable through HF_MODEL
+- do not change the prompt/model merely because another option exists
+
+4. Service security:
+- prepare FastAPI for server-to-server authentication using ML_SERVICE_API_KEY
+
+5. Upload path:
+Browser
+→ Next.js
+→ FastAPI
+
+The browser must never call FastAPI or Hugging Face directly.
+
+6. Question count:
+- default 6
+- allow requested_count from 1 through 10
+- the model may return fewer questions if the material does not support the requested amount
+
+7. MCQ:
+- exactly four answer_choices
+- answer must exactly match one of the choices
+
+8. Truncated/invalid generation:
+- do not return partial malformed generations as success
+- fail with a structured generation error
+
+9. Evaluation:
+- llm_judge_eval.py and human evaluation scripts remain offline/dev-only
+- they must not run in the synchronous student generation request
+
+--------------------------------------------------
+GOAL
+--------------------------------------------------
+
+Create the smallest clean FastAPI service around Shreya's existing production Python pipeline.
+
+The architecture is:
+
+Calibrate Browser
+        ↓
+Next.js API
+        ↓
+FastAPI ML Service
+        ↓
+Shreya's Python pipeline
+        ↓
+Hugging Face Qwen
+        ↓
+structured question JSON
+
+This task builds and tests FastAPI independently.
+
+DO NOT connect Next.js to FastAPI yet.
+
+--------------------------------------------------
+GIT SAFETY
+--------------------------------------------------
+
+Stay on the current Shane feature branch.
+
+Do NOT:
+
+- checkout shreya-ml
+- merge shreya-ml
+- rebase onto shreya-ml
+- push to Shreya's branch
+- force push
+- blindly copy the entire branch
+
+Use:
+
+origin/shreya-ml
+
+as the source for the production Python implementation.
+
+Copy/adapt only the runtime Python code required for the ML service.
+
+Do NOT copy:
+
+- generated output datasets unless needed as test fixtures
+- evaluation CSVs
+- LLM judge tooling into production runtime
+- caches
+- experimental files
+- unrelated artifacts
+
+--------------------------------------------------
+SERVICE STRUCTURE
+--------------------------------------------------
+
+Create:
+
+ml-service/
+
+Preferred structure:
+
+ml-service/
+├── app/
+│   ├── __init__.py
+│   ├── main.py
+│   ├── schemas.py
+│   ├── pdf_parser.py
+│   ├── question_generator.py
+│   └── config.py
+├── tests/
+├── requirements.txt
+├── .env.example
+└── README.md
+
+The exact modules may vary slightly if Shreya's current code suggests a cleaner minimal structure.
+
+Do not over-engineer this.
+
+--------------------------------------------------
+PRESERVE SHREYA'S ML LOGIC
+--------------------------------------------------
+
+Shreya's Python implementation remains the ML engine.
+
+Reuse/adapt her production logic from:
+
+- pdf_parser.py
+- llm_question_generation.py
+
+as appropriate.
+
+Do NOT rewrite working ML logic in TypeScript.
+
+Do NOT substantially rewrite the generation prompt.
+
+Do NOT change the current model/provider.
+
+Convert CLI-specific behavior into reusable Python functions where required by FastAPI.
+
+For example:
+
+CLI file/folder input
+should become
+function input / uploaded-file input
+
+without unnecessarily changing the underlying extraction or generation behavior.
+
+--------------------------------------------------
+CONFIGURATION
+--------------------------------------------------
+
+Move production configuration out of hardcoded runtime values where appropriate.
+
+Support environment variables such as:
+
+HF_TOKEN
+HF_MODEL
+HF_ENDPOINT
+GENERATION_TIMEOUT_SECONDS
+WORD_LIMIT
+ML_SERVICE_API_KEY
+
+Defaults may preserve the existing implementation where safe:
+
+HF_MODEL:
+Qwen/Qwen2.5-7B-Instruct
+
+Generation timeout:
+90 seconds
+
+Word limit:
+4600
+
+Do NOT commit real secrets.
+
+--------------------------------------------------
+FASTAPI ENDPOINT 1
+--------------------------------------------------
+
+Implement:
+
+GET /health
+
+Success:
+
+{
+  "ok": true
+}
+
+This endpoint should only confirm the FastAPI service is alive.
+
+It should NOT require Hugging Face generation to succeed.
+
+--------------------------------------------------
+FASTAPI ENDPOINT 2
+--------------------------------------------------
+
+Implement:
+
+POST /parse-pdf
+
+Request:
+
+multipart/form-data
+
+file:
+PDF binary
+
+Behavior:
+
+1. validate file is a PDF
+2. extract text using pdfplumber
+3. normalize the extracted text
+4. compute word_count
+5. compute approx_token_count using the currently established approximation
+6. preserve file_name
+7. reject empty/unreadable PDFs
+8. reject scanned/image-only PDFs cleanly
+
+Success response:
+
+{
+  "text": "...",
+  "word_count": 1234,
+  "approx_token_count": 1641,
+  "file_name": "chapter5.pdf"
+}
+
+Use the exact field names from the integration contract.
+
+Do not return:
+
+filename
+
+or:
+
+approx_tokens
+
+because the actual established field names are:
+
+file_name
+approx_token_count
+
+--------------------------------------------------
+PDF ERROR BEHAVIOR
+--------------------------------------------------
+
+Return structured errors.
+
+Examples:
+
+PDF_PARSE_FAILED
+
+UNSUPPORTED_PDF
+
+Do not silently skip unusable PDFs as the old CLI script did.
+
+Student-safe example:
+
+{
+  "success": false,
+  "code": "UNSUPPORTED_PDF",
+  "message": "This PDF appears to be scanned. Please use a text-based PDF or paste your notes."
+}
+
+--------------------------------------------------
+FASTAPI ENDPOINT 3
+--------------------------------------------------
+
+Implement:
+
+POST /generate-questions
+
+Request schema:
+
+{
+  "subject": "Neuroscience",
+  "text": "...",
+  "requested_count": 6
+}
+
+Validation:
+
+subject:
+required non-empty string
+
+text:
+required non-empty string
+
+requested_count:
+integer
+default 6
+minimum 1
+maximum 10
+
+Do NOT accept:
+
+userId
+subjectId
+materialId
+
+Those remain Calibrate / Next.js database concerns.
+
+--------------------------------------------------
+WORD LIMIT
+--------------------------------------------------
+
+Before calling the model:
+
+count words using the agreed MVP rule.
+
+If:
+
+word_count > 4600
+
+return:
+
+{
+  "success": false,
+  "code": "NOTES_TOO_LONG",
+  "message": "Your notes are too long. Please use one lecture, chapter, or study section at a time."
+}
+
+Do NOT silently truncate the notes.
+
+--------------------------------------------------
+MODEL CALL
+--------------------------------------------------
+
+Wrap the existing Hugging Face generation logic.
+
+Provider:
+
+Hugging Face Inference Router
+
+Default model:
+
+Qwen/Qwen2.5-7B-Instruct
+
+Preserve the existing prompt behavior as much as possible.
+
+Use HF_TOKEN from the environment.
+
+Do not place the token in source code.
+
+Respect the configured generation timeout.
+
+--------------------------------------------------
+STRUCTURED QUESTION SCHEMA
+--------------------------------------------------
+
+Every returned question must use exactly:
+
+{
+  "type": "...",
+  "question": "...",
+  "answer": "...",
+  "answer_choices": [],
+  "source_excerpt": "..."
+}
+
+Supported type values:
+
+active_recall
+mcq
+feynman
+fill_in_blank
+
+All five fields are required.
+
+--------------------------------------------------
+QUESTION VALIDATION
+--------------------------------------------------
+
+Before FastAPI returns success:
+
+Validate every generated question.
+
+For ALL types:
+
+- type must be supported
+- question must be non-empty
+- answer must be non-empty
+- answer_choices must be an array
+- source_excerpt must be non-empty
+
+For MCQ:
+
+- answer_choices must contain exactly 4 non-empty strings
+- answer must exactly match one of answer_choices
+
+For non-MCQ:
+
+- answer_choices must equal []
+
+If model output is malformed:
+
+do not pass raw model output through as success.
+
+Return:
+
+INVALID_MODEL_RESPONSE
+
+--------------------------------------------------
+SOURCE EXCERPT
+--------------------------------------------------
+
+Preserve source_excerpt.
+
+It should represent supporting/verbatim material from the supplied notes according to Shreya's prompt contract.
+
+Do not drop this field.
+
+The Question Bank will later use this for grounding/review.
+
+--------------------------------------------------
+GENERATION RESPONSE
+--------------------------------------------------
+
+Success:
+
+{
+  "questions": [
+    {
+      "type": "active_recall",
+      "question": "...",
+      "answer": "...",
+      "answer_choices": [],
+      "source_excerpt": "..."
+    }
+  ]
+}
+
+The response may contain fewer than requested_count if the source material does not support enough valid questions.
+
+Do not fabricate extra questions merely to hit the requested count.
+
+--------------------------------------------------
+TRUNCATED MODEL RESPONSE
+--------------------------------------------------
+
+If the Hugging Face response indicates:
+
+finish_reason == "length"
+
+do NOT silently accept a potentially incomplete JSON result.
+
+Return a structured generation failure.
+
+Use the closest appropriate existing error code or introduce a narrowly named code if needed.
+
+Document the choice.
+
+--------------------------------------------------
+ERROR CONTRACT
+--------------------------------------------------
+
+Use the error structure from ML_INTEGRATION_CONTRACT.md:
+
+{
+  "success": false,
+  "code": "...",
+  "message": "..."
+}
+
+At minimum support:
+
+PDF_PARSE_FAILED
+UNSUPPORTED_PDF
+NOTES_TOO_LONG
+MODEL_TIMEOUT
+INVALID_MODEL_RESPONSE
+GENERATION_FAILED
+
+Do not expose:
+
+- stack traces
+- HF response internals
+- HF_TOKEN
+- service secrets
+- raw provider error messages
+
+to the API client.
+
+--------------------------------------------------
+SERVICE AUTH
+--------------------------------------------------
+
+Prepare protected ML endpoints to support a server-to-server API key.
+
+Use:
+
+ML_SERVICE_API_KEY
+
+Prefer a simple header-based mechanism.
+
+For example:
+
+X-ML-Service-Key
+
+or an equivalent clearly documented header.
+
+GET /health may remain unprotected if useful for deployment health checks.
+
+Document the exact behavior.
+
+Do not add browser authentication.
+
+--------------------------------------------------
+CORS
+--------------------------------------------------
+
+The intended path is server-to-server:
+
+Browser
+→ Next.js
+→ FastAPI
+
+Therefore do NOT add permissive wildcard browser CORS unnecessarily.
+
+Do NOT use:
+
+allow_origins=["*"]
+
+unless there is an explicit development requirement.
+
+--------------------------------------------------
+REQUIREMENTS
+--------------------------------------------------
+
+Create:
+
+ml-service/requirements.txt
+
+Include only dependencies needed by the runtime and tests.
+
+At minimum, based on actual pipeline needs, expect dependencies related to:
+
+- fastapi
+- uvicorn
+- python-multipart
+- pdfplumber
+- requests
+- python-dotenv
+- pytest / FastAPI test client dependencies as appropriate
+
+Do NOT add transformers unless the runtime genuinely needs exact tokenizer loading.
+
+The current MVP limit uses the word-count rule and approximate token count, so avoid downloading the large Qwen tokenizer solely for every API process unless required.
+
+Pin reasonable versions or use versions established by Shreya if she has now supplied them.
+
+--------------------------------------------------
+ENV EXAMPLE
+--------------------------------------------------
+
+Create:
+
+ml-service/.env.example
+
+Include safe placeholders only:
+
+HF_TOKEN=
+HF_MODEL=Qwen/Qwen2.5-7B-Instruct
+HF_ENDPOINT=https://router.huggingface.co/v1/chat/completions
+GENERATION_TIMEOUT_SECONDS=90
+WORD_LIMIT=4600
+ML_SERVICE_API_KEY=
+
+Never commit real values.
+
+--------------------------------------------------
+TESTS
+--------------------------------------------------
+
+Create automated FastAPI tests.
+
+Tests must NOT consume real Hugging Face credits.
+
+Mock the generation provider.
+
+At minimum test:
+
+1. GET /health
+
+Expected:
+200
+{"ok": true}
+
+2. valid generation request using mocked generator
+
+3. requested_count below minimum
+
+4. requested_count above maximum
+
+5. empty text
+
+6. NOTES_TOO_LONG
+
+7. valid MCQ response
+
+8. MCQ with answer missing from choices is rejected
+
+9. non-MCQ with non-empty answer_choices is rejected
+
+10. malformed model response
+
+11. PDF with no extractable text returns an error
+
+12. service API-key behavior if implemented
+
+--------------------------------------------------
+FASTAPI DOCUMENTATION
+--------------------------------------------------
+
+Verify FastAPI's generated documentation works at:
+
+/docs
+
+Document the endpoints clearly enough that Shane and Shreya can test them manually.
+
+--------------------------------------------------
+README
+--------------------------------------------------
+
+Create:
+
+ml-service/README.md
+
+Explain in plain language:
+
+- what this service does
+- how it wraps Shreya's pipeline
+- how to install it
+- how to run it
+- required environment variables
+- /health
+- /parse-pdf
+- /generate-questions
+- request examples
+- response examples
+- error examples
+- service auth
+- why evaluation tooling is not part of the request path
+- that Next.js integration is the NEXT milestone
+
+--------------------------------------------------
+NO DATABASE
+--------------------------------------------------
+
+Do NOT create a database for FastAPI.
+
+FastAPI does not own:
+
+- users
+- subjects
+- materials
+- questions
+- sessions
+- outcomes
+
+Next.js remains the Calibrate application backend.
+
+--------------------------------------------------
+DO NOT CONNECT NEXT.JS YET
+--------------------------------------------------
+
+Do NOT modify:
+
+- /api/questions/generate
+- /api/materials
+- material intake UI
+- Question Bank
+- Subjects
+- Study Session
+- Dashboard
+- onboarding
+- Insights
+- existing Next.js LLM provider abstraction
+
+This milestone proves the Python API independently first.
+
+--------------------------------------------------
+VALIDATION
+--------------------------------------------------
+
+Run the Python tests.
+
+Start FastAPI locally.
+
+Verify:
+
+GET /health
+
+Verify:
+
+/docs
+
+Test /parse-pdf using a safe local fixture if available.
+
+Test /generate-questions with mocked generation.
+
+Do NOT claim a real Hugging Face generation succeeded unless an actual HF_TOKEN is configured and a real call was explicitly tested.
+
+Then verify the existing application still passes:
+
+npm test
+npm run typecheck
+npm run build
+
+--------------------------------------------------
+COMPLETION REPORT
+--------------------------------------------------
+
+Before finishing, report:
+
+1. Exact files created/changed.
+
+2. Exact Shreya production code reused/adapted.
+
+3. Exact evaluation code excluded.
+
+4. FastAPI endpoints created.
+
+5. PDF behavior.
+
+6. Generation request schema.
+
+7. Generation response schema.
+
+8. Question validation rules.
+
+9. Error codes.
+
+10. API-key behavior.
+
+11. Environment variable names.
+
+12. requirements.txt contents.
+
+13. Python test results.
+
+14. GET /health result.
+
+15. /docs verification.
+
+16. Whether a real Hugging Face request was tested or only mocked.
+
+17. npm test result.
+
+18. npm run typecheck result.
+
+19. npm run build result.
+
+20. Confirmation that Next.js integration has NOT been implemented yet.
+
+21. Confirmation that no database schema changed.
+
+22. Exact recommended Next.js integration point for the next milestone.

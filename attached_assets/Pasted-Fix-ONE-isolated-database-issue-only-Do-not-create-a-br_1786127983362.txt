@@ -1,0 +1,213 @@
+Fix ONE isolated database issue only.
+
+Do not create a broad Insights task.
+Do not redesign any UI.
+Do not change Dashboard.
+Do not rewrite /api/insights.
+Do not revisit the overall Insights architecture.
+
+The existing Insights implementation is already complete.
+
+The ONLY bug to fix is the evidence_origin migration and seed classification.
+
+CURRENT PROBLEM
+
+The migration:
+
+drizzle/0005_session_evidence_origin.sql
+
+previously classified pre-existing sessions as demo evidence.
+
+That is unsafe.
+
+A session that existed before the migration may be a legitimate real user session.
+
+==================================================
+DESIRED DATA RULE
+==================================================
+
+Use this exact rule:
+
+1. Legacy/pre-existing sessions default to:
+
+evidence_origin = 'real'
+
+2. Sessions created by the actual Study Session application flow are:
+
+evidence_origin = 'real'
+
+3. Presentation/seed sessions are explicitly inserted as:
+
+evidence_origin = 'demo'
+
+4. Never infer that a row is demo just because it existed before a migration.
+
+5. Real Insights queries use:
+
+evidence_origin = 'real'
+
+6. Demo presentation Insights use:
+
+evidence_origin = 'demo'
+
+The existing Insights query/source filtering should already do #5 and #6.
+
+Do not redesign it unless a tiny compatibility adjustment is required.
+
+==================================================
+TASK A — FIX THE MIGRATION
+==================================================
+
+Inspect:
+
+drizzle/0005_session_evidence_origin.sql
+
+For fresh databases/upgrades, make the migration:
+
+- add evidence_origin if that is its existing purpose
+- default evidence_origin to 'real'
+- preserve existing rows as 'real'
+
+REMOVE any migration behavior equivalent to:
+
+UPDATE sessions SET evidence_origin = 'demo'
+
+for every existing row.
+
+Migration timing must never determine whether data is demo.
+
+==================================================
+TASK B — FIX SEED CREATION
+==================================================
+
+Find the existing database seed/setup code that creates the presentation/demo sessions.
+
+Make those seeded session inserts explicitly use:
+
+evidence_origin: 'demo'
+
+Do not change unrelated seed content.
+
+Do not reset the database as part of application behavior.
+
+Ensure reseeding remains safe with the existing session_feedback foreign-key relationships.
+
+==================================================
+TASK C — VERIFY REAL SESSION CREATION
+==================================================
+
+Inspect the normal Study Session creation path.
+
+Confirm newly created real sessions either:
+
+- explicitly use evidence_origin = 'real'
+
+or
+
+- safely receive the database default of 'real'
+
+Do not add unnecessary code if the default already guarantees this.
+
+==================================================
+TASK D — ADD ONE REGRESSION TEST
+==================================================
+
+Add a focused migration/source regression test proving:
+
+1. Create a legacy session before applying the evidence-origin migration.
+
+2. Apply the migration.
+
+3. The legacy session has:
+
+evidence_origin = 'real'
+
+4. A presentation session created through the seed logic has:
+
+evidence_origin = 'demo'
+
+5. A normal new Study Session has:
+
+evidence_origin = 'real'
+
+Keep this test focused.
+
+Do not rewrite the entire Insights test suite.
+
+==================================================
+CURRENT LOCAL DATABASE WARNING
+==================================================
+
+The unsafe migration may already have been applied to the current local development database.
+
+DO NOT automatically reset the database.
+
+DO NOT delete existing sessions.
+
+DO NOT guess which existing local rows were real versus seeded merely based on their age.
+
+For this task, the priority is:
+
+- fixing the migration for correct future/fresh upgrades
+- fixing seed behavior
+- verifying new real sessions
+- adding regression coverage
+
+If the already-migrated local database cannot be repaired without guessing which rows were legitimate real data, leave it intact and clearly report that limitation.
+
+Do not perform destructive repair.
+
+==================================================
+DO NOT TOUCH
+==================================================
+
+Do not redesign or substantially modify:
+
+- /insights UI
+- deterministic recommendation logic
+- subject filtering
+- feedback context
+- recent evidence UI
+- Study Session UI
+- Post-session Feedback UI
+- Dashboard
+- Question Bank
+- onboarding
+
+Do not add any LLM or ML logic.
+
+==================================================
+VALIDATION
+==================================================
+
+After this isolated fix run:
+
+npm test
+npm run typecheck
+npm run build
+
+Also run:
+
+PYTHONPATH=ml-service python -m pytest ml-service/tests -q
+
+Do not stop before the tests finish.
+
+==================================================
+REPORT ONLY THESE ITEMS
+==================================================
+
+At completion tell me:
+
+1. exact migration bug found
+2. exact migration change made
+3. seed file changed
+4. how seeded sessions are now explicitly marked demo
+5. how normal Study Sessions remain real
+6. regression test added
+7. whether the already-migrated local DB could be safely repaired without guessing
+8. npm test result
+9. typecheck result
+10. build result
+11. FastAPI test result
+
+Do not start Dashboard or any other milestone.

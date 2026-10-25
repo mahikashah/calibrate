@@ -1,0 +1,454 @@
+Resume and COMPLETE the Post-session Feedback milestone from the CURRENT shane-dev state.
+
+IMPORTANT:
+
+The working tree is clean, but the previous interrupted run committed partial work.
+
+The latest local commit is:
+
+524eaa2 — Update database schema and add session implementation notes
+
+It modified:
+
+src/lib/db/schema.ts
+
+The previous run began adding the session-feedback schema but did NOT finish the milestone.
+
+DO NOT:
+
+- reset the branch
+- revert 524eaa2
+- duplicate the session-feedback schema
+- restart the architecture analysis from scratch
+- move on to Insights yet
+
+First inspect:
+
+- commit 524eaa2
+- current src/lib/db/schema.ts
+- current Drizzle migration state
+- existing Study Session completion code
+- existing session/outcome APIs
+
+Determine exactly what session-feedback schema work already exists and continue from it.
+
+==================================================
+PRIMARY GOAL
+==================================================
+
+Finish the complete flow:
+
+Completed Study Session
+→ Completion Summary
+→ Continue
+→ /feedback?sessionId=...
+→ Rough / Good
+→ Calm-to-Wired slider
+→ optional structured reasons
+→ persisted session feedback
+→ /insights
+
+Do not stop after schema work.
+
+==================================================
+1. PRESERVE EXISTING QUESTION FEEDBACK
+==================================================
+
+The existing:
+
+/api/feedback
+
+belongs to Question Bank / answer feedback.
+
+DO NOT repurpose or overload it.
+
+Post-session feedback must use a distinct route:
+
+/api/session-feedback
+
+or the equivalent already established by the partial implementation.
+
+==================================================
+2. FINISH SESSION-FEEDBACK SCHEMA
+==================================================
+
+Inspect the partial schema already committed in 524eaa2.
+
+Use it if it is correct.
+
+Do NOT create a duplicate table.
+
+The final session-feedback model should preserve only the contextual information needed for a completed session, conceptually:
+
+- sessionId
+- overall experience: rough | good
+- Calm/Wired numeric value
+- structured reason values
+- createdAt / updatedAt if consistent with the existing schema
+
+Feedback must remain separate from objective session/outcome data.
+
+Do NOT duplicate:
+
+- score
+- correctness
+- technique
+- elapsed time
+- question results
+
+==================================================
+3. ONE FEEDBACK RECORD PER SESSION
+==================================================
+
+A completed session should have at most one current feedback record.
+
+Use a unique relationship on sessionId or the equivalent safe implementation.
+
+Repeated submission or retry should:
+
+update/upsert the same feedback
+
+NOT create duplicate feedback evidence.
+
+==================================================
+4. CREATE / VERIFY MIGRATION
+==================================================
+
+If the committed schema change does not yet have a migration:
+
+create the smallest Drizzle/SQLite migration necessary.
+
+Do NOT reset or reseed the database.
+
+Apply the migration to the current local database.
+
+Verify the resulting schema.
+
+Preserve all current seeded/demo data.
+
+==================================================
+5. SESSION FEEDBACK API
+==================================================
+
+Implement:
+
+/api/session-feedback
+
+with the smallest appropriate GET/POST or upsert behavior.
+
+All reads and writes must verify server-side that:
+
+the referenced session belongs to the current user.
+
+A user must not:
+
+- read another user's session feedback
+- submit feedback for another user's session
+- modify another user's feedback
+
+Do not trust sessionId from the browser without ownership validation.
+
+==================================================
+6. FEEDBACK PAGE
+==================================================
+
+Create/refine:
+
+/feedback?sessionId=...
+
+using the Calibrate design language.
+
+Main heading:
+
+“How’d it go?”
+
+Large options:
+
+Rough
+Good
+
+Then show:
+
+“Anxiety while studying”
+
+Calm ←────────→ Wired
+
+Use an accessible numeric slider.
+
+Keep the experience short and focused.
+
+==================================================
+7. GOOD PATH
+==================================================
+
+If the student selects:
+
+Good
+
+flow should be:
+
+Good
+→ Calm/Wired slider
+→ Submit
+→ /insights
+
+Do not force negative-reason questions.
+
+==================================================
+8. ROUGH PATH
+==================================================
+
+If the student selects:
+
+Rough
+
+show:
+
+“Score dipped today — what happened?”
+
+“Select all that apply”
+
+Options:
+
+- Technique wasn’t right
+- Questions weren’t right
+- Material was hard
+- Distracted / low energy
+- Not sure
+
+Allow multiple selections.
+
+Store machine-readable values such as:
+
+technique_wrong
+questions_wrong
+material_hard
+distracted_low_energy
+not_sure
+
+==================================================
+9. KEEP QUESTION QUALITY SEPARATE
+==================================================
+
+questions_wrong
+
+must remain distinct from:
+
+technique_wrong
+
+This distinction is essential.
+
+Do NOT interpret poor AI-generated questions as evidence that the study technique failed.
+
+==================================================
+10. STUDY SESSION HANDOFF
+==================================================
+
+Preserve the existing real Study Session completion summary.
+
+For REAL completed sessions:
+
+Continue
+
+must route to:
+
+/feedback?sessionId=<completed-session-id>
+
+Do NOT create another session or outcome during this transition.
+
+Preserve the separate seeded/presentation Study Session path.
+
+==================================================
+11. RETRY SAFETY
+==================================================
+
+Build on the existing completionKey/idempotency protections.
+
+If:
+
+session + outcome were already saved
+
+but:
+
+feedback save fails
+
+then:
+
+- preserve session
+- preserve outcome
+- show a recoverable feedback error
+- preserve selections where practical
+- allow retry
+- do not create a second session
+- do not create a second outcome
+
+Repeated feedback submission should upsert safely.
+
+==================================================
+12. INSIGHTS-READY DATA
+==================================================
+
+Make only the smallest backend/query change necessary so the NEXT milestone can access:
+
+- completed session
+- subject
+- technique
+- outcome/performance
+- duration
+- Rough/Good
+- Calm/Wired value
+- structured reasons
+
+Do NOT redesign the Insights UI yet.
+
+Do NOT implement the final recommendation algorithm yet.
+
+Preserve seeded/demo Insights data.
+
+==================================================
+13. NO ML
+==================================================
+
+Do NOT call:
+
+- FastAPI
+- Hugging Face
+- Qwen
+- LLM-as-judge
+
+during post-session feedback.
+
+This is deterministic structured application data.
+
+==================================================
+14. TESTS
+==================================================
+
+Add automated tests covering at least:
+
+1. Good feedback persists
+2. Rough feedback persists
+3. multiple reasons persist
+4. questions_wrong remains distinct from technique_wrong
+5. Calm/Wired value persists
+6. session ownership is enforced
+7. unauthorized read fails
+8. unauthorized write fails
+9. repeated submission does not duplicate feedback
+10. retry does not create another session
+11. retry does not create another outcome
+12. invalid/missing session fails safely
+13. existing /api/feedback behavior remains unchanged
+14. session + outcome + feedback can be consumed by the Insights data path
+15. seeded/demo data remains available
+16. no ML provider is invoked
+
+==================================================
+15. MANUAL FLOW
+==================================================
+
+Manually verify:
+
+Question Bank
+→ approved questions
+→ Study Session
+→ complete
+→ Completion Summary
+→ Continue
+→ /feedback?sessionId=...
+→ Good
+→ slider
+→ Submit
+→ /insights
+
+Then verify:
+
+Study Session
+→ complete
+→ Continue
+→ Rough
+→ slider
+→ multiple reasons
+→ Submit
+→ /insights
+
+Confirm the feedback is attached to the correct completed session.
+
+==================================================
+16. VALIDATION
+==================================================
+
+Run:
+
+npm test
+npm run typecheck
+npm run build
+
+Run:
+
+PYTHONPATH=ml-service python -m pytest ml-service/tests -q
+
+Verify:
+
+FastAPI GET /health
+
+Verify the SQLite migration was successfully applied.
+
+==================================================
+17. DO NOT MOVE ON EARLY
+==================================================
+
+Do NOT stop after:
+
+- schema changes
+- migration changes
+- API only
+- UI only
+
+Finish the entire milestone before stopping.
+
+The milestone is only complete when:
+
+schema
++ migration
++ API
++ feedback UI
++ Study Session handoff
++ persistence
++ Insights-ready query
++ tests
++ build
+
+all work together.
+
+==================================================
+COMPLETION REPORT
+==================================================
+
+Report:
+
+1. What partial work was found in commit 524eaa2.
+2. Exact files changed.
+3. Final sessionFeedback schema.
+4. Migration created/applied.
+5. Dedicated session-feedback API.
+6. Confirmation /api/feedback was preserved.
+7. Good flow.
+8. Rough flow.
+9. Calm/Wired representation.
+10. Structured reason values.
+11. Ownership behavior.
+12. Upsert/retry behavior.
+13. Study Session → feedback routing.
+14. Feedback → Insights routing.
+15. Insights-ready data path.
+16. Seed/demo preservation.
+17. Tests added.
+18. npm test result.
+19. npm run typecheck result.
+20. npm run build result.
+21. FastAPI tests.
+22. /health result.
+23. Confirmation no ML calls occur during feedback.
+24. Confirmation Insights was NOT redesigned.
+25. Next milestone: Insights using real session/outcome/feedback data.

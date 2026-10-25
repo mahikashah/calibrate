@@ -1,0 +1,127 @@
+Proceed in Build mode and implement the Insights milestone you just scoped.
+
+Do not restart the architecture analysis from scratch.
+
+Use the existing deterministic computeInsights() foundation and current /api/insights data path.
+
+PRIMARY GOAL
+
+Turn /insights into the real student-facing evidence view for Calibrate:
+
+real completed sessions
++ outcomes
++ post-session feedback
+→ transparent technique comparison
+→ current recommendation / still-gathering-evidence state
+→ useful next action
+
+IMPORTANT REQUIREMENTS
+
+- Real completed sessions should be the primary evidence source.
+- Technique comparisons must use actual recorded outcome data.
+- Show session count, average performance, and focused time where reliable.
+- Keep calculations deterministic.
+- Do NOT let an LLM decide the winning/recommended technique.
+- Optional AI wording may only phrase already-computed results and must not be required for Insights to function.
+- Preserve subject-aware evidence/filtering where the existing architecture supports it.
+- Keep questions_wrong separate from technique_wrong.
+- Surface questions_wrong as “question quality may have affected this session,” not as automatic evidence that the technique failed.
+- Surface material_hard and distracted_low_energy as contextual/confounding factors.
+- Treat Calm/Wired only as lightweight session context; do not overinterpret it.
+- Show recent evidence/history with subject, technique, result, date, Rough/Good, and contextual flags where useful.
+- Add a clear insufficient-evidence state when the student has not tried enough techniques/sessions to compare meaningfully.
+- Use cautious language such as:
+  “Current evidence favors…”
+  “Strongest result so far…”
+  “Still gathering evidence…”
+- Keep the recommendation explanation transparent so the student can see WHY it was made.
+- Preserve seeded/demo Insights data for presentation safety, but do not silently combine seeded data into real-user calculations.
+- Do not redesign Dashboard yet.
+- Do not redesign Study Session, Feedback, Question Bank, onboarding, Start, or How It Works.
+- Do not add ML dependencies, advanced statistics, RAG, auth, OCR, or database migration work unless absolutely necessary.
+
+DESIGN
+
+Use the existing Calibrate visual system:
+
+- warm cream/off-white
+- charcoal typography
+- turquoise accents
+- sage evidence/success accents
+- white cards
+- thin borders
+- generous whitespace
+- simple visual comparisons
+
+Avoid a dense enterprise analytics dashboard.
+
+The page should communicate:
+
+“Here’s what your study experiments are teaching us.”
+
+TESTS
+
+Cover at least:
+
+- real completed sessions appear
+- current-user ownership isolation
+- correct technique session counts
+- correct average outcome calculations
+- subject filtering
+- questions_wrong remains separate from technique_wrong
+- question-quality flags do not automatically mark technique failure
+- feedback context is attached to the correct session
+- old sessions without feedback still work
+- insufficient-evidence state
+- deterministic recommendation behavior
+- real calculations exclude seeded/demo evidence
+- no ML provider is required
+
+VALIDATION
+
+Run:
+
+npm test
+npm run typecheck
+npm run build
+
+PYTHONPATH=ml-service python -m pytest ml-service/tests -q
+
+Verify FastAPI /health.
+
+Manually verify:
+
+Study Session
+→ Feedback
+→ Insights
+→ new real session appears
+
+Then test at least two different techniques and confirm the comparison updates.
+
+Also test a Rough session with questions_wrong and confirm Insights flags question quality without claiming the technique failed.
+
+COMPLETION REPORT
+
+Report:
+
+1. exact files changed
+2. real evidence query structure
+3. technique comparison calculation
+4. subject filtering
+5. insufficient-evidence rule
+6. deterministic recommendation logic
+7. feedback-context handling
+8. questions_wrong vs technique_wrong behavior
+9. Calm/Wired presentation
+10. recent evidence/history
+11. real vs seeded/demo separation
+12. UI changes
+13. tests added
+14. npm test result
+15. typecheck result
+16. build result
+17. FastAPI tests
+18. /health
+19. confirmation no LLM decides recommendations
+20. confirmation Dashboard was not redesigned
+21. next milestone: Dashboard using real Calibrate state
