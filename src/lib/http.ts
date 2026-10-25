@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
+import { UnauthorizedError } from "./auth/errors";
 
 export function ok<T>(data: T, init?: number) {
   return NextResponse.json(data, { status: init ?? 200 });
@@ -12,6 +13,9 @@ export function fail(message: string, status = 400) {
 /** Wrap a route handler so thrown errors become clean JSON responses. */
 export function handle(fn: () => Promise<Response>): Promise<Response> {
   return fn().catch((err) => {
+    if (err instanceof UnauthorizedError) {
+      return fail(err.message, 401);
+    }
     if (err instanceof ZodError) {
       return fail(err.errors.map((e) => `${e.path.join(".")}: ${e.message}`).join("; "), 422);
     }

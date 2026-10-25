@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { MobileNav, Sidebar } from "@/components/Sidebar";
 
 // First-time / setup experience — no product sidebar.
-const STANDALONE_ROUTES = new Set(["/start", "/how-it-works", "/onboarding"]);
+const STANDALONE_ROUTES = new Set(["/start", "/how-it-works", "/onboarding", "/signin"]);
 
 // Post-session check-in continues the study flow without chrome.
 const FOCUSED_ROUTES = new Set(["/feedback"]);
