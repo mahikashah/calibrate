@@ -1,6 +1,8 @@
 services:
-  # Next.js app. Data lives in a hosted Turso database, so the free instance
-  # needs no disk.
+  # Next.js app. Data lives in a hosted Turso database, so the instance needs
+  # no disk. NOTE: the free plan sleeps after ~15 minutes idle and takes about
+  # a minute to wake. For a student pilot use a paid always-on plan for BOTH
+  # services, otherwise a first generation can hang for ~2 minutes.
   - type: web
     name: calibrate
     runtime: node
@@ -24,6 +26,11 @@ services:
         value: "false"
       - key: LLM_PROVIDER
         value: mock
+      # Signs student session cookies. Generated once by Render.
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: GENERATIONS_PER_DAY
+        value: "15"
 
   # FastAPI service for PDF parsing and question generation.
   - type: web

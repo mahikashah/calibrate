@@ -1,12 +1,13 @@
 import { sql } from "drizzle-orm";
-import { integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 /**
  * Data model for Calibrate.
  *
- * The whole app is single-user and local-first: one row in `users` acts as the
- * owner of everything. Auth is intentionally out of scope for the MVP. All
- * timestamps are stored as ISO-8601 text so the SQLite file is human-readable.
+ * Every row is owned by a `users` row. Locally (and in tests) the app resolves
+ * to a single `local-user`; in production students sign in with an email and a
+ * signed session cookie (see src/lib/user.ts). All timestamps are stored as
+ * ISO-8601 text so the SQLite file is human-readable.
  */
 
 const now = () => new Date().toISOString();
@@ -14,6 +15,8 @@ const now = () => new Date().toISOString();
 export const users = sqliteTable("users", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
+  /** Lower-cased sign-in email. Null for the legacy/demo `local-user`. */
+  email: text("email").unique(),
   createdAt: text("created_at").notNull().$defaultFn(now),
 });
 
@@ -149,6 +152,34 @@ export const onboarding = sqliteTable("onboarding", {
     .default(sql`(CURRENT_TIMESTAMP)`),
 });
 
+/**
+ * One row per question-generation attempt that reached the server. Powers the
+ * per-user daily cap (src/lib/generation-cap.ts) and the pilot metrics script,
+ * so failed generations are recorded instead of only appearing in host logs.
+ *
+ * kind      : "notes" | "pdf"
+ * ok        : 1 when questions were produced and saved
+ * errorCode : MlErrorCode, or NO_GROUNDED_QUESTIONS / UNEXPECTED, null when ok
+ */
+export const generationEvents = sqliteTable(
+  "generation_events",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    kind: text("kind").notNull(),
+    ok: integer("ok", { mode: "boolean" }).notNull(),
+    errorCode: text("error_code"),
+    questionCount: integer("question_count").notNull().default(0),
+    createdAt: text("created_at").notNull().$defaultFn(now),
+  },
+  (t) => ({
+    userCreatedIdx: index("generation_events_user_created_idx").on(t.userId, t.createdAt),
+  }),
+);
+
+export type GenerationEvent = typeof generationEvents.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type Subject = typeof subjects.$inferSelect;
 export type Material = typeof materials.$inferSelect;

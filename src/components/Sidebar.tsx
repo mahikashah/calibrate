@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { AccountControl } from "@/components/AccountControl";
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard" },
@@ -67,6 +68,7 @@ export function Sidebar() {
         >
           Retake onboarding
         </Link>
+        <AccountControl />
       </div>
     </aside>
   );
@@ -88,6 +90,7 @@ export function MobileNav() {
           Retake onboarding
         </Link>
       </div>
+      <AccountControl compact />
       <nav className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1" aria-label="Main">
         {NAV.map((item) => {
           const active = isActive(path, item.href);

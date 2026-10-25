@@ -18,7 +18,8 @@
     "db:reset": "rm -f db/studycoach.sqlite && npm run db:migrate && npm run db:seed",
     "setup": "npm run db:migrate && npm run db:seed",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "metrics": "tsx scripts/metrics.mts"
   },
   "dependencies": {
     "@libsql/client": "^0.14.0",
