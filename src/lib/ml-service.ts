@@ -33,6 +33,11 @@ export class MlServiceError extends Error {
   }
 }
 
+/** NOTES_TOO_LONG copy that tells the student how far over the limit they are. */
+export function notesTooLongMessage(wordCount: number, wordLimit: number): string {
+  return `This material has ${wordCount.toLocaleString("en-US")} words; the limit is ${wordLimit.toLocaleString("en-US")}. Try one lecture, chapter, or study section at a time.`;
+}
+
 // Student-facing copy for every error the service can return.
 const STUDENT_MESSAGES: Record<MlErrorCode, string> = {
   NOTES_TOO_LONG:
@@ -110,14 +115,16 @@ async function fetchMl(url: string, init: RequestInit): Promise<unknown> {
   const body: unknown = await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    const errorCode = (body as { code?: string }).code as MlErrorCode | undefined;
+    const errorBody = body as { code?: string; word_count?: unknown; word_limit?: unknown };
+    const errorCode = errorBody.code as MlErrorCode | undefined;
     const code: MlErrorCode =
       errorCode && errorCode in STUDENT_MESSAGES ? errorCode : "GENERATION_FAILED";
-    throw new MlServiceError(
-      code,
-      `ML service returned HTTP ${res.status}`,
-      STUDENT_MESSAGES[code],
-    );
+    const { word_count: wordCount, word_limit: wordLimit } = errorBody;
+    const studentMessage =
+      code === "NOTES_TOO_LONG" && Number.isInteger(wordCount) && Number.isInteger(wordLimit)
+        ? notesTooLongMessage(wordCount as number, wordLimit as number)
+        : STUDENT_MESSAGES[code];
+    throw new MlServiceError(code, `ML service returned HTTP ${res.status}`, studentMessage);
   }
 
   return body;

@@ -29,10 +29,10 @@ app = FastAPI(
 )
 
 
-def error_response(status_code: int, code: str, message: str) -> JSONResponse:
+def error_response(status_code: int, code: str, message: str, **details: int) -> JSONResponse:
     return JSONResponse(
         status_code=status_code,
-        content={"success": False, "code": code, "message": message},
+        content={"success": False, "code": code, "message": message, **details},
     )
 
 
@@ -127,11 +127,16 @@ async def generate(
     _: None = Depends(require_service_key),
 ):
     settings = get_settings()
-    if len(request.text.split()) > settings.word_limit:
+    word_count = len(request.text.split())
+    if word_count > settings.word_limit:
+        # The counts let the web app tell the student how far over they are
+        # without duplicating the limit, which stays configured here.
         return error_response(
             413,
             "NOTES_TOO_LONG",
             "Your notes are too long. Please use one lecture, chapter, or study section at a time.",
+            word_count=word_count,
+            word_limit=settings.word_limit,
         )
 
     try:

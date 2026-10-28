@@ -5,8 +5,12 @@
  * extracted text as a Material record, generates questions, saves them, and
  * returns the counts. The browser never talks to FastAPI directly.
  *
+ * Parsing always goes through FastAPI (no model call). Question generation
+ * follows the same explicit CALIBRATE_DEMO_MODE switch as
+ * /api/questions/generate, and never falls back from one mode to the other.
+ *
  * Form fields:
- *   file      — PDF binary (required)
+ *   file      — PDF binary, at most PDF_MAX_BYTES (required)
  *   subjectId — string (required)
  *   title     — string (optional, defaults to file name)
  *   count     — integer 1-10 (optional, defaults to 6)
@@ -14,10 +18,12 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { materials, questions, subjects } from "@/lib/db/schema";
+import { generateDemoQuestions } from "@/lib/demo-questions";
 import { capMessage, checkGenerationCap, recordGeneration } from "@/lib/generation-cap";
 import { handle, ok, fail } from "@/lib/http";
 import { newId } from "@/lib/ids";
 import { generateQuestions, parsePdf, MlServiceError } from "@/lib/ml-service";
+import { pdfUploadError, PDF_TOO_LARGE_MESSAGE } from "@/lib/pdf-upload";
 import { parseQuestionCount } from "@/lib/question-count";
 import { currentUserId } from "@/lib/user";
 
@@ -45,16 +51,25 @@ export async function POST(req: Request) {
     const count = countParsed.count;
     const title = (formData.get("title") as string | null)?.trim() ?? "";
 
-    const file = formData.get("file") as File | null;
-    if (!file) return fail("No PDF file provided.", 422);
+    const file = formData.get("file");
+    if (!(file instanceof File)) return fail("No PDF file provided.", 422);
+    const fileError = pdfUploadError(file);
+    if (fileError) return fail(fileError, fileError === PDF_TOO_LARGE_MESSAGE ? 413 : 422);
 
     // Verify subject belongs to the current user before doing any ML work.
     const subject = await db.select().from(subjects).where(eq(subjects.id, subjectId)).get();
     if (!subject || subject.userId !== userId) return fail("Subject not found.", 404);
 
+    // Demo mode is neither capped nor logged, matching /api/questions/generate.
+    const demoMode = process.env.CALIBRATE_DEMO_MODE === "true";
+
     // Per-user daily cap protects the paid inference account.
-    const cap = await checkGenerationCap(userId);
-    if (!cap.allowed) return fail(capMessage(cap.limit), 429);
+    if (!demoMode) {
+      const cap = await checkGenerationCap(userId);
+      if (!cap.allowed) return fail(capMessage(cap.limit), 429);
+    }
+
+    const record: typeof recordGeneration = demoMode ? async () => {} : recordGeneration;
 
     // --- Step 1: parse PDF via FastAPI ---
     let parsed;
@@ -62,38 +77,50 @@ export async function POST(req: Request) {
       parsed = await parsePdf(file, file.name);
     } catch (err) {
       if (err instanceof MlServiceError) {
-        await recordGeneration({ userId, kind: "pdf", ok: false, errorCode: err.code });
+        await record({ userId, kind: "pdf", ok: false, errorCode: err.code });
         return fail(err.studentMessage, mlErrorStatus(err.code));
       }
-      await recordGeneration({ userId, kind: "pdf", ok: false, errorCode: "UNEXPECTED" });
+      await record({ userId, kind: "pdf", ok: false, errorCode: "UNEXPECTED" });
       throw err;
     }
 
     if (!parsed.text.trim()) {
-      await recordGeneration({ userId, kind: "pdf", ok: false, errorCode: "UNSUPPORTED_PDF" });
+      await record({ userId, kind: "pdf", ok: false, errorCode: "UNSUPPORTED_PDF" });
       return fail(
         "This PDF appears to be scanned or empty. Try a text-based PDF or paste your notes instead.",
         422,
       );
     }
 
-    // --- Step 2: generate questions via FastAPI ---
+    // --- Step 2: generate questions (FastAPI, or the explicit demo generator) ---
     // Generation runs before the material is saved so a failed generation
     // cannot leave an empty material behind for the student to clean up.
     let generated;
-    try {
-      generated = await generateQuestions({
-        subject: subject.name,
-        text: parsed.text,
-        requestedCount: count,
-      });
-    } catch (err) {
-      if (err instanceof MlServiceError) {
-        await recordGeneration({ userId, kind: "pdf", ok: false, errorCode: err.code });
-        return fail(err.studentMessage, mlErrorStatus(err.code));
+    if (demoMode) {
+      generated = generateDemoQuestions(parsed.text, count);
+    } else {
+      try {
+        generated = await generateQuestions({
+          subject: subject.name,
+          text: parsed.text,
+          requestedCount: count,
+        });
+      } catch (err) {
+        if (err instanceof MlServiceError) {
+          await record({ userId, kind: "pdf", ok: false, errorCode: err.code });
+          return fail(err.studentMessage, mlErrorStatus(err.code));
+        }
+        await record({ userId, kind: "pdf", ok: false, errorCode: "UNEXPECTED" });
+        throw err;
       }
-      await recordGeneration({ userId, kind: "pdf", ok: false, errorCode: "UNEXPECTED" });
-      throw err;
+    }
+
+    if (!generated.length) {
+      await record({ userId, kind: "pdf", ok: false, errorCode: "NO_GROUNDED_QUESTIONS" });
+      return fail(
+        "We couldn’t generate grounded questions from this material. Try adding more detailed notes or a different text-based PDF.",
+        422,
+      );
     }
 
     // --- Step 3: persist Material ---
@@ -128,19 +155,12 @@ export async function POST(req: Request) {
       createdAt: new Date().toISOString(),
     }));
 
-    if (!rows.length) {
-      await recordGeneration({ userId, kind: "pdf", ok: false, errorCode: "NO_GROUNDED_QUESTIONS" });
-      return fail(
-        "We couldn’t generate grounded questions from this material. Try adding more detailed notes or a different text-based PDF.",
-        422,
-      );
-    }
-
     await db.insert(questions).values(rows).run();
-    await recordGeneration({ userId, kind: "pdf", ok: true, questionCount: rows.length });
+    await record({ userId, kind: "pdf", ok: true, questionCount: rows.length });
 
     return ok(
       {
+        provider: demoMode ? "calibrate-demo" : "calibrate-ml",
         materialId,
         questionCount: rows.length,
         requestedCount: count,
