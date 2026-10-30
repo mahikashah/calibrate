@@ -1192,7 +1192,12 @@ function QuestionCard({
       {revealed && question.answer && (
         <div className="calibrate-question-card__answer">
           <strong>Answer</strong>
-          <p>{question.answer}</p>
+          {/* The ✓ in the choice list already marks an MCQ answer; showing it
+              again above is redundant. Placeholder until design settles the format. */}
+          {!(
+            question.type === "mcq" &&
+            parseChoices(question.answerChoices).includes(question.answer)
+          ) && <p>{question.answer}</p>}
           {question.type === "mcq" && (
             <ul>
               {parseChoices(question.answerChoices).map((choice) => (
