@@ -27,7 +27,9 @@ import difflib
 load_dotenv()
 hf_token = os.getenv('HF_TOKEN')
 HF_ROUTER_URL = "https://router.huggingface.co/v1/chat/completions"
-MODEL_NAME = "deepseek-ai/DeepSeek-V3-0324"
+# Pinned to Featherless: as of Oct 2026, DeepInfra answers requests for
+# DeepSeek-V3-0324 with DeepSeek-V4.1-Flash, which would silently change the judge.
+MODEL_NAME = "deepseek-ai/DeepSeek-V3-0324:featherless-ai"
 headers = {
     "Authorization": f"Bearer {os.environ['HF_TOKEN']}",
 }
