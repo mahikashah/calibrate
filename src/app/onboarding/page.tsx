@@ -4,6 +4,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "@/components/icons";
+import { NotebookScribble } from "@/components/NotebookScribble";
+import { TestPaperScribble } from "@/components/TestPaperScribble";
+import { ChatScribble } from "@/components/ChatScribble";
+import { ScheduleScribble } from "@/components/ScheduleScribble";
 import { postJSON } from "@/lib/client";
 import { ONBOARDING_QUESTIONS, type Hypothesis } from "@/lib/hypothesis";
 
@@ -115,6 +119,10 @@ export default function OnboardingPage() {
               </div>
             </header>
             <div className="calibrate-question-stage" key={question.id}>
+              {questionStep === 0 && <NotebookScribble />}
+              {questionStep === 1 && <TestPaperScribble />}
+              {questionStep === 2 && <ChatScribble />}
+              {questionStep === 3 && <ScheduleScribble />}
               <p className="calibrate-question-kicker">Your study practice</p>
               <h1>
                 {question.text}

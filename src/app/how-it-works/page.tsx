@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "@/components/icons";
+import { ScrollReveal } from "@/components/ScrollReveal";
 
 type Step = {
   number: string;
@@ -129,12 +130,24 @@ export default function HowItWorksPage() {
         </header>
 
         <div className="calibrate-tour__intro animate-rise">
+          <Image
+            src="/mascot-thinking.png"
+            alt=""
+            width={578}
+            height={640}
+            priority
+            className="calibrate-tour__mascot"
+          />
           <p className="calibrate-start__eyebrow">Your first experiment</p>
           <h1>How Calibrate works</h1>
           <p>Run small study experiments and learn what actually works for you.</p>
           <span>Here’s what your first experiment will look like.</span>
         </div>
 
+        <ScrollReveal selector=".calibrate-tour__step" />
+        <noscript>
+          <style>{`.calibrate-tour__step { opacity: 1; transform: none; }`}</style>
+        </noscript>
         <ol className="calibrate-tour__steps">
           {STEPS.map((step, index) => {
             const paired = step.previews.length === 2;
