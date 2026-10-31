@@ -107,7 +107,7 @@ export default function Dashboard() {
             {nextAction.title}
           </h2>
           <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted">{nextAction.description}</p>
-          <Link href={nextAction.href} className="btn-primary mt-6 min-h-11 px-5">
+          <Link href={nextAction.href} className="btn-primary btn-lg mt-6">
             {nextAction.ctaLabel}
             <ChevronRight className="nudge" />
           </Link>

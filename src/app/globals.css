@@ -107,9 +107,15 @@ select.field {
            focus:outline-none focus-visible:ring-4 focus-visible:ring-brand/25
            disabled:pointer-events-none disabled:opacity-50;
   }
+  /* Deep, saturated teal so primary actions stand out on paper, sage and grid surfaces. */
   .btn-primary {
-    @apply btn bg-gradient-to-b from-[#468c87] to-brand text-white shadow-btn-primary
-           hover:-translate-y-px hover:from-brand hover:to-brand-ink;
+    @apply btn bg-gradient-to-b from-[#2f8a84] to-[#1d625e] font-semibold text-white shadow-btn-primary
+           ring-1 ring-inset ring-[#174f4c]/60
+           hover:-translate-y-px hover:from-[#287c77] hover:to-[#174f4c];
+  }
+  /* Larger size for the one main action on a screen. */
+  .btn-lg {
+    @apply min-h-12 px-6 text-[0.95rem];
   }
   .btn-ghost {
     @apply btn border border-line bg-surface text-ink shadow-[0_1px_2px_rgba(23,24,20,0.05)]

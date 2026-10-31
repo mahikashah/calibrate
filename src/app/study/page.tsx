@@ -359,7 +359,7 @@ function StudyPageContent() {
             </button>
           </section>
         ) : (
-          <button type="button" className="btn-primary w-full min-h-12 py-3" onClick={begin}>
+          <button type="button" className="btn-primary btn-lg w-full py-3" onClick={begin}>
             Start session
             <ChevronRight className="nudge" />
           </button>
@@ -725,7 +725,7 @@ function StudySetup({
       )}
       <button
         type="button"
-        className="btn-primary w-full min-h-12 py-3"
+        className="btn-primary btn-lg w-full py-3"
         disabled={!ready}
         onClick={onStart}
       >

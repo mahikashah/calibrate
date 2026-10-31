@@ -51,7 +51,7 @@ const config: Config = {
         card: "0 1px 1px rgba(23,24,20,0.03), 0 2px 6px -1px rgba(23,24,20,0.05), 0 10px 24px -12px rgba(23,24,20,0.08)",
         lift: "0 2px 4px rgba(23,24,20,0.04), 0 14px 32px -10px rgba(23,24,20,0.16)",
         glow: "0 0 0 4px rgba(63,129,125,0.14)",
-        "btn-primary": "inset 0 1px 0 rgba(255,255,255,0.18), 0 1px 2px rgba(23,24,20,0.12), 0 4px 12px -4px rgba(42,95,92,0.45)",
+        "btn-primary": "inset 0 1px 0 rgba(255,255,255,0.2), 0 1px 2px rgba(23,24,20,0.18), 0 8px 20px -6px rgba(29,98,94,0.6)",
       },
       borderRadius: {
         xl: "14px",
