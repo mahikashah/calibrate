@@ -5,5 +5,9 @@ const nextConfig = {
   experimental: {
     serverComponentsExternalPackages: ["@libsql/client", "libsql"],
   },
+  // Redirect "/" before anything renders, so the dashboard shell never flashes.
+  async redirects() {
+    return [{ source: "/", destination: "/start", permanent: false }];
+  },
 };
 module.exports = nextConfig;
