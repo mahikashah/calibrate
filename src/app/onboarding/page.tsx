@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { ChevronLeft, ChevronRight } from "@/components/icons";
 import { postJSON } from "@/lib/client";
 import { ONBOARDING_QUESTIONS, type Hypothesis } from "@/lib/hypothesis";
 
@@ -145,14 +146,14 @@ export default function OnboardingPage() {
             </div>
             {error && <p className="mt-5 text-center text-sm font-medium text-red-700">{error}</p>}
             <div className="calibrate-question-navigation">
-              <button className="calibrate-back static" onClick={goBack}>← Back</button>
+              <button className="calibrate-back static" onClick={goBack}><ChevronLeft className="nudge nudge-back" /> Back</button>
               <button
                 className="calibrate-button calibrate-button-teal min-w-0 px-6 py-2 disabled:cursor-not-allowed disabled:opacity-45"
                 onClick={advanceQuestion}
                 disabled={answers[question.id] === undefined || saving}
               >
-                {saving ? "Building your hypothesis…" : questionStep + 1 === total ? "See my starting hypothesis" : "Next"}{" "}
-                <span aria-hidden="true">→</span>
+                {saving ? "Building your hypothesis…" : questionStep + 1 === total ? "See my starting hypothesis" : "Next"}
+                <ChevronRight className="nudge" />
               </button>
             </div>
           </div>
@@ -184,7 +185,7 @@ export default function OnboardingPage() {
             </p>
             <div className="calibrate-result__actions">
               <Link href="/subjects" className="calibrate-button calibrate-button-teal">
-                Set up my first subject <span aria-hidden="true">→</span>
+                Set up my first subject <ChevronRight className="nudge" />
               </Link>
               <Link href="/dashboard" className="calibrate-button calibrate-button-outline">View Dashboard</Link>
             </div>

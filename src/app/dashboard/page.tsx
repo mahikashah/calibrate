@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { ChevronRight } from "@/components/icons";
 import { getJSON } from "@/lib/client";
 import type { ConfidenceLevel, CurrentRecommendation } from "@/lib/recommend";
 
@@ -83,11 +84,11 @@ export default function Dashboard() {
   const { nextAction, recommendation, evidenceProgress, recentSession, subjects, onboarding } = data;
 
   return (
-    <div className="animate-rise space-y-7">
+    <div className="stagger space-y-7">
       <header className="max-w-2xl">
         <p className="label mb-2">Dashboard</p>
         <h1 className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
-          Find what actually works for you
+          Study smarter, proven by you.
         </h1>
         <p className="mt-3 text-sm leading-relaxed text-muted">
           One next step at a time, backed by your own study results — never a fixed label.
@@ -95,8 +96,12 @@ export default function Dashboard() {
       </header>
 
       {/* 1 — Primary next action: the most prominent thing on the page. */}
-      <section className="graph-paper card overflow-hidden">
-        <div className="p-6 sm:p-8">
+      <section className="graph-paper card relative overflow-hidden">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-brand/10 blur-3xl"
+        />
+        <div className="relative p-6 sm:p-8">
           <p className="label mb-2">What should I do next?</p>
           <h2 className="font-serif text-2xl font-semibold tracking-tight sm:text-3xl">
             {nextAction.title}
@@ -104,6 +109,7 @@ export default function Dashboard() {
           <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted">{nextAction.description}</p>
           <Link href={nextAction.href} className="btn-primary mt-6 min-h-11 px-5">
             {nextAction.ctaLabel}
+            <ChevronRight className="nudge" />
           </Link>
         </div>
       </section>
@@ -120,12 +126,14 @@ export default function Dashboard() {
             </p>
           )}
           <div className="mt-5 flex flex-wrap items-center gap-4">
-            <Link href="/insights" className="text-sm font-medium text-brand hover:underline">
+            <Link href="/insights" className="link">
               View Insights
+              <ChevronRight size={14} className="nudge" />
             </Link>
             {!onboarding.completed && (
-              <Link href="/onboarding" className="text-sm font-medium text-muted hover:text-brand-ink hover:underline">
+              <Link href="/onboarding" className="link text-muted">
                 Set a starting hypothesis
+                <ChevronRight size={14} className="nudge" />
               </Link>
             )}
           </div>
@@ -161,8 +169,9 @@ export default function Dashboard() {
             <p className="label">Recent session</p>
             <h2 className="mt-1 font-serif text-xl font-semibold tracking-tight">What happened last time</h2>
           </div>
-          <Link href="/insights" className="text-sm font-medium text-brand hover:underline">
+          <Link href="/insights" className="link">
             View Insights
+            <ChevronRight size={14} className="nudge" />
           </Link>
         </div>
 
@@ -216,9 +225,10 @@ export default function Dashboard() {
             {recentSession.context.some((item) => item.reason === "questions_wrong") && (
               <Link
                 href="/questions"
-                className="mt-3 inline-flex text-sm font-medium text-brand hover:underline"
+                className="link mt-3"
               >
                 Review questions
+                <ChevronRight size={14} className="nudge" />
               </Link>
             )}
           </article>
@@ -236,14 +246,18 @@ export default function Dashboard() {
             <p className="label">Subjects</p>
             <h2 className="mt-1 font-serif text-xl font-semibold tracking-tight">What you&apos;re studying</h2>
           </div>
-          <Link href="/subjects" className="text-sm font-medium text-brand hover:underline">
+          <Link href="/subjects" className="link">
             View subjects
+            <ChevronRight size={14} className="nudge" />
           </Link>
         </div>
         {subjects.length > 0 ? (
           <ul className="mt-5 grid gap-3 sm:grid-cols-2">
             {subjects.slice(0, 4).map((subject) => (
-              <li key={subject.id} className="rounded-lg border border-line bg-paper/40 p-4">
+              <li
+                key={subject.id}
+                className="rounded-lg border border-line bg-paper/40 p-4 transition duration-300 ease-smooth hover:border-brand/30 hover:bg-surface"
+              >
                 <div className="flex items-center gap-2">
                   <span
                     className="h-2.5 w-2.5 shrink-0 rounded-full"
@@ -293,8 +307,11 @@ function ProgressRow({ value, label }: { value: number; label: string }) {
 
 function Shortcut({ href, title, hint }: { href: string; title: string; hint: string }) {
   return (
-    <Link href={href} className="index-card flex flex-col gap-1 p-4">
-      <span className="text-sm font-semibold text-ink">{title} →</span>
+    <Link href={href} className="index-card group flex flex-col gap-1 p-4">
+      <span className="flex items-center justify-between gap-2 text-sm font-semibold text-ink">
+        {title}
+        <ChevronRight className="nudge text-brand" />
+      </span>
       <span className="text-xs text-muted">{hint}</span>
     </Link>
   );
@@ -303,13 +320,13 @@ function Shortcut({ href, title, hint }: { href: string; title: string; hint: st
 function PageSkeleton() {
   return (
     <div className="space-y-7">
-      <div className="h-9 w-72 animate-pulse rounded bg-line" />
-      <div className="h-44 animate-pulse rounded-xl bg-line" />
+      <div className="h-9 w-72 skeleton rounded" />
+      <div className="h-44 skeleton" />
       <div className="grid gap-4 lg:grid-cols-[1.35fr_1fr]">
-        <div className="h-40 animate-pulse rounded-xl bg-line" />
-        <div className="h-40 animate-pulse rounded-xl bg-line" />
+        <div className="h-40 skeleton" />
+        <div className="h-40 skeleton" />
       </div>
-      <div className="h-40 animate-pulse rounded-xl bg-line" />
+      <div className="h-40 skeleton" />
     </div>
   );
 }

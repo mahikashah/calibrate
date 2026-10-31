@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { ChevronLeft, ChevronRight } from "@/components/icons";
 
 type Step = {
   number: string;
@@ -123,7 +124,7 @@ export default function HowItWorksPage() {
             <span>Calibrate</span>
           </Link>
           <Link href="/start" className="calibrate-start__back">
-            <span aria-hidden="true">←</span> Back
+            <ChevronLeft className="nudge nudge-back" /> Back
           </Link>
         </header>
 
@@ -176,7 +177,7 @@ export default function HowItWorksPage() {
           <p>Start with a few quick questions. We’ll take it from there.</p>
           <div className="calibrate-tour__completion-actions">
             <Link href="/onboarding" className="calibrate-button calibrate-button-dark">
-              Start onboarding <span aria-hidden="true">→</span>
+              Start onboarding <ChevronRight className="nudge" />
             </Link>
             <Link href="/start" className="calibrate-button calibrate-button-outline">
               Back

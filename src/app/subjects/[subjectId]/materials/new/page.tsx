@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ChangeEvent, useEffect, useState } from "react";
+import { ChevronLeft } from "@/components/icons";
 import { QuestionCountControl } from "@/components/QuestionCountControl";
 import { getJSON, postJSON } from "@/lib/client";
 import {
@@ -150,7 +151,7 @@ export default function AddMaterialPage() {
     <div className="calibrate-material-page animate-rise">
       <section className="calibrate-material-card">
         <Link href="/subjects" className="calibrate-material-back">
-          ← Subjects
+          <ChevronLeft className="nudge nudge-back" /> Subjects
         </Link>
         <p className="calibrate-material-eyebrow">Study material</p>
         <p className="calibrate-material-subject">

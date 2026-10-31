@@ -2,6 +2,7 @@
 
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { ChevronRight } from "@/components/icons";
 import { safeNextPath } from "@/lib/auth/safe-next";
 
 function CalibrateMark() {
@@ -104,7 +105,7 @@ function SignInForm() {
               disabled={busy || !email.trim()}
               className="calibrate-button calibrate-button-dark"
             >
-              {busy ? "Signing in…" : "Continue"} <span aria-hidden="true">→</span>
+              {busy ? "Signing in…" : "Continue"} <ChevronRight className="nudge" />
             </button>
             <p id="signin-note" className="calibrate-signin__note">
               During this pilot, signing in uses only your email, so anyone who knows it could open
@@ -120,7 +121,7 @@ function SignInForm() {
             disabled={busy}
             className="calibrate-start__return calibrate-signin__demo"
           >
-            Just looking? Explore the shared demo account <span aria-hidden="true">→</span>
+            Just looking? Explore the shared demo account <ChevronRight className="nudge" />
           </button>
         </div>
       </div>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+import { ChevronRight } from "@/components/icons";
 import { getJSON, postJSON } from "@/lib/client";
 
 const reasons = [
@@ -110,6 +111,7 @@ function FeedbackContent() {
           <p className="mt-2 text-sm text-muted">{error}</p>
           <Link className="btn-primary mt-5 inline-flex min-h-11 items-center" href="/study">
             Start study session
+            <ChevronRight className="nudge" />
           </Link>
         </div>
       </div>
@@ -140,7 +142,7 @@ function FeedbackContent() {
               role="radio"
               aria-checked={overall === value}
               onClick={() => setOverall(value)}
-              className={`min-h-[7rem] rounded-xl border p-5 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
+              className={`min-h-[7rem] rounded-xl border p-5 text-left duration-300 ease-smooth hover:-translate-y-0.5 hover:shadow-card active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
                 overall === value
                   ? "border-brand bg-brand-soft ring-1 ring-brand"
                   : "border-line bg-surface hover:border-brand/60"
@@ -158,7 +160,7 @@ function FeedbackContent() {
         </div>
 
         {overall && (
-          <div className="mt-8 border-t border-line pt-6">
+          <div className="mt-8 animate-expand border-t border-line pt-6">
             <label className="text-sm font-semibold" htmlFor="calm-wired">
               How did you feel while studying?
             </label>
@@ -182,7 +184,7 @@ function FeedbackContent() {
         )}
 
         {overall === "rough" && (
-          <div className="mt-8 border-t border-line pt-6">
+          <div className="mt-8 animate-expand border-t border-line pt-6">
             <h2 className="font-serif text-xl font-semibold">What got in the way?</h2>
             <p className="mt-1 text-sm text-muted">
               Select all that apply. This context doesn&apos;t change your score.
@@ -219,6 +221,7 @@ function FeedbackContent() {
             disabled={saving}
           >
             {saving ? "Saving feedback…" : "Submit feedback"}
+            {!saving && <ChevronRight className="nudge" />}
           </button>
         )}
         {error && (

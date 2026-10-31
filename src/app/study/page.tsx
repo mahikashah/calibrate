@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown, ChevronRight } from "@/components/icons";
 import { getJSON, postJSON } from "@/lib/client";
 import { outcomeScore } from "@/lib/stats";
-import { TECHNIQUES, techniqueLabel, type TechniqueId } from "@/lib/techniques";
+import { TECHNIQUES, type TechniqueId } from "@/lib/techniques";
 import { techniqueGuidance } from "@/lib/technique-guidance";
 import { isSimpleAnswerCorrect, isValidMcq, parseAnswerChoices, questionTypeLabel } from "@/lib/study-session";
 import type { Hypothesis } from "@/lib/hypothesis";
@@ -31,7 +32,7 @@ interface SessionResult {
 
 export default function StudyPage() {
   return (
-    <Suspense fallback={<div className="animate-rise mx-auto max-w-2xl">Loading study session…</div>}>
+    <Suspense fallback={<StudySkeleton />}>
       <StudyPageContent />
     </Suspense>
   );
@@ -263,7 +264,7 @@ function StudyPageContent() {
   }
 
   if (loading) {
-    return <div className="animate-rise mx-auto max-w-2xl">Loading your study session…</div>;
+    return <StudySkeleton />;
   }
   if (error && !started) {
     return <Message title="We couldn’t open this study session." detail={error} />;
@@ -319,17 +320,16 @@ function StudyPageContent() {
 
   if (!started) {
     return (
-      <div className="animate-rise mx-auto max-w-2xl space-y-6">
+      <div className="stagger mx-auto max-w-5xl space-y-6">
         <StudyHeader />
-        <SessionContextCard
-          subjectName={subject?.name ?? "Subject"}
-          materialTitle={material?.title ?? null}
-          approvedCount={questions.length}
-          technique={technique}
-          recommended={recommended}
-          onUseRecommended={() => recommended && setTechnique(recommended.id as TechniqueId)}
-        />
-        <TechniquePicker technique={technique} setTechnique={setTechnique} />
+        <div className="grid items-start gap-6 md:grid-cols-2">
+          <SessionContextCard
+            subjectName={subject?.name ?? "Subject"}
+            recommended={recommended}
+            onUseRecommended={() => recommended && setTechnique(recommended.id as TechniqueId)}
+          />
+          <TechniquePicker technique={technique} setTechnique={setTechnique} />
+        </div>
         <SessionPreview
           subjectName={subject?.name ?? "Subject"}
           materialTitle={material?.title ?? null}
@@ -355,11 +355,13 @@ function StudyPageContent() {
               }}
             >
               Done reading — start outcome check
+              <ChevronRight className="nudge" />
             </button>
           </section>
         ) : (
           <button type="button" className="btn-primary w-full min-h-12 py-3" onClick={begin}>
             Start session
+            <ChevronRight className="nudge" />
           </button>
         )}
       </div>
@@ -393,16 +395,19 @@ function StudyPageContent() {
         </div>
       </header>
       <div
-        className="h-1.5 overflow-hidden rounded bg-line"
+        className="h-1.5 overflow-hidden rounded bg-line/70"
         role="progressbar"
         aria-label="Study progress"
         aria-valuenow={index + 1}
         aria-valuemin={1}
         aria-valuemax={questions.length}
       >
-        <div className="h-full bg-brand" style={{ width: `${((index + 1) / questions.length) * 100}%` }} />
+        <div
+          className="h-full rounded bg-gradient-to-r from-sage to-brand transition-[width] duration-500 ease-smooth"
+          style={{ width: `${((index + 1) / questions.length) * 100}%` }}
+        />
       </div>
-      <section className="card p-6 sm:p-8">
+      <section key={current.id} className="card animate-rise p-6 sm:p-8">
         <p className="label">{questionTypeLabel(current.type)}</p>
         <h1 className="mt-3 text-2xl font-semibold leading-tight break-words">{current.prompt}</h1>
         {!revealed && current.type === "mcq" && !invalidMcq && (
@@ -412,7 +417,9 @@ function StudyPageContent() {
               <label
                 key={choice}
                 className={`flex min-h-14 cursor-pointer items-start gap-3 rounded-lg border p-4 text-sm focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-brand ${
-                  selectedChoice === choice ? "border-brand bg-brand-soft" : "border-line"
+                  selectedChoice === choice
+                    ? "border-brand bg-brand-soft shadow-glow"
+                    : "border-line hover:border-brand/40 hover:bg-brand-soft/30"
                 }`}
               >
                 <input
@@ -438,6 +445,7 @@ function StudyPageContent() {
             <div className="mt-3 flex flex-wrap gap-3">
               <button type="button" className="btn-primary min-h-11" onClick={() => advance(false)}>
                 Skip question
+                <ChevronRight className="nudge" />
               </button>
               <Link className="self-center text-sm font-medium text-brand hover:underline" href="/questions">
                 Review questions
@@ -481,6 +489,7 @@ function StudyPageContent() {
             onClick={reveal}
           >
             Submit and reveal
+            <ChevronRight className="nudge" />
           </button>
         ) : null}
         {revealed && (
@@ -526,16 +535,10 @@ function StudyHeader() {
 
 function SessionContextCard({
   subjectName,
-  materialTitle,
-  approvedCount,
-  technique,
   recommended,
   onUseRecommended,
 }: {
   subjectName: string;
-  materialTitle: string | null;
-  approvedCount: number;
-  technique: TechniqueId;
   recommended: { id: string; label: string; why: string } | null;
   onUseRecommended: () => void;
 }) {
@@ -545,26 +548,16 @@ function SessionContextCard({
         <p className="label">Subject</p>
         <p className="font-serif text-xl font-semibold">{subjectName}</p>
       </div>
-      {materialTitle && (
-        <div>
-          <p className="label">Material</p>
-          <p className="text-sm text-muted">{materialTitle}</p>
-        </div>
-      )}
-      <p className="text-sm text-muted">
-        <strong className="text-ink">{approvedCount}</strong> approved question
-        {approvedCount === 1 ? "" : "s"} ready. Only approved questions are used.
-      </p>
-      <p className="text-sm text-muted">
-        Selected technique: <strong className="text-ink">{techniqueLabel(technique)}</strong>
-      </p>
       {recommended && (
         <button
           type="button"
-          className="w-full rounded-lg border border-brand/25 bg-brand-soft px-3 py-3 text-left text-sm text-brand-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+          className="flex w-full items-center justify-between gap-3 rounded-lg border border-brand/25 bg-brand-soft px-3 py-3 text-left text-sm text-brand-ink hover:border-brand/50 hover:shadow-glow focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
           onClick={onUseRecommended}
         >
-          <strong>Suggested: {recommended.label}</strong> — {recommended.why}
+          <span>
+            <strong>Suggested: {recommended.label}</strong> — {recommended.why}
+          </span>
+          <ChevronRight className="nudge shrink-0" />
         </button>
       )}
     </section>
@@ -637,86 +630,91 @@ function StudySetup({
   const ready = Boolean(subjectId && approvedCount && approvedCount > 0);
 
   return (
-    <div className="animate-rise mx-auto max-w-2xl space-y-6">
+    <div className="stagger mx-auto max-w-5xl space-y-6">
       <StudyHeader />
-      <section className="card space-y-4 p-6">
-        <div>
-          <label className="label mb-2 block" htmlFor="study-setup-subject">
-            Subject
-          </label>
-          <select
-            id="study-setup-subject"
-            className="field"
-            value={subjectId}
-            onChange={(event) => setSubjectId(event.target.value)}
-          >
-            {subjects.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        {materials.length > 0 && (
+      <div className="grid items-start gap-6 md:grid-cols-2">
+        <section className="card space-y-4 p-6">
           <div>
-            <label className="label mb-2 block" htmlFor="study-setup-material">
-              Material (optional)
+            <label className="label mb-2 block" htmlFor="study-setup-subject">
+              Subject
             </label>
             <select
-              id="study-setup-material"
+              id="study-setup-subject"
               className="field"
-              value={setupMaterialId}
-              onChange={(event) => setSetupMaterialId(event.target.value)}
+              value={subjectId}
+              onChange={(event) => setSubjectId(event.target.value)}
             >
-              <option value="">All approved questions in this subject</option>
-              {materials.map((item) => (
+              {subjects.map((item) => (
                 <option key={item.id} value={item.id}>
-                  {item.title}
+                  {item.name}
                 </option>
               ))}
             </select>
           </div>
-        )}
-        {approvedCount === null ? (
-          <p className="text-sm text-muted">Checking approved questions…</p>
-        ) : approvedCount === 0 ? (
-          <div className="rounded-lg border border-line bg-paper p-4 text-sm">
-            <p className="font-semibold text-ink">No approved questions yet</p>
-            <p className="mt-1 text-muted">
-              Generate and approve questions before starting an outcome-checked study session.
-            </p>
-            <div className="mt-3 flex flex-wrap gap-3">
-              <Link
-                href={`/questions?subjectId=${encodeURIComponent(subjectId)}`}
-                className="btn-primary min-h-11"
+          {materials.length > 0 && (
+            <div>
+              <label className="label mb-2 block" htmlFor="study-setup-material">
+                Material (optional)
+              </label>
+              <select
+                id="study-setup-material"
+                className="field"
+                value={setupMaterialId}
+                onChange={(event) => setSetupMaterialId(event.target.value)}
               >
-                Go to Question Bank
-              </Link>
-              <Link
-                href={`/subjects/${encodeURIComponent(subjectId)}/materials/new`}
-                className="btn-ghost min-h-11"
-              >
-                Add material
-              </Link>
+                <option value="">All approved questions in this subject</option>
+                {materials.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.title}
+                  </option>
+                ))}
+              </select>
             </div>
-          </div>
-        ) : (
-          <p className="text-sm text-muted">
-            <strong className="text-ink">{approvedCount}</strong> approved question
-            {approvedCount === 1 ? "" : "s"} available for this selection.
-          </p>
-        )}
-        {recommended && approvedCount !== null && approvedCount > 0 && (
-          <button
-            type="button"
-            className="w-full rounded-lg border border-brand/25 bg-brand-soft px-3 py-3 text-left text-sm text-brand-ink"
-            onClick={() => setTechnique(recommended.id as TechniqueId)}
-          >
+          )}
+          {approvedCount === null ? (
+            <p className="text-sm text-muted">Checking approved questions…</p>
+          ) : approvedCount === 0 ? (
+            <div className="rounded-lg border border-line bg-paper p-4 text-sm">
+              <p className="font-semibold text-ink">No approved questions yet</p>
+              <p className="mt-1 text-muted">
+                Generate and approve questions before starting an outcome-checked study session.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-3">
+                <Link
+                  href={`/questions?subjectId=${encodeURIComponent(subjectId)}`}
+                  className="btn-primary min-h-11"
+                >
+                  Go to Question Bank
+                </Link>
+                <Link
+                  href={`/subjects/${encodeURIComponent(subjectId)}/materials/new`}
+                  className="btn-ghost min-h-11"
+                >
+                  Add material
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted">
+              <strong className="text-ink">{approvedCount}</strong> approved question
+              {approvedCount === 1 ? "" : "s"} available for this selection.
+            </p>
+          )}
+          {recommended && approvedCount !== null && approvedCount > 0 && (
+            <button
+              type="button"
+              className="flex w-full items-center justify-between gap-3 rounded-lg border border-brand/25 bg-brand-soft px-3 py-3 text-left text-sm text-brand-ink hover:border-brand/50 hover:shadow-glow"
+              onClick={() => setTechnique(recommended.id as TechniqueId)}
+            >
+              <span>
             <strong>Suggested: {recommended.label}</strong> — {recommended.why}
-          </button>
-        )}
-      </section>
-      <TechniquePicker technique={technique} setTechnique={setTechnique} />
+          </span>
+          <ChevronRight className="nudge shrink-0" />
+            </button>
+          )}
+        </section>
+        <TechniquePicker technique={technique} setTechnique={setTechnique} />
+      </div>
       {ready && subject && approvedCount !== null && (
         <SessionPreview
           subjectName={subject.name}
@@ -732,6 +730,7 @@ function StudySetup({
         onClick={onStart}
       >
         Start session
+        <ChevronRight className="nudge" />
       </button>
     </div>
   );
@@ -761,8 +760,10 @@ function TechniquePicker({
           return (
             <div
               key={item.id}
-              className={`rounded-xl border p-4 transition ${
-                selected ? "border-brand bg-brand-soft/40 ring-2 ring-brand" : "border-line bg-surface"
+              className={`rounded-xl border p-4 transition duration-300 ease-smooth ${
+                selected
+                  ? "border-brand bg-brand-soft/40 shadow-glow ring-1 ring-brand"
+                  : "border-line bg-surface hover:-translate-y-0.5 hover:border-brand/30 hover:shadow-card"
               }`}
             >
               <button
@@ -780,15 +781,19 @@ function TechniquePicker({
               </button>
               <button
                 type="button"
-                className="mt-3 text-sm font-medium text-brand underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-brand hover:text-brand-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
                 aria-expanded={expanded}
                 aria-controls={`how-to-${item.id}`}
                 onClick={() => setExpandedId((current) => (current === item.id ? null : item.id))}
               >
                 {expanded ? "Hide how to do it" : "How to do it"}
+                <ChevronDown
+                  size={14}
+                  className={`transition-transform duration-300 ease-smooth ${expanded ? "rotate-180" : ""}`}
+                />
               </button>
               {expanded && (
-                <div id={`how-to-${item.id}`} className="mt-3 space-y-2 border-t border-line pt-3 text-sm">
+                <div id={`how-to-${item.id}`} className="mt-3 animate-expand space-y-2 border-t border-line pt-3 text-sm">
                   <ol className="list-decimal space-y-1 pl-5 text-muted">
                     {guide.howTo.map((step) => (
                       <li key={step}>{step}</li>
@@ -826,7 +831,7 @@ function Reveal({
 }) {
   const correct = assessment === true;
   return (
-    <div className="mt-6 space-y-4 border-t border-line pt-5" aria-live="polite">
+    <div className="mt-6 animate-expand space-y-4 border-t border-line pt-5" aria-live="polite">
       <p
         className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm font-semibold ${
           automatic
@@ -847,9 +852,12 @@ function Reveal({
         <p className="mt-1 whitespace-pre-wrap break-words text-sm">{question.answer}</p>
       </div>
       {question.sourceExcerpt && (
-        <details>
-          <summary className="cursor-pointer text-sm font-medium text-brand">View supporting notes</summary>
-          <p className="mt-2 whitespace-pre-wrap break-words rounded-lg border border-line p-3 text-sm text-muted">
+        <details className="group">
+          <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-sm font-medium text-brand hover:text-brand-ink [&::-webkit-details-marker]:hidden">
+            <ChevronRight size={14} className="transition-transform duration-200 ease-smooth group-open:rotate-90" />
+            View supporting notes
+          </summary>
+          <p className="mt-2 animate-expand whitespace-pre-wrap break-words rounded-lg border border-line p-3 text-sm text-muted">
             {question.sourceExcerpt}
           </p>
         </details>
@@ -882,6 +890,7 @@ function Reveal({
         onClick={() => assessment !== null && onNext(assessment)}
       >
         {saving ? "Saving session…" : "Next question"}
+        {!saving && <ChevronRight className="nudge" />}
       </button>
     </div>
   );
@@ -902,7 +911,7 @@ function Completion({ result, technique }: { result: SessionResult; technique: T
 
   return (
     <div className="animate-rise mx-auto max-w-lg">
-      <div className="card graph-paper p-8 text-center">
+      <div className="card graph-paper p-8 text-center shadow-lift">
         <p className="label">Session complete</p>
         <h1 className="mt-2 font-serif text-3xl font-semibold tracking-tight">How did you perform?</h1>
         <p className="mt-2 text-sm text-muted">
@@ -910,7 +919,7 @@ function Completion({ result, technique }: { result: SessionResult; technique: T
           {result.materialTitle ? ` · ${result.materialTitle}` : ""}
         </p>
 
-        <dl className="mt-6 grid grid-cols-2 gap-4 text-left text-sm">
+        <dl className="stagger mt-6 grid grid-cols-2 gap-4 text-left text-sm">
           <div>
             <dt className="label">Correct</dt>
             <dd className="stat text-xl">
@@ -945,6 +954,7 @@ function Completion({ result, technique }: { result: SessionResult; technique: T
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
           <Link href={feedbackHref} className="btn-primary inline-flex min-h-12 items-center justify-center px-6">
             Continue
+            <ChevronRight className="nudge" />
           </Link>
           <Link href="/insights" className="btn-ghost inline-flex min-h-12 items-center justify-center px-6">
             View Insights
@@ -978,6 +988,7 @@ function Message({
         <div className="mt-5 flex flex-wrap justify-center gap-3">
           <Link className="btn-primary inline-flex min-h-11 items-center" href={href}>
             {action}
+            <ChevronRight className="nudge" />
           </Link>
           {secondaryHref && secondaryAction && (
             <Link className="btn-ghost inline-flex min-h-11 items-center" href={secondaryHref}>
@@ -985,6 +996,19 @@ function Message({
             </Link>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function StudySkeleton() {
+  return (
+    <div className="mx-auto max-w-5xl space-y-6" aria-busy="true" aria-label="Loading study session">
+      <div className="skeleton h-9 w-72 rounded" />
+      <div className="skeleton h-24" />
+      <div className="grid gap-6 md:grid-cols-2">
+        <div className="skeleton h-40" />
+        <div className="skeleton h-80" />
       </div>
     </div>
   );

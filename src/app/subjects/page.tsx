@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { ChevronRight } from "@/components/icons";
 import { deleteJSON, getJSON, postJSON } from "@/lib/client";
 
 interface Subject {
@@ -23,6 +24,8 @@ export default function SubjectsPage() {
   const [saving, setSaving] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [createError, setCreateError] = useState<string | null>(null);
+  // Until the first fetch resolves, an empty list means "unknown", not "no subjects".
+  const [loaded, setLoaded] = useState(false);
 
   async function refresh() {
     const [subs, ses, qs] = await Promise.all([
@@ -36,7 +39,7 @@ export default function SubjectsPage() {
   }
 
   useEffect(() => {
-    refresh();
+    refresh().finally(() => setLoaded(true));
   }, []);
 
   const counts = useMemo(() => {
@@ -72,6 +75,8 @@ export default function SubjectsPage() {
       setDeleteError((err as Error).message);
     }
   }
+
+  if (!loaded) return <SubjectsSkeleton />;
 
   return (
     <div className={`animate-rise ${subjects.length === 0 ? "calibrate-subject-setup" : "space-y-8"}`}>
@@ -114,6 +119,7 @@ export default function SubjectsPage() {
             {createError && <p id="subject-create-error" className="calibrate-form-error">{createError}</p>}
             <button type="button" onClick={create} disabled={saving || !name.trim()} className="calibrate-button calibrate-button-teal">
               {saving ? "Creating subject…" : "Continue"}
+              {!saving && <ChevronRight className="nudge" />}
             </button>
           </div>
         </section>
@@ -161,6 +167,7 @@ export default function SubjectsPage() {
           </div>
           <button type="button" onClick={create} disabled={saving || !name.trim()} className="btn-primary min-h-11">
             {saving ? "Adding…" : "Continue"}
+            {!saving && <ChevronRight className="nudge" />}
           </button>
             </div>
             {createError && <p className="calibrate-form-error mt-3" role="alert">{createError}</p>}
@@ -177,9 +184,9 @@ export default function SubjectsPage() {
               Your subjects
               <span className="ml-2 stat text-sm font-normal text-muted">{subjects.length}</span>
             </h2>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="stagger grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {subjects.map((s) => (
-              <div key={s.id} className="card flex items-center gap-3 p-5">
+              <div key={s.id} className="card card-interactive flex items-center gap-3 p-5">
                 <span
                   className="h-10 w-1.5 shrink-0 rounded-full"
                   style={{ background: s.color }}
@@ -189,8 +196,9 @@ export default function SubjectsPage() {
                   <p className="stat text-xs text-muted">
                     {counts[s.id]?.sessions ?? 0} sessions · {counts[s.id]?.questions ?? 0} questions
                   </p>
-                  <Link href={`/subjects/${s.id}/materials/new`} className="mt-2 inline-block text-xs font-semibold text-brand-ink underline underline-offset-2">
+                  <Link href={`/subjects/${s.id}/materials/new`} className="link mt-2 text-xs font-semibold text-brand-ink">
                     Add material
+                    <ChevronRight size={13} className="nudge" />
                   </Link>
                 </div>
                 <button
@@ -212,6 +220,23 @@ export default function SubjectsPage() {
           </section>
         </>
       )}
+    </div>
+  );
+}
+
+function SubjectsSkeleton() {
+  return (
+    <div className="space-y-8" aria-busy="true" aria-label="Loading subjects">
+      <div className="space-y-2">
+        <div className="skeleton h-3 w-20 rounded" />
+        <div className="skeleton h-9 w-80 rounded" />
+      </div>
+      <div className="skeleton h-28" />
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="skeleton h-24" />
+        <div className="skeleton h-24" />
+        <div className="skeleton h-24" />
+      </div>
     </div>
   );
 }
