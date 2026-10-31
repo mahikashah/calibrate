@@ -838,6 +838,95 @@ describe("Question-Bank persistence flow", () => {
     expect(sharedDb.select().from(schema.materials).all()).toHaveLength(0);
   });
 
+  function pdfRequestWithFile(file: File): Request {
+    const form = new FormData();
+    form.set("subjectId", SEED_SUBJECT_ID);
+    form.set("file", file);
+    return new Request("http://localhost/api/pdf", { method: "POST", body: form });
+  }
+
+  it("rejects a PDF over the size cap before parsing it", async () => {
+    const { PDF_MAX_BYTES } = await import("../pdf-upload");
+    vi.mocked(mlService.parsePdf).mockClear();
+    const big = new File([new Uint8Array(PDF_MAX_BYTES + 1)], "huge.pdf", {
+      type: "application/pdf",
+    });
+
+    const res = await uploadPdf(pdfRequestWithFile(big));
+
+    expect(res.status).toBe(413);
+    expect((await jsonBody<{ error: string }>(res)).error).toContain("4 MB");
+    expect(mlService.parsePdf).not.toHaveBeenCalled();
+  });
+
+  it("rejects a non-PDF file and accepts a .pdf with an empty MIME type", async () => {
+    const notPdf = await uploadPdf(
+      pdfRequestWithFile(new File(["hello"], "notes.txt", { type: "text/plain" })),
+    );
+    expect(notPdf.status).toBe(422);
+
+    const untyped = await uploadPdf(
+      pdfRequestWithFile(new File(["%PDF-test"], "lecture.pdf", { type: "" })),
+    );
+    expect(untyped.status).toBe(201);
+  });
+
+  it("does not leave a material behind when a PDF yields no grounded questions", async () => {
+    vi.mocked(mlService.generateQuestions).mockResolvedValueOnce([]);
+
+    const res = await uploadPdf(pdfUploadRequest(SEED_SUBJECT_ID));
+
+    expect(res.status).toBe(422);
+    expect(sharedDb.select().from(schema.materials).all()).toHaveLength(0);
+  });
+
+  it("passes the word count through when PDF text is over the word limit", async () => {
+    const { MlServiceError } = await import("../ml-service");
+    // The message wording is covered in pdf-upload.test.ts; this checks the
+    // route passes the client's message through to the student unchanged.
+    const message = "This material has 5,200 words; the limit is 4,600.";
+    vi.mocked(mlService.generateQuestions).mockRejectedValueOnce(
+      new MlServiceError("NOTES_TOO_LONG", "ML service returned HTTP 413", message),
+    );
+
+    const res = await uploadPdf(pdfUploadRequest(SEED_SUBJECT_ID));
+
+    expect(res.status).toBe(422);
+    expect((await jsonBody<{ error: string }>(res)).error).toBe(message);
+    expect(sharedDb.select().from(schema.materials).all()).toHaveLength(0);
+  });
+
+  it("uses the explicit demo generator for PDFs in demo mode, uncapped and unlogged", async () => {
+    vi.stubEnv("CALIBRATE_DEMO_MODE", "true");
+    try {
+      vi.mocked(mlService.generateQuestions).mockClear();
+      vi.mocked(mlService.parsePdf).mockResolvedValueOnce({
+        text: "Neurons transmit signals using electrical impulses. Synapses connect neurons to each other. Dopamine is a neurotransmitter linked to reward.",
+        word_count: 19,
+        approx_token_count: 25,
+        file_name: "neuro.pdf",
+      });
+      const eventsBefore = sharedDb.select().from(schema.generationEvents).all().length;
+
+      const res = await uploadPdf(pdfUploadRequest(SEED_SUBJECT_ID, 2));
+
+      expect(res.status).toBe(201);
+      const body = await jsonBody<{ provider: string; questionCount: number }>(res);
+      expect(body.provider).toBe("calibrate-demo");
+      expect(body.questionCount).toBeGreaterThan(0);
+      expect(mlService.generateQuestions).not.toHaveBeenCalled();
+      expect(sharedDb.select().from(schema.generationEvents).all()).toHaveLength(eventsBefore);
+    } finally {
+      vi.unstubAllEnvs();
+      vi.stubEnv("GENERATIONS_PER_DAY", "1000");
+    }
+  });
+
+  it("reports the real provider for PDFs outside demo mode", async () => {
+    const res = await uploadPdf(pdfUploadRequest(SEED_SUBJECT_ID));
+    expect((await jsonBody<{ provider: string }>(res)).provider).toBe("calibrate-ml");
+  });
+
   it("approves a generated question without changing its structured data", async () => {
     const generated = await generateQuestions(
       postRequest({ subjectId: SEED_SUBJECT_ID, materialText: "A concept has evidence.", count: 1 }),

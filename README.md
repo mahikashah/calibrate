@@ -126,7 +126,7 @@ Choose question target
 Generate questions
 ```
 
-**PDF limitation:** Calibrate currently supports text-based PDFs. Scanned/image-only PDFs are not supported because OCR is not part of the current MVP.
+**PDF limitation:** Calibrate currently supports text-based PDFs up to 4 MB (Vercel rejects larger request bodies). Scanned/image-only PDFs are not supported because OCR is not part of the current MVP. The extracted text must also fit the same 4,600-word limit as pasted notes. PDFs can be uploaded from the Add material page or the Question Bank generator.
 
 ### 3. Question generation
 

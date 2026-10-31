@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { ChangeEvent, useEffect, useState } from "react";
 import { QuestionCountControl } from "@/components/QuestionCountControl";
 import { getJSON, postJSON } from "@/lib/client";
+import { PDF_MAX_LABEL, pdfUploadError } from "@/lib/pdf-upload";
 import {
   QUESTION_COUNT_DEFAULT,
   shortfallCopy,
@@ -55,8 +56,9 @@ export default function AddMaterialPage() {
 
   function chooseFile(event: ChangeEvent<HTMLInputElement>) {
     const selected = event.target.files?.[0] ?? null;
-    if (selected && selected.type !== "application/pdf") {
-      setError("Please select a PDF file.");
+    const fileError = selected && pdfUploadError(selected);
+    if (fileError) {
+      setError(fileError);
       event.target.value = "";
       return;
     }
@@ -255,7 +257,7 @@ export default function AddMaterialPage() {
                   <small>
                     {file
                       ? "PDF selected. Click below to generate questions."
-                      : "PDF files only. You can replace it before uploading."}
+                      : `PDF files up to ${PDF_MAX_LABEL}. You can replace it before uploading.`}
                   </small>
                 </label>
                 {file && (
