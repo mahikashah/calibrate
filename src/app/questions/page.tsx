@@ -102,6 +102,7 @@ function QuestionsPageContent() {
     fromGenerate && urlMaterialId ? urlMaterialId : null,
   );
   const [source, setSource] = useState<"notes" | "pdf">("notes");
+  const pdfInputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -340,6 +341,8 @@ function QuestionsPageContent() {
     }
     setError(null);
     setFile(selected);
+    // Clear the input so picking the same file again (e.g. after removing it) still registers.
+    event.target.value = "";
   }
 
   /** Saves notes, then generates; reuses the saved material on retry. */
@@ -602,10 +605,21 @@ function QuestionsPageContent() {
                   onClick={() => {
                     setSource("pdf");
                     setError(null);
+                    // Open the file picker straight away instead of making them find the dropzone.
+                    pdfInputRef.current?.click();
                   }}
                 >
                   <span>2</span> Upload PDF
                 </button>
+                <input
+                  ref={pdfInputRef}
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  onChange={chooseFile}
+                  hidden
+                  tabIndex={-1}
+                  aria-hidden="true"
+                />
               </div>
 
               <div>

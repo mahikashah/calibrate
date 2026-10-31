@@ -2990,3 +2990,90 @@ select.field {
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
+
+/* ---- Sidebar study buddy: cheers the student on ---- */
+.sidebar-buddy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  animation: rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.sidebar-buddy__bubble {
+  position: relative;
+  max-width: 13rem;
+  margin: 0 0 0.4rem;
+  padding: 0.55rem 0.85rem;
+  border: 1px solid #d5e5dc;
+  border-radius: 1rem;
+  background: #ffffff;
+  box-shadow: 0 12px 22px -18px rgba(42, 95, 92, 0.6);
+  color: #2f6f6a;
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
+  text-wrap: balance;
+  transform-origin: 50% 100%;
+  animation: test-pop 420ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.sidebar-buddy__bubble::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-right: 1px solid #d5e5dc;
+  border-bottom: 1px solid #d5e5dc;
+  background: #ffffff;
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+.sidebar-buddy__button {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  border-radius: 9999px;
+}
+.sidebar-buddy__button:focus-visible { outline: 2px solid #3f817d; outline-offset: 4px; }
+/* Idle sway, plus a hop every time a new cheer comes in (the image is re-keyed per cheer). */
+.sidebar-buddy__image {
+  display: block;
+  width: 7.5rem;
+  height: 7.5rem;
+  object-fit: contain;
+  animation:
+    sidebar-buddy-hop 700ms cubic-bezier(0.34, 1.56, 0.64, 1) both,
+    sidebar-buddy-sway 3.2s ease-in-out 700ms infinite;
+}
+.sidebar-buddy__button:hover .sidebar-buddy__image { animation-play-state: paused; }
+.sidebar-buddy__name {
+  margin: 0;
+  color: #73766d;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+@keyframes sidebar-buddy-hop {
+  0% { transform: translateY(0) scale(1, 1); }
+  25% { transform: translateY(2px) scale(1.06, 0.92); }
+  55% { transform: translateY(-14px) scale(0.96, 1.05) rotate(-4deg); }
+  80% { transform: translateY(0) scale(1.04, 0.96); }
+  100% { transform: translateY(0) scale(1, 1); }
+}
+@keyframes sidebar-buddy-sway {
+  0%, 100% { transform: rotate(0) translateY(0); }
+  25% { transform: rotate(-3deg) translateY(-3px); }
+  75% { transform: rotate(3deg) translateY(-3px); }
+}
+/* Short laptop screens: keep the buddy from crowding the nav. */
+@media (max-height: 760px) {
+  .sidebar-buddy__image { width: 5.5rem; height: 5.5rem; }
+  .sidebar-buddy__bubble { font-size: 0.76rem; }
+}
+@media (max-height: 620px) {
+  .sidebar-buddy { display: none; }
+}

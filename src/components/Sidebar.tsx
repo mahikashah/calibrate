@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AccountControl } from "@/components/AccountControl";
 import { ChevronRight } from "@/components/icons";
+import { SidebarBuddy } from "@/components/SidebarBuddy";
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard" },
@@ -73,7 +74,11 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="mt-auto space-y-4 px-3 pt-8">
+      <div className="flex flex-1 items-center justify-center py-6">
+        <SidebarBuddy />
+      </div>
+
+      <div className="space-y-4 px-3 pt-8">
         <p className="text-sm leading-relaxed text-muted">
           Test techniques as experiments. Let your own results decide what works.
         </p>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ChangeEvent, useEffect, useState } from "react";
+import { ChangeEvent, useEffect, useRef, useState } from "react";
 import { ChevronLeft } from "@/components/icons";
 import { QuestionCountControl } from "@/components/QuestionCountControl";
 import { getJSON, postJSON } from "@/lib/client";
@@ -26,6 +26,7 @@ export default function AddMaterialPage() {
   const [subject, setSubject] = useState<Subject | null>(null);
   const [source, setSource] = useState<Source>("pdf");
   const [file, setFile] = useState<File | null>(null);
+  const pdfInputRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [count, setCount] = useState(QUESTION_COUNT_DEFAULT);
@@ -65,6 +66,8 @@ export default function AddMaterialPage() {
     }
     setError("");
     setFile(selected);
+    // Clear the input so picking the same file again (e.g. after removing it) still registers.
+    event.target.value = "";
   }
 
   async function generateFromPdf() {
@@ -216,7 +219,11 @@ export default function AddMaterialPage() {
                 role="tab"
                 aria-selected={source === "pdf"}
                 className={source === "pdf" ? "is-selected" : ""}
-                onClick={() => setSource("pdf")}
+                onClick={() => {
+                  setSource("pdf");
+                  // Open the file picker straight away instead of making them find the dropzone.
+                  pdfInputRef.current?.click();
+                }}
               >
                 <span>1</span> Upload PDF <small>Recommended</small>
               </button>
@@ -229,6 +236,15 @@ export default function AddMaterialPage() {
               >
                 <span>2</span> Paste notes
               </button>
+              <input
+                ref={pdfInputRef}
+                type="file"
+                accept="application/pdf,.pdf"
+                onChange={chooseFile}
+                hidden
+                tabIndex={-1}
+                aria-hidden="true"
+              />
             </div>
 
             <QuestionCountControl value={count} onChange={setCount} id="material-question-count" />
