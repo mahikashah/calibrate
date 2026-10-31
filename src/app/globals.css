@@ -109,9 +109,20 @@ select.field {
   }
   /* Deep, saturated teal so primary actions stand out on paper, sage and grid surfaces. */
   .btn-primary {
-    @apply btn bg-gradient-to-b from-[#2f8a84] to-[#1d625e] font-semibold text-white shadow-btn-primary
-           ring-1 ring-inset ring-[#174f4c]/60
-           hover:-translate-y-px hover:from-[#287c77] hover:to-[#174f4c];
+    @apply btn font-semibold text-white shadow-btn-primary ring-1 ring-inset ring-[#174f4c]/60 hover:-translate-y-px;
+    /* Plain CSS with a solid fallback color, so the fill can never resolve to transparent. */
+    background-color: #1f6a66;
+    background-image: linear-gradient(180deg, #2f8a84 0%, #1d625e 100%);
+  }
+  .btn-primary:hover {
+    background-color: #1a5b57;
+    background-image: linear-gradient(180deg, #287c77 0%, #174f4c 100%);
+  }
+  /* Disabled primary buttons stay legible: a solid muted fill with dark text,
+     instead of fading white text into a pale background. */
+  .btn-primary:disabled {
+    @apply cursor-not-allowed bg-none bg-[#e1e9e5] text-[#56706b] opacity-100 shadow-none ring-[#c9d8d2];
+    transform: none;
   }
   /* Larger size for the one main action on a screen. */
   .btn-lg {
@@ -2079,4 +2090,83 @@ select.field {
 @keyframes intro-breathe {
   0%, 100% { opacity: 1; transform: translate(-50%, -55%) scale(1); }
   50% { opacity: 0.7; transform: translate(-50%, -55%) scale(1.06); }
+}
+
+/* ---- Start page mascot: sits beside the CTA, floats gently, and says hi ---- */
+/* Absolutely positioned so the CTA stays centered under the headline. The actions row
+   is centered on the page, so 50% + 50vw is the right edge of the screen. */
+.calibrate-start__actions { position: relative; }
+.calibrate-mascot {
+  position: absolute;
+  top: 50%;
+  left: calc(50% + 50vw - 8.5rem - 2rem);
+  width: 8.5rem;
+  height: 8.5rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+.calibrate-mascot:focus-visible { outline: 2px solid #3f817d; outline-offset: 4px; border-radius: 9999px; }
+.calibrate-mascot__body {
+  display: block;
+  width: 100%;
+  height: 100%;
+  animation: mascot-float 4.5s ease-in-out infinite;
+}
+.calibrate-mascot:hover .calibrate-mascot__body { animation-play-state: paused; }
+/* The clip has a solid backdrop, so crop it to a circle that fades into the page. */
+.calibrate-mascot__video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 9999px;
+  -webkit-mask-image: radial-gradient(circle closest-side, #000 72%, transparent 100%);
+  mask-image: radial-gradient(circle closest-side, #000 72%, transparent 100%);
+  pointer-events: none;
+}
+.calibrate-mascot__body img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  user-select: none;
+}
+/* Right-aligned to the mascot so the longer line stays on screen near the edge. */
+.calibrate-mascot__hi {
+  position: absolute;
+  right: 1rem;
+  bottom: calc(100% - 0.25rem);
+  padding: 0.4rem 0.75rem;
+  border-radius: 0.9rem;
+  background: #171814;
+  color: #f7f5ec;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(6px) scale(0.85);
+  transform-origin: calc(100% - 3.25rem) 100%;
+  transition: opacity 220ms ease, transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
+}
+.calibrate-mascot__hi::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  right: calc(3.25rem - 6px);
+  border: 6px solid transparent;
+  border-top-color: #171814;
+}
+.calibrate-mascot__hi.is-visible { opacity: 1; transform: translateY(0) scale(1); }
+@keyframes mascot-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+/* Not enough room beside the button on small screens: sit above it instead. */
+@media (max-width: 640px) {
+  .calibrate-start__actions { flex-direction: column-reverse; align-items: center; }
+  .calibrate-mascot { position: relative; top: auto; left: auto; width: 7rem; height: 7rem; margin-top: 2.25rem; transform: none; }
 }

@@ -322,13 +322,13 @@ function StudyPageContent() {
     return (
       <div className="stagger mx-auto max-w-5xl space-y-6">
         <StudyHeader />
-        <div className="grid items-start gap-6 md:grid-cols-2">
+        <div className="relative z-10 grid gap-6 md:grid-cols-2">
+          <TechniquePicker technique={technique} setTechnique={setTechnique} />
           <SessionContextCard
             subjectName={subject?.name ?? "Subject"}
             recommended={recommended}
             onUseRecommended={() => recommended && setTechnique(recommended.id as TechniqueId)}
           />
-          <TechniquePicker technique={technique} setTechnique={setTechnique} />
         </div>
         <SessionPreview
           subjectName={subject?.name ?? "Subject"}
@@ -632,7 +632,8 @@ function StudySetup({
   return (
     <div className="stagger mx-auto max-w-5xl space-y-6">
       <StudyHeader />
-      <div className="grid items-start gap-6 md:grid-cols-2">
+      <div className="relative z-10 grid gap-6 md:grid-cols-2">
+        <TechniquePicker technique={technique} setTechnique={setTechnique} />
         <section className="card space-y-4 p-6">
           <div>
             <label className="label mb-2 block" htmlFor="study-setup-subject">
@@ -713,7 +714,6 @@ function StudySetup({
             </button>
           )}
         </section>
-        <TechniquePicker technique={technique} setTechnique={setTechnique} />
       </div>
       {ready && subject && approvedCount !== null && (
         <SessionPreview
@@ -743,70 +743,148 @@ function TechniquePicker({
   technique: TechniqueId;
   setTechnique: (value: TechniqueId) => void;
 }) {
-  const [expandedId, setExpandedId] = useState<TechniqueId | null>(technique);
+  const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const optionRefs = useRef<(HTMLLIElement | null)[]>([]);
+  const selectedIndex = Math.max(0, TECHNIQUES.findIndex((item) => item.id === technique));
+  const guide = techniqueGuidance(technique);
+
+  // Close when clicking anywhere outside the dropdown.
+  useEffect(() => {
+    if (!open) return;
+    function onPointerDown(event: PointerEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [open]);
 
   useEffect(() => {
-    setExpandedId(technique);
-  }, [technique]);
+    if (open) optionRefs.current[activeIndex]?.focus();
+  }, [open, activeIndex]);
+
+  function openList() {
+    setActiveIndex(selectedIndex);
+    setOpen(true);
+  }
+
+  function choose(index: number) {
+    setTechnique(TECHNIQUES[index].id);
+    setOpen(false);
+    triggerRef.current?.focus();
+  }
+
+  function onListKeyDown(event: React.KeyboardEvent) {
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setActiveIndex((index) => (index + 1) % TECHNIQUES.length);
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setActiveIndex((index) => (index - 1 + TECHNIQUES.length) % TECHNIQUES.length);
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      setActiveIndex(0);
+    } else if (event.key === "End") {
+      event.preventDefault();
+      setActiveIndex(TECHNIQUES.length - 1);
+    } else if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      choose(activeIndex);
+    } else if (event.key === "Escape" || event.key === "Tab") {
+      if (event.key === "Escape") event.preventDefault();
+      setOpen(false);
+      triggerRef.current?.focus();
+    }
+  }
 
   return (
-    <section>
-      <p className="label mb-2">Choose a technique to test</p>
-      <div className="grid gap-3" role="radiogroup" aria-label="Study technique">
-        {TECHNIQUES.map((item) => {
-          const guide = techniqueGuidance(item.id);
-          const selected = technique === item.id;
-          const expanded = expandedId === item.id;
-          return (
-            <div
-              key={item.id}
-              className={`rounded-xl border p-4 transition duration-300 ease-smooth ${
-                selected
-                  ? "border-brand bg-brand-soft/40 shadow-glow ring-1 ring-brand"
-                  : "border-line bg-surface hover:-translate-y-0.5 hover:border-brand/30 hover:shadow-card"
-              }`}
-            >
-              <button
-                type="button"
-                role="radio"
-                aria-checked={selected}
-                onClick={() => setTechnique(item.id)}
-                className="w-full text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-              >
-                <strong className="text-sm text-ink">
-                  {guide.label}
-                  {selected ? " · selected" : ""}
-                </strong>
-                <p className="mt-1 text-xs leading-relaxed text-muted">{guide.shortDescription}</p>
-              </button>
-              <button
-                type="button"
-                className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-brand hover:text-brand-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-                aria-expanded={expanded}
-                aria-controls={`how-to-${item.id}`}
-                onClick={() => setExpandedId((current) => (current === item.id ? null : item.id))}
-              >
-                {expanded ? "Hide how to do it" : "How to do it"}
-                <ChevronDown
-                  size={14}
-                  className={`transition-transform duration-300 ease-smooth ${expanded ? "rotate-180" : ""}`}
-                />
-              </button>
-              {expanded && (
-                <div id={`how-to-${item.id}`} className="mt-3 animate-expand space-y-2 border-t border-line pt-3 text-sm">
-                  <ol className="list-decimal space-y-1 pl-5 text-muted">
-                    {guide.howTo.map((step) => (
-                      <li key={step}>{step}</li>
-                    ))}
-                  </ol>
-                  <p className="text-xs text-muted">
-                    <strong className="text-ink">Calibrate measures:</strong> {guide.measures}
-                  </p>
-                </div>
-              )}
-            </div>
-          );
-        })}
+    <section className="card space-y-4 p-6">
+      <div ref={rootRef} className="relative">
+        <p id="technique-label" className="label mb-2">
+          Choose a technique to test
+        </p>
+        <button
+          ref={triggerRef}
+          type="button"
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          aria-labelledby="technique-label technique-current"
+          onClick={() => (open ? setOpen(false) : openList())}
+          onKeyDown={(event) => {
+            if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+              event.preventDefault();
+              openList();
+            }
+          }}
+          className={`flex w-full items-center justify-between gap-3 rounded-lg border bg-surface px-4 py-3 text-left duration-200 ease-smooth focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/20 ${
+            open ? "border-brand shadow-glow" : "border-line hover:border-brand/40"
+          }`}
+        >
+          <span id="technique-current" className="min-w-0">
+            <span className="block text-sm font-semibold text-ink">{guide.label}</span>
+            <span className="mt-0.5 block text-xs leading-relaxed text-muted">{guide.shortDescription}</span>
+          </span>
+          <ChevronDown
+            className={`text-muted transition-transform duration-300 ease-smooth ${open ? "rotate-180" : ""}`}
+          />
+        </button>
+
+        {open && (
+          <ul
+            role="listbox"
+            aria-labelledby="technique-label"
+            onKeyDown={onListKeyDown}
+            className="absolute inset-x-0 top-full z-30 mt-2 max-h-[28rem] animate-expand overflow-y-auto rounded-xl border border-line bg-surface p-1.5 shadow-lift"
+          >
+            {TECHNIQUES.map((item, index) => {
+              const option = techniqueGuidance(item.id);
+              const selected = item.id === technique;
+              return (
+                <li
+                  key={item.id}
+                  id={`technique-option-${item.id}`}
+                  ref={(node) => {
+                    optionRefs.current[index] = node;
+                  }}
+                  role="option"
+                  aria-selected={selected}
+                  tabIndex={index === activeIndex ? 0 : -1}
+                  onClick={() => choose(index)}
+                  onMouseEnter={() => setActiveIndex(index)}
+                  className={`flex cursor-pointer items-start justify-between gap-3 rounded-lg px-3 py-2.5 outline-none transition-colors duration-150 ${
+                    index === activeIndex ? "bg-brand-soft/60" : ""
+                  }`}
+                >
+                  <span className="min-w-0">
+                    <span className={`block text-sm ${selected ? "font-semibold text-brand-ink" : "font-medium text-ink"}`}>
+                      {option.label}
+                    </span>
+                    <span className="mt-0.5 block text-xs leading-relaxed text-muted">{option.shortDescription}</span>
+                  </span>
+                  {selected && (
+                    <svg viewBox="0 0 16 16" width={16} height={16} aria-hidden="true" className="mt-0.5 shrink-0 text-brand">
+                      <path d="M3.5 8.5 6.5 11.5 12.5 4.5" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+
+      <div key={technique} className="animate-expand space-y-2 border-t border-line pt-4 text-sm">
+        <p className="label">How to do it</p>
+        <ol className="list-decimal space-y-1 pl-5 text-muted">
+          {guide.howTo.map((step) => (
+            <li key={step}>{step}</li>
+          ))}
+        </ol>
+        <p className="text-xs text-muted">
+          <strong className="text-ink">Calibrate measures:</strong> {guide.measures}
+        </p>
       </div>
     </section>
   );

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Fragment } from "react";
 import { ChevronRight } from "@/components/icons";
+import { StartMascot } from "@/components/StartMascot";
 
 function CalibrateMark() {
   return (
@@ -57,6 +58,7 @@ export default function StartPage() {
             <Link href="/how-it-works" className="calibrate-button calibrate-button-dark intro-cta">
               Start Calibrating <ChevronRight className="nudge" />
             </Link>
+            <StartMascot />
           </div>
         </div>
 
