@@ -36,3 +36,6 @@ class ErrorResponse(BaseModel):
     success: Literal[False] = False
     code: str
     message: str
+    # Present only on NOTES_TOO_LONG.
+    word_count: int | None = None
+    word_limit: int | None = None

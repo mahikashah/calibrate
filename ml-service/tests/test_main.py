@@ -77,7 +77,30 @@ def test_empty_text_validation():
 def test_notes_too_long():
     response = client.post("/generate-questions", json=request_body(text="word " * 4601))
     assert response.status_code == 413
-    assert response.json()["code"] == "NOTES_TOO_LONG"
+    body = response.json()
+    assert body["code"] == "NOTES_TOO_LONG"
+    assert body["word_count"] == 4601
+    assert body["word_limit"] == 4600
+
+
+def test_too_long_reports_configured_limit(monkeypatch):
+    from app.config import Settings
+
+    monkeypatch.setattr(
+        "app.main.get_settings",
+        lambda: Settings(
+            hf_token=None,
+            hf_model="test",
+            hf_endpoint="https://example.test",
+            generation_timeout_seconds=90,
+            word_limit=10,
+            service_api_key=None,
+        ),
+    )
+    response = client.post("/generate-questions", json=request_body(text="word " * 11))
+    assert response.status_code == 413
+    assert response.json()["word_count"] == 11
+    assert response.json()["word_limit"] == 10
 
 
 def test_mcq_answer_not_in_choices_is_rejected(monkeypatch):

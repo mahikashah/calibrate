@@ -84,8 +84,9 @@ Request:
 }
 ```
 
-`requested_count` accepts 1–10 and defaults to 6. Inputs above 4,600 words are
-rejected rather than truncated.
+`requested_count` accepts 1–10 and defaults to 6. Inputs above `WORD_LIMIT`
+(default 4,600 words) are rejected rather than truncated, with HTTP 413
+`NOTES_TOO_LONG`; the error body also carries `word_count` and `word_limit`.
 
 Success response:
 

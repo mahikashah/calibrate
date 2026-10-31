@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "@/components/icons";
 import { QuestionCountControl } from "@/components/QuestionCountControl";
 import { AiTag, Empty } from "@/components/ui";
 import { deleteJSON, getJSON, patchJSON, postJSON } from "@/lib/client";
+import { PDF_MAX_LABEL, pdfUploadError } from "@/lib/pdf-upload";
 import {
   QUESTION_BANK_PAGE_SIZE,
   filterBankQuestions,
@@ -100,6 +101,8 @@ function QuestionsPageContent() {
   const [handoffMaterialId, setHandoffMaterialId] = useState<string | null>(
     fromGenerate && urlMaterialId ? urlMaterialId : null,
   );
+  const [source, setSource] = useState<"notes" | "pdf">("notes");
+  const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [count, setCount] = useState(QUESTION_COUNT_DEFAULT);
@@ -325,8 +328,69 @@ function QuestionsPageContent() {
     setPage(1);
   }
 
+  const canGenerate = source === "pdf" ? Boolean(file) : Boolean(content.trim());
+
+  function chooseFile(event: ChangeEvent<HTMLInputElement>) {
+    const selected = event.target.files?.[0] ?? null;
+    const fileError = selected && pdfUploadError(selected);
+    if (fileError) {
+      setError(fileError);
+      event.target.value = "";
+      return;
+    }
+    setError(null);
+    setFile(selected);
+  }
+
+  /** Saves notes, then generates; reuses the saved material on retry. */
+  async function generateFromNotes() {
+    const subjectName = subjects.find((subject) => subject.id === generateSubjectId)?.name;
+    const materialId =
+      pendingMaterialId ??
+      (
+        await postJSON<{ id: string }>("/api/materials", {
+          subjectId: generateSubjectId,
+          title: title.trim() || "Untitled material",
+          content,
+        })
+      ).id;
+    setPendingMaterialId(materialId);
+
+    const result = await postJSON<{
+      provider: string;
+      questions: Question[];
+      questionCount?: number;
+    }>("/api/questions/generate", {
+      subjectId: generateSubjectId,
+      subjectName,
+      materialId,
+      count,
+    });
+    return {
+      materialId,
+      provider: result.provider,
+      questionCount: result.questionCount ?? result.questions.length,
+    };
+  }
+
+  /** The server parses, generates, and only then saves, so retries resend the file. */
+  async function generateFromPdf(pdf: File) {
+    const form = new FormData();
+    form.append("file", pdf);
+    form.append("subjectId", generateSubjectId);
+    form.append("count", String(count));
+    if (title.trim()) form.append("title", title.trim());
+
+    const res = await fetch("/api/pdf", { method: "POST", body: form });
+    if (!res.ok) {
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      throw new Error(body.error ?? "We couldn't generate questions right now. Please try again.");
+    }
+    return (await res.json()) as { materialId: string; provider: string; questionCount: number };
+  }
+
   async function generate() {
-    if (!generateSubjectId || !content.trim()) return;
+    if (!generateSubjectId || !canGenerate) return;
 
     setGenerating(true);
     setError(null);
@@ -335,33 +399,13 @@ function QuestionsPageContent() {
     setRequestedCount(count);
 
     try {
-      const subjectName = subjects.find((subject) => subject.id === generateSubjectId)?.name;
-      const materialId =
-        pendingMaterialId ??
-        (
-          await postJSON<{ id: string }>("/api/materials", {
-            subjectId: generateSubjectId,
-            title: title.trim() || "Untitled material",
-            content,
-          })
-        ).id;
-      setPendingMaterialId(materialId);
+      const result =
+        source === "pdf" && file ? await generateFromPdf(file) : await generateFromNotes();
+      const { materialId } = result;
 
-      const result = await postJSON<{
-        provider: string;
-        questions: Question[];
-        questionCount?: number;
-      }>("/api/questions/generate", {
-        subjectId: generateSubjectId,
-        subjectName,
-        materialId,
-        count,
-      });
-
-      const actual = result.questionCount ?? result.questions.length;
       const reset = handoffFilterReset(generateSubjectId, materialId);
       setProvider(result.provider);
-      setGeneratedCount(actual);
+      setGeneratedCount(result.questionCount);
       setSubjectFilter(reset.subjectId);
       setMaterialFilter(reset.materialFilter);
       setTypeFilter(reset.typeFilter);
@@ -372,6 +416,7 @@ function QuestionsPageContent() {
       setPendingMaterialId(null);
       setTitle("");
       setContent("");
+      setFile(null);
       await refresh({ preserveFilters: true, bustCache: true });
     } catch (generationError) {
       setError(
@@ -497,7 +542,7 @@ function QuestionsPageContent() {
         <section className="calibrate-generator" aria-labelledby="generate-notes-title">
           <div className="calibrate-generator__heading">
             <div>
-              <p className="calibrate-question-bank__eyebrow">Paste notes</p>
+              <p className="calibrate-question-bank__eyebrow">Add notes</p>
               <h2 id="generate-notes-title">Make a question set for today</h2>
             </div>
             {provider && <AiTag provider={provider} />}
@@ -532,9 +577,40 @@ function QuestionsPageContent() {
             </div>
 
             <div className="calibrate-generator__notes">
+              <div
+                className="calibrate-material-sources"
+                role="tablist"
+                aria-label="Choose material source"
+              >
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={source === "notes"}
+                  className={source === "notes" ? "is-selected" : ""}
+                  onClick={() => {
+                    setSource("notes");
+                    setError(null);
+                  }}
+                >
+                  <span>1</span> Paste notes
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={source === "pdf"}
+                  className={source === "pdf" ? "is-selected" : ""}
+                  onClick={() => {
+                    setSource("pdf");
+                    setError(null);
+                  }}
+                >
+                  <span>2</span> Upload PDF
+                </button>
+              </div>
+
               <div>
                 <label className="calibrate-question-bank__label" htmlFor="material-title">
-                  Material title
+                  Material title{source === "pdf" && " (optional)"}
                 </label>
                 <input
                   id="material-title"
@@ -543,30 +619,58 @@ function QuestionsPageContent() {
                     setTitle(event.target.value);
                     setPendingMaterialId(null);
                   }}
-                  placeholder="e.g. Week 3 lecture notes"
+                  placeholder={
+                    source === "pdf" ? "Defaults to the file name" : "e.g. Week 3 lecture notes"
+                  }
                   className="calibrate-question-bank__field"
                 />
               </div>
 
-              <div>
-                <div className="calibrate-notes-label">
-                  <label className="calibrate-question-bank__label" htmlFor="material-content">
-                    Notes for today
+              {source === "pdf" ? (
+                <div role="tabpanel">
+                  <label className="calibrate-upload-dropzone">
+                    <input type="file" accept="application/pdf,.pdf" onChange={chooseFile} />
+                    <span className="calibrate-upload-icon" aria-hidden="true">
+                      ↑
+                    </span>
+                    <strong>{file ? file.name : "Select a PDF"}</strong>
+                    <small>
+                      {file
+                        ? "PDF selected. Questions will be generated only from its text."
+                        : `Text-based PDFs up to ${PDF_MAX_LABEL}. Scanned or image PDFs are not supported.`}
+                    </small>
                   </label>
-                  <span>{content.length.toLocaleString()} characters</span>
+                  {file && (
+                    <button
+                      type="button"
+                      className="calibrate-upload-remove mt-2"
+                      onClick={() => setFile(null)}
+                    >
+                      Remove selected file
+                    </button>
+                  )}
                 </div>
-                <textarea
-                  id="material-content"
-                  value={content}
-                  onChange={(event) => {
-                    setContent(event.target.value);
-                    setPendingMaterialId(null);
-                  }}
-                  rows={8}
-                  placeholder="Paste lecture notes, a textbook section, or your own summary. Questions will be generated only from this text."
-                  className="calibrate-question-bank__field calibrate-question-bank__textarea"
-                />
-              </div>
+              ) : (
+                <div role="tabpanel">
+                  <div className="calibrate-notes-label">
+                    <label className="calibrate-question-bank__label" htmlFor="material-content">
+                      Notes for today
+                    </label>
+                    <span>{content.length.toLocaleString()} characters</span>
+                  </div>
+                  <textarea
+                    id="material-content"
+                    value={content}
+                    onChange={(event) => {
+                      setContent(event.target.value);
+                      setPendingMaterialId(null);
+                    }}
+                    rows={8}
+                    placeholder="Paste lecture notes, a textbook section, or your own summary. Questions will be generated only from this text."
+                    className="calibrate-question-bank__field calibrate-question-bank__textarea"
+                  />
+                </div>
+              )}
             </div>
           </div>
 
@@ -575,7 +679,7 @@ function QuestionsPageContent() {
             <button
               type="button"
               onClick={() => void generate()}
-              disabled={generating || !content.trim()}
+              disabled={generating || !canGenerate}
               className="calibrate-question-bank__button"
             >
               {generating ? "Generating questions…" : "Generate questions"}
@@ -589,7 +693,7 @@ function QuestionsPageContent() {
                 type="button"
                 className="calibrate-question-bank__button"
                 onClick={() => void generate()}
-                disabled={generating || !content.trim()}
+                disabled={generating || !canGenerate}
               >
                 Try again
               </button>
@@ -1094,7 +1198,12 @@ function QuestionCard({
       {revealed && question.answer && (
         <div className="calibrate-question-card__answer">
           <strong>Answer</strong>
-          <p>{question.answer}</p>
+          {/* The ✓ in the choice list already marks an MCQ answer; showing it
+              again above is redundant. Placeholder until design settles the format. */}
+          {!(
+            question.type === "mcq" &&
+            parseChoices(question.answerChoices).includes(question.answer)
+          ) && <p>{question.answer}</p>}
           {question.type === "mcq" && (
             <ul>
               {parseChoices(question.answerChoices).map((choice) => (

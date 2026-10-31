@@ -98,9 +98,14 @@ Key behaviour:
 - Extracts a JSON array from the response text, then `json.loads()`; on JSON decode
   failure it reports and returns a failure value.
 
-> ⚠️ **`WORD_LIMIT = 4600` is declared but never enforced.** No truncation or
-> rejection occurs when input exceeds this limit. The token limit must be
-> implemented at the FastAPI layer.
+> **`WORD_LIMIT = 4600` is declared but never enforced in this script.** No
+> truncation or rejection occurs when input exceeds this limit.
+>
+> **Resolved in the FastAPI service:** `POST /generate-questions` now rejects
+> input over `WORD_LIMIT` (env-configurable, default 4600) with HTTP 413
+> `NOTES_TOO_LONG`, and the error body includes `word_count` and `word_limit`
+> so the web app can tell the student how far over they are. Pasted notes and
+> PDF uploads share this one limit.
 
 ### `context_token_count.py`
 
@@ -181,7 +186,7 @@ Dependencies are inferred from import statements:
 | `HF_MODEL` | Qwen model ID (currently hardcoded) |
 | `HF_ENDPOINT` | HF router URL (currently hardcoded) |
 | `GENERATION_TIMEOUT_SECONDS` | Currently hardcoded 90 |
-| `WORD_LIMIT` | Currently hardcoded 4600 / unenforced |
+| `WORD_LIMIT` | Hardcoded 4600 / unenforced in the script; enforced by FastAPI (env, default 4600) |
 
 On the Next.js side, add:
 
