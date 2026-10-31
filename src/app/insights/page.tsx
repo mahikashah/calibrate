@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { ChevronDown, ChevronRight } from "@/components/icons";
 import { ConfidenceBadge, Empty } from "@/components/ui";
 import { getJSON } from "@/lib/client";
 import { currentRecommendation, type InsightsReport, type SubjectInsight } from "@/lib/recommend";
@@ -55,7 +56,18 @@ export default function InsightsPage() {
     };
   }, [source, subjectId]);
 
-  if (loading && !data) return <div className="h-64 animate-pulse rounded-xl bg-line" />;
+  if (loading && !data) {
+    return (
+      <div className="space-y-7">
+        <div className="skeleton h-9 w-80 rounded" />
+        <div className="skeleton h-20" />
+        <div className="grid gap-4 lg:grid-cols-[1.35fr_1fr]">
+          <div className="skeleton h-56" />
+          <div className="skeleton h-56" />
+        </div>
+      </div>
+    );
+  }
 
   const report = data?.report;
   const hasData = Boolean(report?.subjects.length);
@@ -66,7 +78,7 @@ export default function InsightsPage() {
   );
 
   return (
-    <div className="animate-rise space-y-7">
+    <div className="stagger space-y-7">
       <header className="max-w-2xl">
         <p className="label mb-2">Insights</p>
         <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
@@ -91,7 +103,7 @@ export default function InsightsPage() {
             type="button"
             onClick={() => setSource("real")}
             aria-pressed={source === "real"}
-            className={`min-h-10 rounded-md px-3 py-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${source === "real" ? "bg-brand text-white" : "text-muted hover:text-ink"}`}
+            className={`min-h-10 rounded-md px-3 py-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${source === "real" ? "bg-brand text-white shadow-[0_1px_3px_rgba(42,95,92,0.35)]" : "text-muted hover:bg-surface hover:text-ink"}`}
           >
             My evidence
           </button>
@@ -99,7 +111,7 @@ export default function InsightsPage() {
             type="button"
             onClick={() => setSource("demo")}
             aria-pressed={source === "demo"}
-            className={`min-h-10 rounded-md px-3 py-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${source === "demo" ? "bg-brand text-white" : "text-muted hover:text-ink"}`}
+            className={`min-h-10 rounded-md px-3 py-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${source === "demo" ? "bg-brand text-white shadow-[0_1px_3px_rgba(42,95,92,0.35)]" : "text-muted hover:bg-surface hover:text-ink"}`}
           >
             Example data
           </button>
@@ -127,8 +139,9 @@ export default function InsightsPage() {
               Complete outcome-checked study sessions to create evidence. Calibrate needs at least
               three checked sessions on a leading technique before a recommendation can emerge — and
               clearer comparisons need a second technique with its own sessions.{" "}
-              <Link href="/study" className="font-medium text-brand hover:underline">
+              <Link href="/study" className="link">
                 Start a study session
+                <ChevronRight size={14} className="nudge" />
               </Link>
             </>
           ) : (
@@ -155,6 +168,7 @@ export default function InsightsPage() {
               <div className="mt-5 flex flex-wrap gap-3">
                 <Link href="/study" className="btn-primary min-h-11">
                   {recommendation.action}
+                  <ChevronRight className="nudge" />
                 </Link>
                 <Link href="/dashboard" className="btn-ghost min-h-11">
                   View Dashboard
@@ -189,7 +203,7 @@ export default function InsightsPage() {
             </div>
             <div className="mt-5 space-y-3">
               {data!.recentEvidence.map((row) => (
-                <article key={row.sessionId} className="rounded-lg border border-line bg-paper/40 p-4">
+                <article key={row.sessionId} className="rounded-lg border border-line bg-paper/40 p-4 transition duration-300 ease-smooth hover:border-brand/30 hover:bg-surface">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="font-semibold text-ink">{row.techniqueLabel}</p>
@@ -211,8 +225,9 @@ export default function InsightsPage() {
               ))}
             </div>
             {questionQualityFlagged && source === "real" && (
-              <Link href="/questions" className="mt-5 inline-flex text-sm font-medium text-brand hover:underline">
+              <Link href="/questions" className="link mt-5">
                 Review questions
+                <ChevronRight size={14} className="nudge" />
               </Link>
             )}
           </section>
@@ -225,10 +240,12 @@ export default function InsightsPage() {
               aria-expanded={showMath}
             >
               <span className="text-sm font-semibold">How these comparisons work</span>
-              <span className="text-muted" aria-hidden="true">{showMath ? "–" : "+"}</span>
+              <ChevronDown
+                className={`text-muted transition-transform duration-300 ease-smooth ${showMath ? "rotate-180" : ""}`}
+              />
             </button>
             {showMath && (
-              <div className="mt-4 space-y-3 border-t border-line pt-4 text-sm leading-relaxed text-muted">
+              <div className="mt-4 animate-expand space-y-3 border-t border-line pt-4 text-sm leading-relaxed text-muted">
                 <p><strong className="text-ink">Outcome score:</strong> 50% quiz/self-test, 30% unaided recall, and 20% confidence, combined into a 0–100 score for every session.</p>
                 <p><strong className="text-ink">Evidence rule:</strong> fewer than 3 sessions for the leading technique stays “Still gathering evidence.” A result can become emerging at 3+ sessions; “Strongest result so far” needs enough comparable, separated sessions.</p>
                 <p>Feedback flags stay attached as context. They never remove a session or automatically declare a technique unsuccessful.</p>
@@ -281,7 +298,7 @@ function SubjectPanel({ subject }: { subject: SubjectInsight }) {
             </div>
             <div className="h-2 overflow-hidden rounded-full bg-line">
               <div
-                className={`h-full rounded-full ${technique.technique === subject.best?.technique ? "bg-brand" : "bg-sage"}`}
+                className={`bar-fill h-full rounded-full ${technique.technique === subject.best?.technique ? "bg-brand" : "bg-sage"}`}
                 style={{ width: `${(technique.avgScore / maxScore) * 100}%` }}
               />
             </div>

@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown, ChevronRight } from "@/components/icons";
 import { getJSON, postJSON } from "@/lib/client";
 import { outcomeScore } from "@/lib/stats";
-import { TECHNIQUES, techniqueLabel, type TechniqueId } from "@/lib/techniques";
+import { TECHNIQUES, type TechniqueId } from "@/lib/techniques";
 import { techniqueGuidance } from "@/lib/technique-guidance";
 import { isSimpleAnswerCorrect, isValidMcq, parseAnswerChoices, questionTypeLabel } from "@/lib/study-session";
 import type { Hypothesis } from "@/lib/hypothesis";
@@ -31,7 +32,7 @@ interface SessionResult {
 
 export default function StudyPage() {
   return (
-    <Suspense fallback={<div className="animate-rise mx-auto max-w-2xl">Loading study session…</div>}>
+    <Suspense fallback={<StudySkeleton />}>
       <StudyPageContent />
     </Suspense>
   );
@@ -263,7 +264,7 @@ function StudyPageContent() {
   }
 
   if (loading) {
-    return <div className="animate-rise mx-auto max-w-2xl">Loading your study session…</div>;
+    return <StudySkeleton />;
   }
   if (error && !started) {
     return <Message title="We couldn’t open this study session." detail={error} />;
@@ -319,17 +320,16 @@ function StudyPageContent() {
 
   if (!started) {
     return (
-      <div className="animate-rise mx-auto max-w-2xl space-y-6">
+      <div className="stagger mx-auto max-w-5xl space-y-6">
         <StudyHeader />
-        <SessionContextCard
-          subjectName={subject?.name ?? "Subject"}
-          materialTitle={material?.title ?? null}
-          approvedCount={questions.length}
-          technique={technique}
-          recommended={recommended}
-          onUseRecommended={() => recommended && setTechnique(recommended.id as TechniqueId)}
-        />
-        <TechniquePicker technique={technique} setTechnique={setTechnique} />
+        <div className="relative z-10 grid gap-6 md:grid-cols-2">
+          <TechniquePicker technique={technique} setTechnique={setTechnique} />
+          <SessionContextCard
+            subjectName={subject?.name ?? "Subject"}
+            recommended={recommended}
+            onUseRecommended={() => recommended && setTechnique(recommended.id as TechniqueId)}
+          />
+        </div>
         <SessionPreview
           subjectName={subject?.name ?? "Subject"}
           materialTitle={material?.title ?? null}
@@ -355,11 +355,13 @@ function StudyPageContent() {
               }}
             >
               Done reading — start outcome check
+              <ChevronRight className="nudge" />
             </button>
           </section>
         ) : (
-          <button type="button" className="btn-primary w-full min-h-12 py-3" onClick={begin}>
+          <button type="button" className="btn-primary btn-lg w-full py-3" onClick={begin}>
             Start session
+            <ChevronRight className="nudge" />
           </button>
         )}
       </div>
@@ -393,16 +395,19 @@ function StudyPageContent() {
         </div>
       </header>
       <div
-        className="h-1.5 overflow-hidden rounded bg-line"
+        className="h-1.5 overflow-hidden rounded bg-line/70"
         role="progressbar"
         aria-label="Study progress"
         aria-valuenow={index + 1}
         aria-valuemin={1}
         aria-valuemax={questions.length}
       >
-        <div className="h-full bg-brand" style={{ width: `${((index + 1) / questions.length) * 100}%` }} />
+        <div
+          className="h-full rounded bg-gradient-to-r from-sage to-brand transition-[width] duration-500 ease-smooth"
+          style={{ width: `${((index + 1) / questions.length) * 100}%` }}
+        />
       </div>
-      <section className="card p-6 sm:p-8">
+      <section key={current.id} className="card animate-rise p-6 sm:p-8">
         <p className="label">{questionTypeLabel(current.type)}</p>
         <h1 className="mt-3 text-2xl font-semibold leading-tight break-words">{current.prompt}</h1>
         {!revealed && current.type === "mcq" && !invalidMcq && (
@@ -412,7 +417,9 @@ function StudyPageContent() {
               <label
                 key={choice}
                 className={`flex min-h-14 cursor-pointer items-start gap-3 rounded-lg border p-4 text-sm focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-brand ${
-                  selectedChoice === choice ? "border-brand bg-brand-soft" : "border-line"
+                  selectedChoice === choice
+                    ? "border-brand bg-brand-soft shadow-glow"
+                    : "border-line hover:border-brand/40 hover:bg-brand-soft/30"
                 }`}
               >
                 <input
@@ -438,6 +445,7 @@ function StudyPageContent() {
             <div className="mt-3 flex flex-wrap gap-3">
               <button type="button" className="btn-primary min-h-11" onClick={() => advance(false)}>
                 Skip question
+                <ChevronRight className="nudge" />
               </button>
               <Link className="self-center text-sm font-medium text-brand hover:underline" href="/questions">
                 Review questions
@@ -481,6 +489,7 @@ function StudyPageContent() {
             onClick={reveal}
           >
             Submit and reveal
+            <ChevronRight className="nudge" />
           </button>
         ) : null}
         {revealed && (
@@ -526,16 +535,10 @@ function StudyHeader() {
 
 function SessionContextCard({
   subjectName,
-  materialTitle,
-  approvedCount,
-  technique,
   recommended,
   onUseRecommended,
 }: {
   subjectName: string;
-  materialTitle: string | null;
-  approvedCount: number;
-  technique: TechniqueId;
   recommended: { id: string; label: string; why: string } | null;
   onUseRecommended: () => void;
 }) {
@@ -545,26 +548,16 @@ function SessionContextCard({
         <p className="label">Subject</p>
         <p className="font-serif text-xl font-semibold">{subjectName}</p>
       </div>
-      {materialTitle && (
-        <div>
-          <p className="label">Material</p>
-          <p className="text-sm text-muted">{materialTitle}</p>
-        </div>
-      )}
-      <p className="text-sm text-muted">
-        <strong className="text-ink">{approvedCount}</strong> approved question
-        {approvedCount === 1 ? "" : "s"} ready. Only approved questions are used.
-      </p>
-      <p className="text-sm text-muted">
-        Selected technique: <strong className="text-ink">{techniqueLabel(technique)}</strong>
-      </p>
       {recommended && (
         <button
           type="button"
-          className="w-full rounded-lg border border-brand/25 bg-brand-soft px-3 py-3 text-left text-sm text-brand-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+          className="flex w-full items-center justify-between gap-3 rounded-lg border border-brand/25 bg-brand-soft px-3 py-3 text-left text-sm text-brand-ink hover:border-brand/50 hover:shadow-glow focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
           onClick={onUseRecommended}
         >
-          <strong>Suggested: {recommended.label}</strong> — {recommended.why}
+          <span>
+            <strong>Suggested: {recommended.label}</strong> — {recommended.why}
+          </span>
+          <ChevronRight className="nudge shrink-0" />
         </button>
       )}
     </section>
@@ -637,86 +630,91 @@ function StudySetup({
   const ready = Boolean(subjectId && approvedCount && approvedCount > 0);
 
   return (
-    <div className="animate-rise mx-auto max-w-2xl space-y-6">
+    <div className="stagger mx-auto max-w-5xl space-y-6">
       <StudyHeader />
-      <section className="card space-y-4 p-6">
-        <div>
-          <label className="label mb-2 block" htmlFor="study-setup-subject">
-            Subject
-          </label>
-          <select
-            id="study-setup-subject"
-            className="field"
-            value={subjectId}
-            onChange={(event) => setSubjectId(event.target.value)}
-          >
-            {subjects.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        {materials.length > 0 && (
+      <div className="relative z-10 grid gap-6 md:grid-cols-2">
+        <TechniquePicker technique={technique} setTechnique={setTechnique} />
+        <section className="card space-y-4 p-6">
           <div>
-            <label className="label mb-2 block" htmlFor="study-setup-material">
-              Material (optional)
+            <label className="label mb-2 block" htmlFor="study-setup-subject">
+              Subject
             </label>
             <select
-              id="study-setup-material"
+              id="study-setup-subject"
               className="field"
-              value={setupMaterialId}
-              onChange={(event) => setSetupMaterialId(event.target.value)}
+              value={subjectId}
+              onChange={(event) => setSubjectId(event.target.value)}
             >
-              <option value="">All approved questions in this subject</option>
-              {materials.map((item) => (
+              {subjects.map((item) => (
                 <option key={item.id} value={item.id}>
-                  {item.title}
+                  {item.name}
                 </option>
               ))}
             </select>
           </div>
-        )}
-        {approvedCount === null ? (
-          <p className="text-sm text-muted">Checking approved questions…</p>
-        ) : approvedCount === 0 ? (
-          <div className="rounded-lg border border-line bg-paper p-4 text-sm">
-            <p className="font-semibold text-ink">No approved questions yet</p>
-            <p className="mt-1 text-muted">
-              Generate and approve questions before starting an outcome-checked study session.
-            </p>
-            <div className="mt-3 flex flex-wrap gap-3">
-              <Link
-                href={`/questions?subjectId=${encodeURIComponent(subjectId)}`}
-                className="btn-primary min-h-11"
+          {materials.length > 0 && (
+            <div>
+              <label className="label mb-2 block" htmlFor="study-setup-material">
+                Material (optional)
+              </label>
+              <select
+                id="study-setup-material"
+                className="field"
+                value={setupMaterialId}
+                onChange={(event) => setSetupMaterialId(event.target.value)}
               >
-                Go to Question Bank
-              </Link>
-              <Link
-                href={`/subjects/${encodeURIComponent(subjectId)}/materials/new`}
-                className="btn-ghost min-h-11"
-              >
-                Add material
-              </Link>
+                <option value="">All approved questions in this subject</option>
+                {materials.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.title}
+                  </option>
+                ))}
+              </select>
             </div>
-          </div>
-        ) : (
-          <p className="text-sm text-muted">
-            <strong className="text-ink">{approvedCount}</strong> approved question
-            {approvedCount === 1 ? "" : "s"} available for this selection.
-          </p>
-        )}
-        {recommended && approvedCount !== null && approvedCount > 0 && (
-          <button
-            type="button"
-            className="w-full rounded-lg border border-brand/25 bg-brand-soft px-3 py-3 text-left text-sm text-brand-ink"
-            onClick={() => setTechnique(recommended.id as TechniqueId)}
-          >
+          )}
+          {approvedCount === null ? (
+            <p className="text-sm text-muted">Checking approved questions…</p>
+          ) : approvedCount === 0 ? (
+            <div className="rounded-lg border border-line bg-paper p-4 text-sm">
+              <p className="font-semibold text-ink">No approved questions yet</p>
+              <p className="mt-1 text-muted">
+                Generate and approve questions before starting an outcome-checked study session.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-3">
+                <Link
+                  href={`/questions?subjectId=${encodeURIComponent(subjectId)}`}
+                  className="btn-primary min-h-11"
+                >
+                  Go to Question Bank
+                </Link>
+                <Link
+                  href={`/subjects/${encodeURIComponent(subjectId)}/materials/new`}
+                  className="btn-ghost min-h-11"
+                >
+                  Add material
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted">
+              <strong className="text-ink">{approvedCount}</strong> approved question
+              {approvedCount === 1 ? "" : "s"} available for this selection.
+            </p>
+          )}
+          {recommended && approvedCount !== null && approvedCount > 0 && (
+            <button
+              type="button"
+              className="flex w-full items-center justify-between gap-3 rounded-lg border border-brand/25 bg-brand-soft px-3 py-3 text-left text-sm text-brand-ink hover:border-brand/50 hover:shadow-glow"
+              onClick={() => setTechnique(recommended.id as TechniqueId)}
+            >
+              <span>
             <strong>Suggested: {recommended.label}</strong> — {recommended.why}
-          </button>
-        )}
-      </section>
-      <TechniquePicker technique={technique} setTechnique={setTechnique} />
+          </span>
+          <ChevronRight className="nudge shrink-0" />
+            </button>
+          )}
+        </section>
+      </div>
       {ready && subject && approvedCount !== null && (
         <SessionPreview
           subjectName={subject.name}
@@ -727,11 +725,12 @@ function StudySetup({
       )}
       <button
         type="button"
-        className="btn-primary w-full min-h-12 py-3"
+        className="btn-primary btn-lg w-full py-3"
         disabled={!ready}
         onClick={onStart}
       >
         Start session
+        <ChevronRight className="nudge" />
       </button>
     </div>
   );
@@ -744,64 +743,148 @@ function TechniquePicker({
   technique: TechniqueId;
   setTechnique: (value: TechniqueId) => void;
 }) {
-  const [expandedId, setExpandedId] = useState<TechniqueId | null>(technique);
+  const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const optionRefs = useRef<(HTMLLIElement | null)[]>([]);
+  const selectedIndex = Math.max(0, TECHNIQUES.findIndex((item) => item.id === technique));
+  const guide = techniqueGuidance(technique);
+
+  // Close when clicking anywhere outside the dropdown.
+  useEffect(() => {
+    if (!open) return;
+    function onPointerDown(event: PointerEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [open]);
 
   useEffect(() => {
-    setExpandedId(technique);
-  }, [technique]);
+    if (open) optionRefs.current[activeIndex]?.focus();
+  }, [open, activeIndex]);
+
+  function openList() {
+    setActiveIndex(selectedIndex);
+    setOpen(true);
+  }
+
+  function choose(index: number) {
+    setTechnique(TECHNIQUES[index].id);
+    setOpen(false);
+    triggerRef.current?.focus();
+  }
+
+  function onListKeyDown(event: React.KeyboardEvent) {
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setActiveIndex((index) => (index + 1) % TECHNIQUES.length);
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setActiveIndex((index) => (index - 1 + TECHNIQUES.length) % TECHNIQUES.length);
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      setActiveIndex(0);
+    } else if (event.key === "End") {
+      event.preventDefault();
+      setActiveIndex(TECHNIQUES.length - 1);
+    } else if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      choose(activeIndex);
+    } else if (event.key === "Escape" || event.key === "Tab") {
+      if (event.key === "Escape") event.preventDefault();
+      setOpen(false);
+      triggerRef.current?.focus();
+    }
+  }
 
   return (
-    <section>
-      <p className="label mb-2">Choose a technique to test</p>
-      <div className="grid gap-3" role="radiogroup" aria-label="Study technique">
-        {TECHNIQUES.map((item) => {
-          const guide = techniqueGuidance(item.id);
-          const selected = technique === item.id;
-          const expanded = expandedId === item.id;
-          return (
-            <div
-              key={item.id}
-              className={`rounded-xl border p-4 transition ${
-                selected ? "border-brand bg-brand-soft/40 ring-2 ring-brand" : "border-line bg-surface"
-              }`}
-            >
-              <button
-                type="button"
-                role="radio"
-                aria-checked={selected}
-                onClick={() => setTechnique(item.id)}
-                className="w-full text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-              >
-                <strong className="text-sm text-ink">
-                  {guide.label}
-                  {selected ? " · selected" : ""}
-                </strong>
-                <p className="mt-1 text-xs leading-relaxed text-muted">{guide.shortDescription}</p>
-              </button>
-              <button
-                type="button"
-                className="mt-3 text-sm font-medium text-brand underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-                aria-expanded={expanded}
-                aria-controls={`how-to-${item.id}`}
-                onClick={() => setExpandedId((current) => (current === item.id ? null : item.id))}
-              >
-                {expanded ? "Hide how to do it" : "How to do it"}
-              </button>
-              {expanded && (
-                <div id={`how-to-${item.id}`} className="mt-3 space-y-2 border-t border-line pt-3 text-sm">
-                  <ol className="list-decimal space-y-1 pl-5 text-muted">
-                    {guide.howTo.map((step) => (
-                      <li key={step}>{step}</li>
-                    ))}
-                  </ol>
-                  <p className="text-xs text-muted">
-                    <strong className="text-ink">Calibrate measures:</strong> {guide.measures}
-                  </p>
-                </div>
-              )}
-            </div>
-          );
-        })}
+    <section className="card space-y-4 p-6">
+      <div ref={rootRef} className="relative">
+        <p id="technique-label" className="label mb-2">
+          Choose a technique to test
+        </p>
+        <button
+          ref={triggerRef}
+          type="button"
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          aria-labelledby="technique-label technique-current"
+          onClick={() => (open ? setOpen(false) : openList())}
+          onKeyDown={(event) => {
+            if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+              event.preventDefault();
+              openList();
+            }
+          }}
+          className={`flex w-full items-center justify-between gap-3 rounded-lg border bg-surface px-4 py-3 text-left duration-200 ease-smooth focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/20 ${
+            open ? "border-brand shadow-glow" : "border-line hover:border-brand/40"
+          }`}
+        >
+          <span id="technique-current" className="min-w-0">
+            <span className="block text-sm font-semibold text-ink">{guide.label}</span>
+            <span className="mt-0.5 block text-xs leading-relaxed text-muted">{guide.shortDescription}</span>
+          </span>
+          <ChevronDown
+            className={`text-muted transition-transform duration-300 ease-smooth ${open ? "rotate-180" : ""}`}
+          />
+        </button>
+
+        {open && (
+          <ul
+            role="listbox"
+            aria-labelledby="technique-label"
+            onKeyDown={onListKeyDown}
+            className="absolute inset-x-0 top-full z-30 mt-2 max-h-[28rem] animate-expand overflow-y-auto rounded-xl border border-line bg-surface p-1.5 shadow-lift"
+          >
+            {TECHNIQUES.map((item, index) => {
+              const option = techniqueGuidance(item.id);
+              const selected = item.id === technique;
+              return (
+                <li
+                  key={item.id}
+                  id={`technique-option-${item.id}`}
+                  ref={(node) => {
+                    optionRefs.current[index] = node;
+                  }}
+                  role="option"
+                  aria-selected={selected}
+                  tabIndex={index === activeIndex ? 0 : -1}
+                  onClick={() => choose(index)}
+                  onMouseEnter={() => setActiveIndex(index)}
+                  className={`flex cursor-pointer items-start justify-between gap-3 rounded-lg px-3 py-2.5 outline-none transition-colors duration-150 ${
+                    index === activeIndex ? "bg-brand-soft/60" : ""
+                  }`}
+                >
+                  <span className="min-w-0">
+                    <span className={`block text-sm ${selected ? "font-semibold text-brand-ink" : "font-medium text-ink"}`}>
+                      {option.label}
+                    </span>
+                    <span className="mt-0.5 block text-xs leading-relaxed text-muted">{option.shortDescription}</span>
+                  </span>
+                  {selected && (
+                    <svg viewBox="0 0 16 16" width={16} height={16} aria-hidden="true" className="mt-0.5 shrink-0 text-brand">
+                      <path d="M3.5 8.5 6.5 11.5 12.5 4.5" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+
+      <div key={technique} className="animate-expand space-y-2 border-t border-line pt-4 text-sm">
+        <p className="label">How to do it</p>
+        <ol className="list-decimal space-y-1 pl-5 text-muted">
+          {guide.howTo.map((step) => (
+            <li key={step}>{step}</li>
+          ))}
+        </ol>
+        <p className="text-xs text-muted">
+          <strong className="text-ink">Calibrate measures:</strong> {guide.measures}
+        </p>
       </div>
     </section>
   );
@@ -826,7 +909,7 @@ function Reveal({
 }) {
   const correct = assessment === true;
   return (
-    <div className="mt-6 space-y-4 border-t border-line pt-5" aria-live="polite">
+    <div className="mt-6 animate-expand space-y-4 border-t border-line pt-5" aria-live="polite">
       <p
         className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm font-semibold ${
           automatic
@@ -847,9 +930,12 @@ function Reveal({
         <p className="mt-1 whitespace-pre-wrap break-words text-sm">{question.answer}</p>
       </div>
       {question.sourceExcerpt && (
-        <details>
-          <summary className="cursor-pointer text-sm font-medium text-brand">View supporting notes</summary>
-          <p className="mt-2 whitespace-pre-wrap break-words rounded-lg border border-line p-3 text-sm text-muted">
+        <details className="group">
+          <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-sm font-medium text-brand hover:text-brand-ink [&::-webkit-details-marker]:hidden">
+            <ChevronRight size={14} className="transition-transform duration-200 ease-smooth group-open:rotate-90" />
+            View supporting notes
+          </summary>
+          <p className="mt-2 animate-expand whitespace-pre-wrap break-words rounded-lg border border-line p-3 text-sm text-muted">
             {question.sourceExcerpt}
           </p>
         </details>
@@ -882,6 +968,7 @@ function Reveal({
         onClick={() => assessment !== null && onNext(assessment)}
       >
         {saving ? "Saving session…" : "Next question"}
+        {!saving && <ChevronRight className="nudge" />}
       </button>
     </div>
   );
@@ -902,7 +989,7 @@ function Completion({ result, technique }: { result: SessionResult; technique: T
 
   return (
     <div className="animate-rise mx-auto max-w-lg">
-      <div className="card graph-paper p-8 text-center">
+      <div className="card graph-paper p-8 text-center shadow-lift">
         <p className="label">Session complete</p>
         <h1 className="mt-2 font-serif text-3xl font-semibold tracking-tight">How did you perform?</h1>
         <p className="mt-2 text-sm text-muted">
@@ -910,7 +997,7 @@ function Completion({ result, technique }: { result: SessionResult; technique: T
           {result.materialTitle ? ` · ${result.materialTitle}` : ""}
         </p>
 
-        <dl className="mt-6 grid grid-cols-2 gap-4 text-left text-sm">
+        <dl className="stagger mt-6 grid grid-cols-2 gap-4 text-left text-sm">
           <div>
             <dt className="label">Correct</dt>
             <dd className="stat text-xl">
@@ -945,6 +1032,7 @@ function Completion({ result, technique }: { result: SessionResult; technique: T
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
           <Link href={feedbackHref} className="btn-primary inline-flex min-h-12 items-center justify-center px-6">
             Continue
+            <ChevronRight className="nudge" />
           </Link>
           <Link href="/insights" className="btn-ghost inline-flex min-h-12 items-center justify-center px-6">
             View Insights
@@ -978,6 +1066,7 @@ function Message({
         <div className="mt-5 flex flex-wrap justify-center gap-3">
           <Link className="btn-primary inline-flex min-h-11 items-center" href={href}>
             {action}
+            <ChevronRight className="nudge" />
           </Link>
           {secondaryHref && secondaryAction && (
             <Link className="btn-ghost inline-flex min-h-11 items-center" href={secondaryHref}>
@@ -985,6 +1074,19 @@ function Message({
             </Link>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function StudySkeleton() {
+  return (
+    <div className="mx-auto max-w-5xl space-y-6" aria-busy="true" aria-label="Loading study session">
+      <div className="skeleton h-9 w-72 rounded" />
+      <div className="skeleton h-24" />
+      <div className="grid gap-6 md:grid-cols-2">
+        <div className="skeleton h-40" />
+        <div className="skeleton h-80" />
       </div>
     </div>
   );

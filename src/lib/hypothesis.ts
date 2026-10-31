@@ -1,5 +1,6 @@
 import type { TechniqueId } from "./techniques";
 import { techniqueLabel } from "./techniques";
+import { STUDY_BUDDIES } from "./study-buddies";
 
 /**
  * Onboarding forms a STARTING HYPOTHESIS — an educated first guess about which
@@ -67,6 +68,13 @@ export const ONBOARDING_QUESTIONS: OnboardingQuestion[] = [
       { label: "Concept-heavy (biology, law, theory)", weights: { active_recall: 2, feynman: 1 } },
       { label: "Memorization-heavy (vocab, facts, terms)", weights: { spaced_repetition: 2, active_recall: 1 } },
     ],
+  },
+  {
+    // A friendly pick, not a signal: buddies carry no weights so the hypothesis
+    // stays grounded in how the student actually studies.
+    id: "buddy",
+    text: "Finally, let's help you choose your study buddy!",
+    options: STUDY_BUDDIES.map((buddy) => ({ label: buddy.name, weights: {} })),
   },
 ];
 

@@ -44,6 +44,14 @@ describe("computeHypothesis", () => {
     expect(h.primary).toBe("active_recall");
   });
 
+  it("does not let the study buddy pick change the hypothesis", () => {
+    const answers = { retention: 1, struggle: 1, check: 0, consistency: 1, subject_type: 1 };
+    const buddy = ONBOARDING_QUESTIONS.find((q) => q.id === "buddy")!;
+    for (let i = 0; i < buddy.options.length; i++) {
+      expect(computeHypothesis({ ...answers, buddy: i })).toEqual(computeHypothesis(answers));
+    }
+  });
+
   it("ignores out-of-range answer indices instead of throwing", () => {
     const h = computeHypothesis({ retention: 99, struggle: -1 });
     expect(h.primary).toBeTruthy();
@@ -56,8 +64,8 @@ describe("computeHypothesis", () => {
 
   it("keeps the onboarding questionnaire and scoring in sync", () => {
     // Every option must map to at least one real technique weight (or be a
-    // deliberate no-op like "very regular schedule").
-    expect(ONBOARDING_QUESTIONS.length).toBe(5);
+    // deliberate no-op like "very regular schedule" or the study buddy pick).
+    expect(ONBOARDING_QUESTIONS.length).toBe(6);
     for (const q of ONBOARDING_QUESTIONS) {
       expect(q.options.length).toBeGreaterThan(0);
     }

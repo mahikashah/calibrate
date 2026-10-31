@@ -48,20 +48,40 @@ const config: Config = {
         ],
       },
       boxShadow: {
-        card: "0 1px 2px rgba(23,24,20,0.04), 0 1px 3px rgba(23,24,20,0.06)",
-        lift: "0 8px 24px rgba(23,24,20,0.10)",
+        card: "0 1px 1px rgba(23,24,20,0.03), 0 2px 6px -1px rgba(23,24,20,0.05), 0 10px 24px -12px rgba(23,24,20,0.08)",
+        lift: "0 2px 4px rgba(23,24,20,0.04), 0 14px 32px -10px rgba(23,24,20,0.16)",
+        glow: "0 0 0 4px rgba(63,129,125,0.14)",
+        "btn-primary": "inset 0 1px 0 rgba(255,255,255,0.2), 0 1px 2px rgba(23,24,20,0.18), 0 8px 20px -6px rgba(29,98,94,0.6)",
       },
       borderRadius: {
         xl: "14px",
       },
+      transitionTimingFunction: {
+        smooth: "cubic-bezier(0.22, 1, 0.36, 1)",
+      },
       keyframes: {
         rise: {
-          "0%": { opacity: "0", transform: "translateY(6px)" },
+          "0%": { opacity: "0", transform: "translateY(8px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        "fade-in": {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
+        expand: {
+          "0%": { opacity: "0", transform: "translateY(-4px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        shimmer: {
+          "0%": { backgroundPosition: "-400px 0" },
+          "100%": { backgroundPosition: "400px 0" },
         },
       },
       animation: {
-        rise: "rise 0.4s ease both",
+        rise: "rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both",
+        "fade-in": "fade-in 0.3s ease both",
+        expand: "expand 0.28s cubic-bezier(0.22, 1, 0.36, 1) both",
+        shimmer: "shimmer 1.4s linear infinite",
       },
     },
   },

@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AccountControl } from "@/components/AccountControl";
+import { ChevronRight } from "@/components/icons";
+import { SidebarBuddy } from "@/components/SidebarBuddy";
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard" },
@@ -31,7 +33,7 @@ export function Sidebar() {
   const path = usePathname();
   return (
     <aside className="flex h-full w-full flex-col gap-1 md:w-64 lg:w-72">
-      <Link href="/dashboard" className="mb-10 flex items-center gap-3 px-2">
+      <Link href="/dashboard" className="group mb-10 flex items-center gap-3 px-2">
         <CalibrateMark />
         <span className="font-serif text-[1.35rem] font-semibold tracking-tight text-ink">
           Calibrate
@@ -46,19 +48,37 @@ export function Sidebar() {
               key={item.href}
               href={item.href}
               aria-current={active ? "page" : undefined}
-              className={`rounded-lg border-l-[3px] px-4 py-3 text-[0.95rem] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
+              className={`group relative flex items-center justify-between rounded-lg px-4 py-3 text-[0.95rem] font-medium duration-300 ease-smooth focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
                 active
-                  ? "border-brand bg-brand-soft text-brand-ink"
-                  : "border-transparent text-muted hover:bg-brand-soft/50 hover:text-ink"
+                  ? "bg-brand-soft text-brand-ink shadow-[inset_0_0_0_1px_rgba(63,129,125,0.14)]"
+                  : "text-muted hover:translate-x-0.5 hover:bg-brand-soft/50 hover:text-ink"
               }`}
             >
+              <span
+                aria-hidden="true"
+                className={`absolute inset-y-2 left-0 w-[3px] origin-center rounded-full bg-brand transition-transform duration-300 ease-smooth ${
+                  active ? "scale-y-100" : "scale-y-0"
+                }`}
+              />
               {item.label}
+              <ChevronRight
+                size={14}
+                className={`transition duration-300 ease-smooth ${
+                  active
+                    ? "translate-x-0 opacity-100"
+                    : "-translate-x-1 opacity-0 group-hover:translate-x-0 group-hover:opacity-60"
+                }`}
+              />
             </Link>
           );
         })}
       </nav>
 
-      <div className="mt-auto space-y-4 px-3 pt-8">
+      <div className="flex flex-1 items-center justify-center py-6">
+        <SidebarBuddy />
+      </div>
+
+      <div className="space-y-4 px-3 pt-8">
         <p className="text-sm leading-relaxed text-muted">
           Test techniques as experiments. Let your own results decide what works.
         </p>
@@ -100,7 +120,9 @@ export function MobileNav() {
               href={item.href}
               aria-current={active ? "page" : undefined}
               className={`min-h-10 shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
-                active ? "bg-brand-soft text-brand-ink" : "text-muted"
+                active
+                  ? "bg-brand-soft text-brand-ink shadow-[inset_0_0_0_1px_rgba(63,129,125,0.14)]"
+                  : "text-muted hover:bg-brand-soft/50 hover:text-ink"
               }`}
             >
               {item.label}

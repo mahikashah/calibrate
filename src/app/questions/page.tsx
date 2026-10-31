@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ChangeEvent, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight } from "@/components/icons";
 import { QuestionCountControl } from "@/components/QuestionCountControl";
 import { AiTag, Empty } from "@/components/ui";
 import { deleteJSON, getJSON, patchJSON, postJSON } from "@/lib/client";
@@ -70,7 +71,7 @@ const STATUS_FILTERS = ["all", "generated", "edited", "approved", "rejected"] as
 
 export default function QuestionsPage() {
   return (
-    <Suspense fallback={<div className="calibrate-question-bank">Loading Question Bank…</div>}>
+    <Suspense fallback={<div className="calibrate-question-bank" aria-busy="true"><QuestionBankSkeleton /></div>}>
       <QuestionsPageContent />
     </Suspense>
   );
@@ -101,6 +102,7 @@ function QuestionsPageContent() {
     fromGenerate && urlMaterialId ? urlMaterialId : null,
   );
   const [source, setSource] = useState<"notes" | "pdf">("notes");
+  const pdfInputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -339,6 +341,8 @@ function QuestionsPageContent() {
     }
     setError(null);
     setFile(selected);
+    // Clear the input so picking the same file again (e.g. after removing it) still registers.
+    event.target.value = "";
   }
 
   /** Saves notes, then generates; reuses the saved material on retry. */
@@ -526,12 +530,15 @@ function QuestionsPageContent() {
         </div>
       </header>
 
-      {subjects.length === 0 ? (
+      {!loaded && subjects.length === 0 ? (
+        <QuestionBankSkeleton />
+      ) : subjects.length === 0 ? (
         <div className="calibrate-empty-state">
           <p className="calibrate-empty-state__title">Add a subject first</p>
           <p>Question sets stay organized by the subject you&apos;re working on.</p>
           <Link href="/subjects" className="calibrate-question-bank__button">
             Add a subject
+            <ChevronRight className="nudge" />
           </Link>
         </div>
       ) : (
@@ -598,10 +605,21 @@ function QuestionsPageContent() {
                   onClick={() => {
                     setSource("pdf");
                     setError(null);
+                    // Open the file picker straight away instead of making them find the dropzone.
+                    pdfInputRef.current?.click();
                   }}
                 >
                   <span>2</span> Upload PDF
                 </button>
+                <input
+                  ref={pdfInputRef}
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  onChange={chooseFile}
+                  hidden
+                  tabIndex={-1}
+                  aria-hidden="true"
+                />
               </div>
 
               <div>
@@ -708,6 +726,7 @@ function QuestionsPageContent() {
                 onClick={reviewGeneratedQuestions}
               >
                 Review questions
+                <ChevronRight className="nudge" />
               </button>
             </div>
           )}
@@ -927,6 +946,7 @@ function QuestionsPageContent() {
               }`}
             >
               Study approved questions
+              <ChevronRight className="nudge" />
             </Link>
           )}
         </div>
@@ -988,7 +1008,7 @@ function QuestionsPageContent() {
                     disabled={pageSlice.page <= 1}
                     aria-label="Previous page"
                   >
-                    ← Previous
+                    <ChevronLeft className="nudge nudge-back" /> Previous
                   </button>
                   <span aria-current="page">
                     Page {pageSlice.page} of {pageSlice.totalPages}
@@ -1002,7 +1022,7 @@ function QuestionsPageContent() {
                     disabled={pageSlice.page >= pageSlice.totalPages}
                     aria-label="Next page"
                   >
-                    Next →
+                    Next <ChevronRight className="nudge" />
                   </button>
                 </div>
               </nav>
@@ -1248,4 +1268,13 @@ function parseChoices(value?: string | null) {
   } catch {
     return [];
   }
+}
+
+function QuestionBankSkeleton() {
+  return (
+    <div className="space-y-4" aria-label="Loading Question Bank">
+      <div className="skeleton h-64" />
+      <div className="skeleton h-40" />
+    </div>
+  );
 }

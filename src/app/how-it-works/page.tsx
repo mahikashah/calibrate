@@ -1,5 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
+import { ChevronLeft, ChevronRight } from "@/components/icons";
+import { ScrollReveal } from "@/components/ScrollReveal";
 
 type Step = {
   number: string;
@@ -123,17 +125,29 @@ export default function HowItWorksPage() {
             <span>Calibrate</span>
           </Link>
           <Link href="/start" className="calibrate-start__back">
-            <span aria-hidden="true">←</span> Back
+            <ChevronLeft className="nudge nudge-back" /> Back
           </Link>
         </header>
 
         <div className="calibrate-tour__intro animate-rise">
+          <Image
+            src="/mascot-thinking.png"
+            alt=""
+            width={578}
+            height={640}
+            priority
+            className="calibrate-tour__mascot"
+          />
           <p className="calibrate-start__eyebrow">Your first experiment</p>
           <h1>How Calibrate works</h1>
           <p>Run small study experiments and learn what actually works for you.</p>
           <span>Here’s what your first experiment will look like.</span>
         </div>
 
+        <ScrollReveal selector=".calibrate-tour__step" />
+        <noscript>
+          <style>{`.calibrate-tour__step { opacity: 1; transform: none; }`}</style>
+        </noscript>
         <ol className="calibrate-tour__steps">
           {STEPS.map((step, index) => {
             const paired = step.previews.length === 2;
@@ -176,7 +190,7 @@ export default function HowItWorksPage() {
           <p>Start with a few quick questions. We’ll take it from there.</p>
           <div className="calibrate-tour__completion-actions">
             <Link href="/onboarding" className="calibrate-button calibrate-button-dark">
-              Start onboarding <span aria-hidden="true">→</span>
+              Start onboarding <ChevronRight className="nudge" />
             </Link>
             <Link href="/start" className="calibrate-button calibrate-button-outline">
               Back
