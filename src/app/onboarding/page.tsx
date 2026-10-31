@@ -8,8 +8,11 @@ import { NotebookScribble } from "@/components/NotebookScribble";
 import { TestPaperScribble } from "@/components/TestPaperScribble";
 import { ChatScribble } from "@/components/ChatScribble";
 import { ScheduleScribble } from "@/components/ScheduleScribble";
+import { SubjectCarousel } from "@/components/SubjectCarousel";
 import { postJSON } from "@/lib/client";
 import { ONBOARDING_QUESTIONS, type Hypothesis } from "@/lib/hypothesis";
+import { STUDY_BUDDIES } from "@/lib/study-buddies";
+import { techniqueLabel } from "@/lib/techniques";
 
 type Screen = "questions" | "result";
 
@@ -19,7 +22,28 @@ const WHY_WE_ASK: Record<string, string> = {
   check: "This helps us understand how you usually check whether studying worked.",
   consistency: "This gives us context when we compare future study sessions.",
   subject_type: "This helps Calibrate interpret your results more carefully.",
+  buddy: "Each buddy stands for one study technique. Pick the one you like — it won't change your starting hypothesis.",
 };
+
+// The small illustration above each question.
+const QUESTION_ART: Record<string, () => JSX.Element> = {
+  retention: NotebookScribble,
+  struggle: TestPaperScribble,
+  check: ChatScribble,
+  consistency: ScheduleScribble,
+  subject_type: SubjectCarousel,
+};
+
+// Short technique names for the buddy cards: "Feynman / self-explanation" -> "Feynman".
+function buddyTechnique(technique: string) {
+  return techniqueLabel(technique).split(" / ")[0].replace(/\s*\(control\)$/, "");
+}
+
+// Mid-sentence form: lowercase, except Feynman, which is a name.
+function buddyTechniqueInSentence(technique: string) {
+  const label = buddyTechnique(technique);
+  return technique === "feynman" ? `the ${label} technique` : label.toLowerCase();
+}
 
 function CalibrateMark() {
   return (
@@ -42,6 +66,9 @@ export default function OnboardingPage() {
 
   const total = ONBOARDING_QUESTIONS.length;
   const question = ONBOARDING_QUESTIONS[questionStep];
+  const isBuddyStep = question.id === "buddy";
+  const QuestionArt = QUESTION_ART[question.id];
+  const chosenBuddy = answers.buddy === undefined ? undefined : STUDY_BUDDIES[answers.buddy];
 
   function selectAnswer(optionIndex: number) {
     setAnswers((current) => ({ ...current, [question.id]: optionIndex }));
@@ -119,11 +146,8 @@ export default function OnboardingPage() {
               </div>
             </header>
             <div className="calibrate-question-stage" key={question.id}>
-              {questionStep === 0 && <NotebookScribble />}
-              {questionStep === 1 && <TestPaperScribble />}
-              {questionStep === 2 && <ChatScribble />}
-              {questionStep === 3 && <ScheduleScribble />}
-              <p className="calibrate-question-kicker">Your study practice</p>
+              {QuestionArt && <QuestionArt />}
+              <p className="calibrate-question-kicker">{isBuddyStep ? "One last thing" : "Your study practice"}</p>
               <h1>
                 {question.text}
               </h1>
@@ -132,6 +156,32 @@ export default function OnboardingPage() {
                 {WHY_WE_ASK[question.id]}
               </p>
             </div>
+            {isBuddyStep ? (
+              <div className="calibrate-buddy-grid" role="radiogroup" aria-label={question.text}>
+                {STUDY_BUDDIES.map((buddy, index) => {
+                  const selected = answers[question.id] === index;
+                  return (
+                    <button
+                      key={buddy.id}
+                      type="button"
+                      role="radio"
+                      onClick={() => selectAnswer(index)}
+                      disabled={saving}
+                      aria-checked={selected}
+                      className={`calibrate-buddy ${selected ? "calibrate-buddy--selected" : ""}`}
+                      style={{ ["--i" as string]: index }}
+                    >
+                      <span className="calibrate-buddy__check" aria-hidden="true">✓</span>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={buddy.image} alt="" className="calibrate-buddy__image" draggable={false} />
+                      <span className="calibrate-buddy__name">{buddy.name}</span>
+                      <span className="calibrate-buddy__technique">{buddyTechnique(buddy.technique)}</span>
+                      <span className="calibrate-buddy__tagline">{buddy.tagline}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
             <div className="calibrate-answer-group" role="radiogroup" aria-label={question.text}>
               {question.options.map((option, index) => {
                 const selected = answers[question.id] === index;
@@ -152,6 +202,7 @@ export default function OnboardingPage() {
                 );
               })}
             </div>
+            )}
             {error && <p className="mt-5 text-center text-sm font-medium text-red-700">{error}</p>}
             <div className="calibrate-question-navigation">
               <button className="calibrate-back static" onClick={goBack}><ChevronLeft className="nudge nudge-back" /> Back</button>
@@ -187,6 +238,17 @@ export default function OnboardingPage() {
               </ol>
               <p className="calibrate-result__rationale">{result.rationale}</p>
             </div>
+            {chosenBuddy && (
+              <div className="calibrate-result__buddy">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={chosenBuddy.image} alt="" />
+                <p>
+                  <span>Your study buddy</span>
+                  <strong>{chosenBuddy.name}</strong> will be cheering you on. {chosenBuddy.name}&rsquo;s favorite technique is{" "}
+                  {buddyTechniqueInSentence(chosenBuddy.technique)}.
+                </p>
+              </div>
+            )}
             <p className="calibrate-result__next-step">
               <span>Next step</span>
               Set up a subject so you can add your real class material before your first study experiment.
